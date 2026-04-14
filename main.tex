@@ -1,0 +1,94 @@
+\documentclass[a5paper,11pt,twoside]{book}
+
+% ==================== 宏包 ====================
+\usepackage[UTF8]{ctex}
+\usepackage[a5paper,inner=15mm,outer=12mm,top=15mm,bottom=18mm]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+% ==================== 样式设置 ====================
+% 颜色
+\definecolor{primary}{HTML}{2C3E50}
+\definecolor{accent}{HTML}{3498DB}
+
+% 超链接
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    urlcolor=accent,
+    citecolor=accent,
+}
+
+% 章节标题样式
+\titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\color{primary}}
+    {\chaptername\ \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+    {\normalfont\Large\bfseries\color{primary}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\normalfont\large\bfseries\color{primary}}
+    {\thesubsection}{1em}{}
+
+% 页眉页脚
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\leftmark}
+\fancyhead[RO]{\rightmark}
+\fancyfoot[CE,CO]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ==================== 文档信息 ====================
+\title{小册子标题}
+\author{作者名称}
+\date{\today}
+
+% ==================== 正文 ====================
+\begin{document}
+
+% --- 封面 ---
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge\bfseries\color{primary} 小册子标题 \par}
+    \vspace{1cm}
+    {\Large\color{accent} 副标题 \par}
+    \vspace{2cm}
+    {\large 作者名称 \par}
+    \vfill
+    {\small \today \par}
+\end{titlepage}
+
+% --- 目录 ---
+\frontmatter
+\tableofcontents
+
+% --- 正文 ---
+\mainmatter
+
+\chapter{第一章}
+\section{第一节}
+这是小册子的正文内容。请在此处编写您的内容。
+
+\subsection{第一小节}
+小册子是一种简洁的出版物形式，适合传达精炼的信息。
+
+\chapter{第二章}
+\section{第二节}
+您可以根据需要添加更多章节和内容。
+
+% --- 附录 ---
+\appendix
+\chapter{附录}
+附录内容。
+
+\backmatter
+
+\end{document}
