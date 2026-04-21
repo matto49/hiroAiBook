@@ -11,6 +11,7 @@
 \usepackage{fancyhdr}
 \usepackage{enumitem}
 \usepackage{microtype}
+\usepackage{tikz}
 
 % ==================== 样式设置 ====================
 % 颜色
@@ -45,6 +46,97 @@
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
 
+% ==================== 自定义命令 ====================
+% 竖排辅助：将文字逐字竖排（兼容XeLaTeX+ctex的CJK字符）
+% 空格被跳过，CJK字逐字竖排，ASCII字母逐字竖排
+\makeatletter
+\newcommand{\verticaltext}[1]{%
+  \verticaltext@i#1\relax%
+}
+\def\verticaltext@i{%
+  \futurelet\verticaltext@tok\verticaltext@ii%
+}
+\def\verticaltext@ii{%
+  \ifx\verticaltext@tok\relax
+    \let\verticaltext@nxt=\relax
+  \else
+    \ifx\verticaltext@tok\space
+      \def\verticaltext@nxt{\verticaltext@gobble}%
+    \else
+      \def\verticaltext@nxt{\verticaltext@char}%
+    \fi
+  \fi
+  \verticaltext@nxt%
+}
+\def\verticaltext@gobble{\afterassignment\verticaltext@i\let\verticaltext@tok= }%
+\def\verticaltext@char#1{#1\\[0.3em]\verticaltext@i}%
+\makeatother
+
+% 筱澤広小课堂章节标题页（竖排居中，单独占一整页）
+% 用法: \hirochapter{副标题，如“大语言模型的前世今生”}
+\newcommand{\hirochapter}[1]{%
+  \clearpage%
+  \thispagestyle{empty}%
+  \phantomsection%
+  \addcontentsline{toc}{chapter}{筱澤広小课堂——#1}%
+  \vspace*{\fill}%
+  \begin{center}%
+    {\small\verticaltext{筱澤広小课堂}}%
+    \vspace{2em}%
+    {\small\verticaltext{#1}}%
+  \end{center}%
+  \vspace*{\fill}%
+  \clearpage%
+}
+
+% 论文标题块（IEEE风格，单栏）
+% 用法: \hiropapertitle{论文标题}{作者行}{单位}
+%   作者行示例: 広\textsuperscript{1}，Producer\textsuperscript{通讯}
+\newcommand{\hiropapertitle}[3]{%
+  \begin{center}%
+    {\LARGE\bfseries #1}\\[1em]%
+    #2\\[0.3em]%
+    {\small\itshape #3}%
+  \end{center}%
+  \vspace{1em}%
+}
+
+% 摘要环境（book类不提供abstract环境，手动定义）
+\newenvironment{abstract}{%
+  \begin{center}%
+    {\bfseries 摘要}%
+  \end{center}%
+  \small\itshape\noindent%
+}{\par\vspace{1em}}
+
+% 关键词
+\newcommand{\keywords}[1]{%
+  \noindent{\bfseries 关键词：}#1\par\vspace{1em}%
+}
+
+% 重定义thebibliography：book类默认用\chapter*，改为\section*避免与手动标题重复
+\makeatletter
+\renewenvironment{thebibliography}[1]{%
+  \section*{\bibname}%
+  \addcontentsline{toc}{section}{\bibname}%
+  \list{\@biblabel{\@arabic\c@enumiv}}%
+       {\settowidth\labelwidth{\@biblabel{#1}}%
+        \leftmargin\labelwidth
+        \advance\leftmargin\labelsep
+        \@openbib@code
+        \usecounter{enumiv}%
+        \let\p@enumiv\@empty
+        \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+  \sloppy
+  \clubpenalty4000
+  \widowpenalty4000%
+  \sfcode`\.\@m}%
+ {\def\@noitemerr
+   {\@latex@warning{Empty `thebibliography' environment}}%
+  \def\newblock{\@gobble}%
+  \endlist}
+\makeatother
+
 % ==================== 文档信息 ====================
 \title{小册子标题}
 \author{作者名称}
@@ -53,42 +145,30 @@
 % ==================== 正文 ====================
 \begin{document}
 
-% --- 封面 ---
-\begin{titlepage}
-    \centering
-    \vspace*{2cm}
-    {\Huge\bfseries\color{primary} 小册子标题 \par}
-    \vspace{1cm}
-    {\Large\color{accent} 副标题 \par}
-    \vspace{2cm}
-    {\large 作者名称 \par}
-    \vfill
-    {\small \today \par}
-\end{titlepage}
+% --- 封面（图片，全页铺满） ---
+{\thispagestyle{empty}%
+\begin{tikzpicture}[remember picture,overlay]
+  \node[inner sep=0pt] at (current page.center)
+    {\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{figures/cover_test.jpg}};
+\end{tikzpicture}}
+\clearpage
 
-% --- 目录 ---
+% --- 前言 ---
 \frontmatter
 \tableofcontents
+\input{chapters/frontmatter}
 
 % --- 正文 ---
 \mainmatter
 
-\chapter{第一章}
-\section{第一节}
-这是小册子的正文内容。请在此处编写您的内容。
+\input{chapters/ch01}
+\input{chapters/ch02}
+\input{chapters/ch03}
+\input{chapters/ch04}
+\input{chapters/ch05}
+\input{chapters/ch06}
 
-\subsection{第一小节}
-小册子是一种简洁的出版物形式，适合传达精炼的信息。
-
-\chapter{第二章}
-\section{第二节}
-您可以根据需要添加更多章节和内容。
-
-% --- 附录 ---
-\appendix
-\chapter{附录}
-附录内容。
-
-\backmatter
+% --- 附录 & 结语 ---
+\input{chapters/backmatter}
 
 \end{document}
