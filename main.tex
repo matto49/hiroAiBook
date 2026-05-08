@@ -5,6 +5,8 @@
 \usepackage[a5paper,inner=15mm,outer=12mm,top=15mm,bottom=18mm]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage[superscript]{cite}
 \usepackage{hyperref}
 \usepackage{titlesec}
 \usepackage{titletoc}
@@ -27,6 +29,8 @@
 }
 
 % 章节标题样式
+\renewcommand{\thesection}{\arabic{section}}
+\renewcommand{\thesubsection}{\thesection.\arabic{subsection}}
 \titleformat{\chapter}[display]
     {\normalfont\huge\bfseries\color{primary}}
     {\chaptername\ \thechapter}{20pt}{\Huge}

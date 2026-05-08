@@ -1,7 +1,7 @@
 % ==================== 章节4：具身智能？理解与感知 ====================
 
 % --- 章节标题页（竖排） ---
-\hirochapter{具身智能 | 来做一个普罗丢色吧}
+\hirochapter{具身智能 | 假如给我三天光明}
 
 % --- 小剧场对话 ---
 \section*{初星学园——2:00P.M. 活动准备室}
@@ -28,45 +28,304 @@ P：话题好像朝着不妙的方向行进了。。。
 \clearpage
 
 % --- 论文正文（IEEE风格，单栏） ---
-\hiropapertitle{具身智能？理解与感知}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园偶像研究部}
+\hiropapertitle{具身智能：从感知、理解到行动}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园偶像研究部}
 
 \begin{abstract}
-到这里的话，我们的普罗丢色桑优先要理解具身智能的概念。
-然后从最基础的环境感知和理解的算法入手，让我们的普罗丢色bot能够理解周围环境并进行交互。
-所以接下来，hiro会好好介绍机器人领域的一些基础知识。以及最最经典的同时建图定位(SLAM)、路径规划等技术。
-当然也会包括一些常见的轻量化的视觉，听觉的硬件配置和算法实现。
-为了方便普罗丢色桑理解，hiro会尽量用简单的语言和算法实例来解释这些概念。
-
+本章围绕具身智能的四个问题展开：概念从何而来，机器人如何感知并理解环境，系统如何把决策落实为稳定动作，以及截至 2026 年上半年这一方向的代表性技术路线。
+在历史上，具身智能并不是大模型时代突然冒出来的新词，而是从行为主义机器人、具身认知与发展机器人学一路延展而来。
+在方法上，当前系统大致可分为感知、建图、规划、控制相对解耦的非端到端路线，以及以 VLA、模仿学习和强化学习为代表的端到端或近端到端路线。
+本章会先用较为严谨的术语给出定义，再由 hiro 用更直观的方式拆开解释，并通过公式、表格与公开论文，把这几条路线放进同一张技术地图里。
 \end{abstract}
-\keywords{具身智能、机器人、感知、理解}
+\keywords{具身智能、SLAM、机器人控制、VLA、具身推理}
 
 \section{引言}
 
-如果说Agent是灵魂的话，具身智能就是一副供灵魂栖息的躯体。
-虽然在计算机里面，Agent本身就足够强大，可以调用各种各样的工具帮普罗丢色桑干活了。
-但是很多现实生活中的实事，如外出商谈，文件签署，还有陪伴小偶像等，没有一个实体的躯体，是无法完成的。
-为此，在大语言模型和Agent的基础上，hiro会介绍如何给普罗丢色桑的bot装上一个实体的躯体。
-能够自主的感知环境，理解环境，并且做出相应的行动。
+如果说 Agent 是灵魂的话，具身智能就是一副真的要去接触世界的身体。
+这副身体会受重力、摩擦、延迟、遮挡、噪声和电机带宽的约束，所以机器人面对的困难，和纯软件 Agent 并不在一个量级上。
 
-（铛铛、敲黑板）hiro接下来会介绍：
+在计算机里，会说、会搜、会调工具已经很强了；可一旦任务变成端杯子、开门、巡检、搬运、陪伴或导航，系统就必须把感知、理解、规划和动作真正接起来。
+也正因为如此，具身智能研究的重点从来不是“给大模型插两根线”，而是构造一个闭环：看见世界、形成状态、选择动作、执行动作、根据反馈再修正下一步行为。
 
-1. 具身智能的具体定义，以及近年来最新的技术路线
-2. 具身智能的感知与理解算法，以SLAM和视觉理解为例，实践
-3. 具身智能的控制与执行，以路径规划和运动控制为例
-4. 当前进展
+P：所以这里最麻烦的，不是“会不会想”，而是“想完以后能不能稳稳做到”？
+
+広：嗯嗯，就是这个意思。脑子里的答案如果落不到手脚上，那它就还只是答案，不算本事。
+
+这一章会依次讨论四件事：第一，具身智能这个概念到底是怎么来的；第二，机器人如何通过传感器和算法理解环境；第三，控制与执行这一层为什么更像“小脑”；第四，截至 2026 年 5 月，公开论文和技术报告里最值得注意的技术栈是什么样子。
 
 \section{什么是具身智能}
 
-具身智能（Embodied Intelligence）是指智能体通过与物理环境的交互来学习和适应的能力。
-它强调智能体不仅仅是信息处理的容器，而是具有物理形态、能够感知和操作物理世界的存在。
+\subsection{概念的来由}
+
+学术上，具身智能强调的是智能体与身体、环境之间的耦合关系，而不是把“智能”理解成一个脱离物理世界的纯推理模块。
+Brooks 在 1991 年对传统“先建完整世界模型、再统一推理”的路线提出了强烈批评，主张让机器人通过分层行为直接与环境耦合\cite{brooks1991}。
+
+Pfeifer 与 Bongard 后来把这一思想推进得更完整：身体形态、材料特性、传感器布局和控制器本身，会共同决定智能系统能够如何学习、如何感知、如何行动\cite{pfeifer2007}。
+再往后，发展机器人学把问题进一步改写成“机器人能否像儿童一样，在持续互动中长出能力”，于是感知、动作和概念之间的对应关系，逐渐成为核心议题\cite{cangelosi2015}。
+
+P：普罗丢色听起来，像是在说“身体不是容器，而是题目的一部分”？
+
+広：对哦。不是脑子先写完答案，再随便找个壳子装进去。很多时候，身体本身就在偷偷帮你解题。
+
+\subsection{今天常说的三条路线}
+
+到了深度学习时代，具身智能逐渐分化出三条最常见的技术路线。
+第一条是分层系统路线，把感知、定位建图、任务规划、运动规划和控制执行拆开；第二条是机器人学习路线，让策略从轨迹数据中直接学习技能；第三条是具身基础模型路线，把语言、视觉和动作统一到同一个模型或模型簇里，代表性工作包括 SayCan、PaLM-E、RT-1 和 RT-2\cite{ahn2022saycan,driess2023palme,brohan2022rt1,brohan2023rt2}。
+
+为了不让名词飘在空中，表 \ref{tab:routes} 先把三条路线放在一起。
+这样普罗丢色桑后面看到“端到端”“VLA”“非端到端骨架”时，就不会像被突然塞进练习室中央一样手忙脚乱了。
+
+\begin{table}[htbp]
+\centering
+\caption{具身智能主流技术路线对比}
+\label{tab:routes}
+\small
+\begin{tabular}{p{1.8cm} p{2.7cm} p{2.7cm}}
+\toprule
+路线 & 优点 & 主要局限 \\
+\midrule
+分层系统 & 可解释、易调试、安全约束明确 & 模块误差会级联，语义泛化有限 \\
+机器人学习 & 适合高维接触与复杂技能 & 数据昂贵，分布外泛化困难 \\
+具身基础模型 & 语义泛化强，跨任务迁移潜力高 & 训练成本高，执行稳定性仍依赖底层护栏 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+如果进一步从研究主题上划分，当前学者们主要在做四件事：研究身体形态与交互结构，研究世界模型与状态表征，研究技能获取与泛化，研究推理与执行如何对齐。
+Open X-Embodiment、Octo 和 OpenVLA 之所以重要，不只是因为模型更大，更因为它们把跨机器人共享数据与共享经验变成了真正可复现的研究基础设施\cite{openx2023,octo2024,openvla2024}。
+
+P：那 hiro 为什么要先讲分层路线？现在大家不是都很喜欢端到端吗？
+
+広：因为现实机器人很诚实呀。它会摔，会撞，会漂移，会丢跟踪。真正要落地时，能定位问题、能加安全边界、能一层一层修，往往比“看起来很帅”更重要。
+
+所以，后面两节会先把非端到端路线讲清楚。
+不是因为它“旧”，而是因为直到今天，它依然是大量可部署系统的骨架；而端到端方法，很多时候是长在这副骨架上的新肌肉。
+
 
 \section{感知与理解}
 
+\subsection{传感器不是越多越好，而是要互补}
+
+感知这一层最正式的说法，是机器人通过观测模型把外部世界映射为内部状态估计。
+常见的状态转移和观测关系，通常可以写成
+\begin{equation}
+x_t = f(x_{t-1}, u_t) + w_t, \qquad
+z_t = h(x_t, m) + v_t,
+\end{equation}
+其中 $x_t$ 表示时刻 $t$ 的状态，$u_t$ 是控制输入，$z_t$ 是传感器观测，$m$ 表示地图或环境表征，$w_t$ 与 $v_t$ 分别是过程噪声和观测噪声。
+
+这两个式子看起来很像老师上课会忽然丢出来的冷冰冰黑板字，但其实意思很朴素。
+第一式是在说“机器人动了一下以后，大概会到哪里”；第二式是在说“它看到的东西，和真实世界之间总会夹着噪声与误差”。
+
+P：也就是说，传感器不是在告诉机器人真相，而是在给它一些带着噪声的线索？
+
+広：嗯嗯，像舞台灯光太亮的时候，照片拍出来也会偏掉呀。机器人每天都在做这种“带误差猜世界”的事情。
+
+现实系统里并不是摄像头越多越强，而是不同模态能否互补。
+RGB 相机成本低、信息密度高，适合检测、分割和语言对齐；双目、RGB-D 和激光雷达更擅长提供尺度与深度；IMU、轮速计和里程计能在短时间内给出稳定运动先验；机械臂和灵巧手则高度依赖关节编码器、力传感器和触觉阵列。
+
+表 \ref{tab:sensors} 给出了一种典型对应关系。
+它不一定覆盖所有系统，但很适合当第一张“传感器地图”。
+
+\begin{table}[htbp]
+\centering
+\caption{具身系统常见传感器与主要作用}
+\label{tab:sensors}
+\small
+\begin{tabular}{p{2.0cm} p{2.2cm} p{3.0cm}}
+\toprule
+传感器 & 主要优势 & 典型用途 \\
+\midrule
+RGB 相机 & 成本低，语义信息丰富 & 检测、分割、识别、视觉语言对齐 \\
+RGB-D / 双目 & 直接提供深度线索 & 抓取定位、近场建图、避障 \\
+激光雷达 & 几何精度高，抗光照变化强 & 导航、建图、定位 \\
+IMU / 轮速计 & 高频、短时稳定 & 里程计、姿态估计、传感器融合 \\
+力觉 / 触觉 & 接触信息直接 & 装配、抓取稳定性、阻抗控制 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{SLAM 与状态估计}
+
+对于需要移动的机器人来说，先知道自己在哪，通常比“理解一句复杂自然语言指令”更基础。
+SLAM 的核心任务，是在未知环境中同时估计机器人位姿并构建地图；对应到概率表达里，目标常常可以写成对后验分布 $p(x_t,m \mid z_{1:t},u_{1:t})$ 的递推估计。
+
+更常见的递推形式是 Bayes filter：
+\begin{equation}
+\mathrm{bel}(x_t)=\eta \, p(z_t \mid x_t,m)
+\int p(x_t \mid u_t,x_{t-1}) \, \mathrm{bel}(x_{t-1}) \, dx_{t-1},
+\end{equation}
+其中 $\eta$ 是归一化常数，$\mathrm{bel}(x_t)$ 表示时刻 $t$ 对状态的信念。
+这个式子把事情拆成了两步：先根据控制输入预测“我大概去了哪里”，再根据最新观测校正“我真正更可能在哪里”。
+
+P：这个式子终于像人话了。先猜，再看，再修正，对吧？
+
+広：对，hiro 很喜欢把它叫做“走一步，确认一步”。机器人其实一直在做这种谨慎的小动作。
+
+在具体算法上，视觉和视觉惯性路线常见 VINS-Mono 与 ORB-SLAM3\cite{qin2018vinsmono,campos2021orbslam3}。
+偏光度建模的直接法代表有 DSO\cite{engel2018dso}；面向移动平台的激光图优化路线则常见 Google Cartographer\cite{hess2016cartographer}。
+这些方法的共同目标不是“理解一切”，而是先把位姿、回环、漂移和地图精度稳住。
+
+\subsection{从几何感知走向语义理解}
+
+如果只有几何地图，机器人知道“这里有个凸起”“那里有面墙”，却未必知道“这个是杯子，那个抽屉能拉开，这把椅子暂时不能撞”。
+所以在具身系统里，感知的终点通常不是一张纯几何地图，而是带有类别、实例、可供性和任务状态的语义地图。
+
+所谓可供性，学术上指的是环境或物体对某个动作所提供的可操作可能性。
+翻成人话，就是机器人不仅要认出杯子，还要知道这个杯子是不是能抓、从哪里抓、抓了会不会碰倒旁边的东西。
+
+P：所以“理解”不是多认几个名词，而是多知道一点“怎么动手”？
+
+広：嗯，这就像看到练习室的麦克风，不只是知道它叫麦克风，还要知道能不能拿、该从哪边拿、拿了会不会把线缠住。
+
+今天常见的视觉理解模块包括目标检测、实例分割、关键点估计、6D 位姿估计、抓取检测、场景描述和视觉问答。
+对于固定工位操作，系统往往更看重 6D 位姿和抓取候选；对于开放家庭场景，则更依赖开放词汇检测、多模态检索和视觉语言模型，把自然语言目标转成可执行对象。
+
+PaLM-E 和 RT-2 的价值，就在于它们证明了互联网语义知识能够迁移到机器人任务语义上\cite{driess2023palme,brohan2023rt2}。
+但这并不等于几何方法失效了。真正成熟的系统，通常还是几何层兜底定位，语义层负责“这到底是什么、该做什么”，两者一起工作。
+
 \section{控制与执行}
+
+\subsection{机械结构决定了控制难度的上限}
+
+感知更像是在回答“世界是什么样”，控制更像是在回答“身体应该怎么动”。
+这部分通常比感知更受实时性约束，因为几十毫秒的误差就可能让抓取偏掉，几百毫秒的误差就足以让双足系统失衡。
+
+如果任务以移动为主，常见底盘包括差速轮、全向轮和 Ackermann 结构；如果任务以操作为主，最常见的是 6 或 7 自由度串联机械臂；如果目标是走进人类环境，则往往会转向双臂、人形或轮腿混合结构。
+末端执行器方面，二指夹爪仍然是工业界极高性价比的方案，而灵巧手虽然潜力更大，却也把控制、感知和数据成本一起推高了。
+
+P：是不是可以粗暴理解成，身体越像人，控制就越难？
+
+広：大体上可以这么记。越通用，越自由；越自由，越容易让控制器头痛。
+
+\subsection{从任务规划到底层伺服}
+
+成熟机器人系统的控制栈，往往不是一层，而是多层。
+高层决定任务顺序，中层负责轨迹和避障，低层负责关节、力矩、阻抗和接触稳定。Khatib 的操作空间控制让“在末端空间直接定义任务”这件事变得系统化\cite{khatib1987}；Hogan 的阻抗控制则奠定了机器人安全接触环境时的基本范式\cite{hogan1985}。
+
+如果把阻抗控制写成一个常见形式，可以表示为
+\begin{equation}
+F = K(x_d-x) + B(\dot{x}_d-\dot{x}) + M(\ddot{x}_d-\ddot{x}),
+\end{equation}
+其中 $x_d$ 是期望位置，$x$ 是实际位置，$K$、$B$、$M$ 分别刻画刚度、阻尼和惯性项。
+这个式子的直观含义是：机器人不是死硬地追踪某个点，而是像一个“有弹性、有阻尼”的系统那样去靠近目标，因此在接触任务里更安全、更顺手。
+
+P：所以阻抗控制不是“死命拧过去”，而是“带着弹性地靠过去”？
+
+広：对呀，不然装配、抓取、递东西的时候，机器人就会像过分认真的新人一样，把场面弄得很紧张。
+
+\subsection{轨迹优化与模型预测控制}
+
+只靠逆运动学，通常只能回答“有没有一个姿态能到”；但机器人真要动起来，还要考虑碰撞、速度、加速度和平滑性。
+因此，机械臂和移动操作系统常常在 IK 之外叠加运动规划与轨迹优化。CHOMP 的代表性形式可以写成
+\begin{equation}
+J(\xi) = J_{\mathrm{smooth}}(\xi) + \lambda J_{\mathrm{obs}}(\xi),
+\end{equation}
+其中 $\xi$ 表示轨迹，第一项鼓励平滑，第二项惩罚靠近障碍物\cite{ratliff2009chomp}。
+
+一旦机器人开始跑、跳、上下楼梯，或者频繁切换接触，问题又会进一步变成模型预测控制。一个典型的 MPC 目标函数可以写成
+\begin{equation}
+\min_{u_{0:T-1}} \sum_{k=0}^{T-1}
+\left(
+\|x_k-x_k^\ast\|_Q^2 + \|u_k\|_R^2
+\right)
++\|x_T-x_T^\ast\|_{Q_f}^2,
+\end{equation}
+同时满足动力学和接触约束。
+这个式子表达的意思是：在一个有限时间窗里，机器人一边追踪目标状态，一边尽量不把控制输入用得太猛。MIT Cheetah 3 的工作就展示了这种思路在动态 locomotion 中的效果\cite{dicarlo2018mpc}。
+
+P：hmm，所以 MPC 有点像“先偷偷排演接下来几步，再选最好的一版演”？
+
+広：嗯，而且每过很短一会儿就重演一次。机器人其实是很爱反复 rehearsal 的孩子。
+
+\subsection{为什么今天仍然需要混合架构}
+
+对于双手协同、柔性物体整理、开抽屉和精细插接这类任务，纯解析建模经常又难又脆。
+于是模仿学习、扩散策略和 VLA 政策开始承担更多局部技能执行工作，但在大量可落地系统里，它们通常不会直接取消底层安全护栏，而是与状态机、规划器、阻抗控制和伺服环共同工作。
+
+这也是为什么现实系统经常采用混合控制架构。
+高层负责理解任务和挑技能，中层组织动作序列，低层保证每一个动作不会发飘、发散或者突然撞上什么不该撞的东西。
 
 \section{当前进展}
 
-\begin{thebibliography}{9}
-\bibitem{ref1} 参考文献1。
-\bibitem{ref2} 参考文献2。
+\subsection{公开论文能看见的主流技术栈}
+
+截至 2026 年 5 月，具身智能前沿已经很明显地从“单技能机器人学习”走向“基础模型 + 多机体数据 + 分层执行架构”。
+如果只看论文与技术报告，最清晰的一点不是端到端全面替代了分层系统，而是越来越多团队在尝试把两者拼接到一起。
+
+Google DeepMind 这条线很有代表性。SayCan 把语言模型语义先验与机器人技能 affordance 结合，在 101 个任务上实现了 84\% 的规划成功率和 74\% 的执行成功率\cite{ahn2022saycan}；PaLM-E 把连续观测注入语言模型嵌入空间，使同一个模型同时处理机器人规划和视觉语言任务\cite{driess2023palme}；RT-1 与 RT-2 则把大规模真实机器人轨迹训练和 VLA 泛化能力进一步推高\cite{brohan2022rt1,brohan2023rt2}。到了 2025 年，Gemini Robotics 又明确展示了“推理层 + 执行层”分工更细的体系\cite{gemini2025,geminiondevice2025}。
+
+开放生态这边，Open X-Embodiment、Octo 和 OpenVLA 把“跨机器人共享经验”真正做成了开放研究栈\cite{openx2023,octo2024,openvla2024}。
+对研究团队来说，这一脉的意义非常现实：不必从零搭建所有数据和模型管线，而是可以站在已有底座上做机体适配和任务微调。
+
+P：也就是说，有些团队在做“最强模型”，有些团队在做“最通用底座”？
+
+広：对呀。一个像主唱，一个像伴奏，但真正的 live 还是要大家一起上台。
+
+Physical Intelligence 的 $\pi_0$ 更强调多机体预训练后的小数据适配能力\cite{pi02024,openpi2025}。
+Figure 的 Helix 与 Helix 02 则特别值得注意，因为它们即使强调端到端，也没有把所有时间尺度揉成一个统一黑箱，而是明确保留了不同频率的语义、动作和全身稳定层\cite{figure2025helix,figure2026helix02}。
+
+NVIDIA Isaac GR00T N1 与 N1.5 更像平台化路线，不仅给模型，也给仿真、数据、训练与部署链路\cite{gr00t2025,gr00t152025}。
+如果把这些公开材料放在一起，表 \ref{tab:companies} 可以帮助我们快速抓住“各家公司究竟在突出什么”。
+
+\begin{table}[htbp]
+\centering
+\caption{截至 2026 年 5 月公开材料中的代表性路线}
+\label{tab:companies}
+\scriptsize
+\begin{tabular}{p{1.7cm} p{2.0cm} p{3.2cm}}
+\toprule
+主体 & 代表工作 & 路线特点 \\
+\midrule
+Google DeepMind & SayCan, PaLM-E, RT-1, RT-2, Gemini Robotics & 从语言规划走向 VLA 与具身推理协同 \\
+Open 社区 & Open X, Octo, OpenVLA & 强调开放数据、跨机体训练与可复现底座 \\
+Physical Intelligence & $\pi_0$, openpi & 多机体预训练，小数据后训练适配 \\
+Figure & Helix, Helix 02 & 人形任务中采用分频分层的执行架构 \\
+NVIDIA & GR00T N1, N1.5 & 模型、仿真、数据与部署平台一体化 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{哪些方案更接近落地}
+
+如果把“能发论文”和“能稳定部署”分开看，今天最稳的落地方案通常有三类。
+第一类是导航与移动操作系统，典型组合仍然是传感器融合、SLAM、语义感知、全局与局部规划、轨迹跟踪；第二类是定点操作系统，往往由视觉定位、运动规划、阻抗控制和局部学习策略共同组成；第三类是人形或双臂长时序任务系统，更常见的做法是让 VLA 或 LLM 负责任务层与技能层，而把全身控制、MPC 与安全监控留在执行层。
+
+P：说到底，现在最能落地的方案，还是“新模型负责变聪明，老骨架负责别出事”？
+
+広：嘿嘿，普罗丢色桑这句话总结得很好。hiro 想给你发一朵小红花。
+
+对于 Tesla Optimus、宇树、优必选、Boston Dynamics 等公司，公开演示很多，但外界能直接核验的训练细节和论文级披露仍然有限。
+因此，按学术写法最稳妥的表述不是替它们脑补内部实现，而是承认：从公开材料看，它们大概率也在采用“学习模块 + 状态估计 + 规划控制 + 安全回退”的混合技术栈，但外界很难仅凭演示视频精确还原其内部方法。
+
+这也正是本章想引出的结论。
+非端到端方法并没有被新时代淘汰，反而正在作为骨架、护栏和调试接口，与端到端模型一起支撑今天真正能跑起来的具身系统。
+
+\begin{thebibliography}{99}
+\bibitem{brooks1991} R. A. Brooks, ``Intelligence Without Representation,'' \emph{Artificial Intelligence}, vol. 47, no. 1--3, pp. 139--159, 1991.
+\bibitem{pfeifer2007} R. Pfeifer and J. Bongard, \emph{How the Body Shapes the Way We Think: A New View of Intelligence}. Cambridge, MA, USA: MIT Press, 2007.
+\bibitem{cangelosi2015} A. Cangelosi and M. Schlesinger, \emph{Developmental Robotics: From Babies to Robots}. Cambridge, MA, USA: MIT Press, 2015.
+\bibitem{qin2018vinsmono} T. Qin, P. Li, and S. Shen, ``VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator,'' \emph{IEEE Transactions on Robotics}, vol. 34, no. 4, pp. 1004--1020, 2018.
+\bibitem{campos2021orbslam3} C. Campos, R. Elvira, J. J. Gomez Rodriguez, J. M. M. Montiel, and J. D. Tardos, ``ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM,'' \emph{IEEE Transactions on Robotics}, vol. 37, no. 6, pp. 1874--1890, 2021.
+\bibitem{engel2018dso} J. Engel, V. Koltun, and D. Cremers, ``Direct Sparse Odometry,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 40, no. 3, pp. 611--625, 2018.
+\bibitem{hess2016cartographer} W. Hess, D. Kohler, H. Rapp, and D. Andor, ``Real-Time Loop Closure in 2D LIDAR SLAM,'' in \emph{Proc. IEEE Int. Conf. on Robotics and Automation (ICRA)}, 2016, pp. 1271--1278.
+\bibitem{khatib1987} O. Khatib, ``A Unified Approach for Motion and Force Control of Robot Manipulators: The Operational Space Formulation,'' \emph{IEEE Journal on Robotics and Automation}, vol. 3, no. 1, pp. 43--53, 1987.
+\bibitem{hogan1985} N. Hogan, ``Impedance Control: An Approach to Manipulation. Part I---Theory,'' \emph{Journal of Dynamic Systems, Measurement, and Control}, vol. 107, no. 1, pp. 1--7, 1985.
+\bibitem{ratliff2009chomp} N. Ratliff, M. Zucker, J. A. Bagnell, and S. Srinivasa, ``CHOMP: Gradient Optimization Techniques for Efficient Motion Planning,'' in \emph{Proc. IEEE Int. Conf. on Robotics and Automation (ICRA)}, 2009, pp. 489--494.
+\bibitem{dicarlo2018mpc} J. Di Carlo, P. M. Wensing, B. Katz, G. Bledt, and S. Kim, ``Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model-Predictive Control,'' in \emph{Proc. IEEE/RSJ Int. Conf. on Intelligent Robots and Systems (IROS)}, 2018, pp. 1--9.
+\bibitem{ahn2022saycan} M. Ahn et al., ``Do As I Can, Not As I Say: Grounding Language in Robotic Affordances,'' in \emph{Proc. Conference on Robot Learning (CoRL)}, 2022.
+\bibitem{driess2023palme} D. Driess et al., ``PaLM-E: An Embodied Multimodal Language Model,'' arXiv:2303.03378, 2023.
+\bibitem{brohan2022rt1} A. Brohan et al., ``RT-1: Robotics Transformer for Real-World Control at Scale,'' arXiv:2212.06817, 2022.
+\bibitem{brohan2023rt2} A. Brohan et al., ``RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control,'' in \emph{Proc. Conference on Robot Learning (CoRL)}, 2023.
+\bibitem{autort2024} A. Irpan et al., ``AutoRT: Embodied Foundation Models for Large Scale Orchestration of Robotic Agents,'' arXiv, 2024.
+\bibitem{openx2023} Open X-Embodiment Collaboration, ``Open X-Embodiment: Robotic Learning Datasets and RT-X Models,'' 2023. [Online]. Available: \href{https://robotics-transformer-x.github.io/}{project page}
+\bibitem{octo2024} Octo Model Team et al., ``Octo: An Open-Source Generalist Robot Policy,'' in \emph{Proc. Robotics: Science and Systems (RSS)}, 2024.
+\bibitem{openvla2024} M. J. Kim et al., ``OpenVLA: An Open-Source Vision-Language-Action Model,'' arXiv:2406.09246, 2024.
+\bibitem{pi02024} K. Black et al., ``$\pi_0$: A Vision-Language-Action Flow Model for General Robot Control,'' Physical Intelligence technical report, 2024. [Online]. Available: \href{https://www.physicalintelligence.company/download/pi0.pdf}{technical report}
+\bibitem{openpi2025} Physical Intelligence, ``Open Sourcing $\pi_0$,'' Feb. 4, 2025. [Online]. Available: \href{https://www.physicalintelligence.company/blog/openpi}{official blog}
+\bibitem{figure2025helix} Figure, ``Helix: A Vision-Language-Action Model for Generalist Humanoid Control,'' Feb. 20, 2025. [Online]. Available: \href{https://www.figure.ai/news/helix}{official page}
+\bibitem{figure2026helix02} Figure, ``Introducing Helix 02: Full-Body Autonomy,'' Jan. 27, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02}{official page}
+\bibitem{gemini2025} Google DeepMind, ``Gemini Robotics brings AI into the physical world,'' Mar. 12, 2025. [Online]. Available: \href{https://deepmind.google/blog/gemini-robotics-brings-ai-into-the-physical-world/}{official blog}
+\bibitem{geminiondevice2025} Google DeepMind, ``Gemini Robotics On-Device brings AI to local robotic devices,'' Jun. 24, 2025. [Online]. Available: \href{https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/}{official blog}
+\bibitem{gr00t2025} NVIDIA, ``NVIDIA Isaac GR00T N1: An Open Foundation Model for Humanoid Robots,'' Mar. 17, 2025. [Online]. Available: \href{https://research.nvidia.com/publication/2025-03_nvidia-isaac-gr00t-n1-open-foundation-model-humanoid-robots}{research page}
+\bibitem{gr00t152025} NVIDIA, ``GR00T N1.5: An Improved Open Foundation Model for Generalist Humanoid Robots,'' Jun. 11, 2025. [Online]. Available: \href{https://research.nvidia.com/labs/gear/gr00t-n1_5/}{research page}
 \end{thebibliography}
