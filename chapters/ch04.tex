@@ -5,6 +5,7 @@
 
 % --- 小剧场对话 ---
 \section*{初星学园——2:00P.M. 活动准备室}
+\phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
 広：啪叽啪叽（鼓掌）。普罗丢色桑很厉害呢，咱们最新agent的概念都理解了。
@@ -79,7 +80,7 @@ P：普罗丢色听起来，像是在说“身体不是容器，而是题目的�
 \caption{具身智能主流技术路线对比}
 \label{tab:routes}
 \small
-\begin{tabular}{p{1.8cm} p{2.7cm} p{2.7cm}}
+\begin{tabular}{L{1.8cm} L{2.7cm} L{2.7cm}}
 \toprule
 路线 & 优点 & 主要局限 \\
 \midrule
@@ -131,7 +132,7 @@ RGB 相机成本低、信息密度高，适合检测、分割和语言对齐；�
 \caption{具身系统常见传感器与主要作用}
 \label{tab:sensors}
 \small
-\begin{tabular}{p{2.0cm} p{2.2cm} p{3.0cm}}
+\begin{tabular}{L{2.0cm} L{2.2cm} L{3.0cm}}
 \toprule
 传感器 & 主要优势 & 典型用途 \\
 \midrule
@@ -161,7 +162,7 @@ P：这个式子终于像人话了。先猜，再看，再修正，对吧？
 
 広：对，hiro 很喜欢把它叫做“走一步，确认一步”。机器人其实一直在做这种谨慎的小动作。
 
-在具体算法上，视觉和视觉惯性路线常见 VINS-Mono 与 ORB-SLAM3\cite{qin2018vinsmono,campos2021orbslam3}。
+在具体算法上，视觉和视觉惯性路线常见 VINS-Mono\cite{qin2018vinsmono} 与 ORB-SLAM3\cite{campos2021orbslam3}。
 偏光度建模的直接法代表有 DSO\cite{engel2018dso}；面向移动平台的激光图优化路线则常见 Google Cartographer\cite{hess2016cartographer}。
 这些方法的共同目标不是“理解一切”，而是先把位姿、回环、漂移和地图精度稳住。
 
@@ -272,7 +273,7 @@ NVIDIA Isaac GR00T N1 与 N1.5 更像平台化路线，不仅给模型，也给�
 \caption{截至 2026 年 5 月公开材料中的代表性路线}
 \label{tab:companies}
 \scriptsize
-\begin{tabular}{p{1.7cm} p{2.0cm} p{3.2cm}}
+\begin{tabular}{L{1.7cm} L{2.0cm} L{3.2cm}}
 \toprule
 主体 & 代表工作 & 路线特点 \\
 \midrule

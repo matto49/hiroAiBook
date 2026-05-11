@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage[superscript]{cite}
 \usepackage{hyperref}
 \usepackage{titlesec}
@@ -47,6 +48,7 @@
 \fancyhead[LE]{\leftmark}
 \fancyhead[RO]{\rightmark}
 \fancyfoot[CE,CO]{\thepage}
+\setlength{\headheight}{14pt}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0pt}
 
@@ -76,13 +78,16 @@
 \def\verticaltext@char#1{#1\\[0.3em]\verticaltext@i}%
 \makeatother
 
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
 % 筱澤広小课堂章节标题页（竖排居中，单独占一整页）
 % 用法: \hirochapter{副标题，如“大语言模型的前世今生”}
 \newcommand{\hirochapter}[1]{%
   \clearpage%
+  \refstepcounter{chapter}%
   \thispagestyle{empty}%
-  \phantomsection%
-  \addcontentsline{toc}{chapter}{筱澤広小课堂——#1}%
+  \markboth{筱澤広小课堂——#1}{}%
+  \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}筱澤広小课堂——#1}%
   \vspace*{\fill}%
   \begin{center}%
     {\small\verticaltext{筱澤広小课堂}}%
@@ -122,6 +127,7 @@
 \makeatletter
 \renewenvironment{thebibliography}[1]{%
   \section*{\bibname}%
+  \phantomsection%
   \addcontentsline{toc}{section}{\bibname}%
   \list{\@biblabel{\@arabic\c@enumiv}}%
        {\settowidth\labelwidth{\@biblabel{#1}}%
@@ -131,6 +137,7 @@
         \usecounter{enumiv}%
         \let\p@enumiv\@empty
         \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+  \raggedright
   \sloppy
   \clubpenalty4000
   \widowpenalty4000%
