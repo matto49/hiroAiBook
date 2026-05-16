@@ -15,7 +15,7 @@
 - `main.tex`：LaTeX 主入口和整体样式定义。
 - `chapters/`：正文稿件目录。这里的 `.tex` 文件是小册子正文。
 - `figures/`：封面和后续插图资源。
-- `docs/gakumas-hiro-writing-reference.md`：《学园偶像大师》世界观、筱泽广人设、关系、台词风格、场景提示和来源链接的写作资料包。
+- `docs/reference/gakumas-hiro/`：《学园偶像大师》世界观、筱泽广人设、关系、台词风格、场景提示和来源链接的写作资料包。
 - `README.md`：基础编译说明。
 
 ## 编译方式
@@ -66,7 +66,7 @@ xelatex main.tex
 写作或改写筱泽广相关场景前，先参考：
 
 ```text
-docs/gakumas-hiro-writing-reference.md
+docs/reference/gakumas-hiro/README.md
 ```
 
 它主要用于：
