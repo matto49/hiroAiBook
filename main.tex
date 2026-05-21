@@ -1,4 +1,4 @@
-\documentclass[a5paper,11pt,twoside]{book}
+\documentclass[a5paper,10pt,twoside]{book}
 
 % ==================== 宏包 ====================
 \usepackage[UTF8]{ctex}
@@ -15,6 +15,7 @@
 \usepackage{enumitem}
 \usepackage{microtype}
 \usepackage{tikz}
+\setlength{\emergencystretch}{2em}
 
 % ==================== 样式设置 ====================
 % 颜色
@@ -28,6 +29,17 @@
     urlcolor=accent,
     citecolor=accent,
 }
+
+% A5 小册子正文密度：book 类最小稳定选项是 10pt，这里再收紧实际正文字号。
+\makeatletter
+\renewcommand\normalsize{%
+  \@setfontsize\normalsize{8pt}{10.2pt}%
+}
+\renewcommand\small{%
+  \@setfontsize\small{7pt}{9.2pt}%
+}
+\makeatother
+\AtBeginDocument{\normalsize}
 
 % 章节标题样式
 \renewcommand{\thesection}{\arabic{section}}
