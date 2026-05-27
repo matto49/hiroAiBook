@@ -1,400 +1,451 @@
-% ==================== 章节5：初星学院，化身为人 ====================
+% ==================== 章节5：初星学园，化身为人 ====================
 
 % --- 章节标题页（竖排） ---
-\hirochapter{初星学院，化身为人 | 世界模型与 VLA}
+\hirochapter{初星学园，化身为人 | 世界模型、VLA 与 sim2real}
 
 % --- 小剧场对话 ---
 \section*{初星学园——4:30P.M. 服装间门口}
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
-P：啊，筱澤広？怎么一副爱丽丝风格的打扮？
+P：筱澤広，你这身 Alice 风格的衣服……是演出服确认，还是新的危险计划？
 
-広：嗯哼哼，Alice和Bob一直是研究人员钟爱的两个名字呢，现在我是ailce,普罗丢色桑就是Bob啦。
+広：两边都是。
 
-P：嗯，但今天不是要做的实体化的后续步骤了吗，穿着这种衣服真的方便吗，说不定会绊倒呢。
+P：我就知道。
 
-広：那样也很有意思呢。
+広：Alice 和 Bob 是研究人员常用的名字。今天我是 Alice，普罗丢色桑是 Bob。
 
-P：筱澤広同学？
+P：听起来很正常。直到我看见零号机也在这里。
 
-広：没事的，还远远没到实机的部分呢，今天的话题是世界模型和VLA哦。
+広：它要确认一件事。
 
-P：好高级的词汇呢。
+P：确认什么？
 
-広：嗯嗯，不过别担心，今天用Alice来展开吧。
+広：如果换一件衣服就认不出我，它还不能叫理解我。
+
+P：所以这是视觉泛化测试？
+
+広：嗯。也是插画素材。
+
+P：你倒是很诚实。先说好，裙摆不能靠近轮子，零号机不能靠近你的脚。
+
+広：边界很明确。很亲切。
+
+P：我只是担心你被它撞到。
+
+広：不用担心。它现在还很慢，很笨。
+
+P：你上次也这么说。
+
+広：这次会让它在仿真里多笨几次，再回来。
+
+P：今天的主题是世界模型、VLA 和 sim2real？
+
+広：嗯。让小小的身体，先在小小的世界里练习。
 
 \clearpage
 
 % --- 论文正文（IEEE风格，单栏） ---
-\hiropapertitle{具身智能前沿：世界模型、VLA 与轻量化路线}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园偶像研究部}
+\hiropapertitle{让零号机少笨一点：世界模型、VLA 与 sim2real}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园放学后代理计划}
 
 \begin{abstract}
-本章聚焦本手册制作时间（2026年），具身智能最前沿的两条主线：世界模型与视觉-语言-动作模型（VLA）。
-前者试图让系统获得关于未来、接触、约束与环境变化的可预测内部表征，后者则把语言指令、视觉观测与动作生成统一到单一策略或分层策略栈中。
-与上一章偏“感知和控制骨架”的写法不同，这一章更关注 2024 年底到 2026 年上半年出现的新趋势：可交互世界模型、以推理驱动执行的 VLA、端侧运行与参数高效微调，以及面向长时序、开放环境和多机器人协作的未来路线。
-行文中将结合公式、图表和公开论文，说明这些模型为什么重要、为什么还远未“解决一切”，以及为什么轻量化已经从工程优化变成技术路线本身。
+本章承接上一章的失败地图，讨论如何让“小広试作机零号”从会移动、会停下，进一步变成能听懂一点任务、预演一点未来、少犯同一种错误的小机器人。我们从 Alice 服装带来的视觉泛化测试开始，介绍世界模型如何提供内部预演，VLA 如何把视觉、语言和动作接成动作块，sim2real 如何用仿真随机化缩小现实差距。随后以休息时间闲聊的方式梳理 2024--2026 年公开资料中值得注意的世界模型和 VLA 路线，并把它们全部落回一个问题：哪些想法能让这台低成本小车不那么笨拙。结尾处，零号机完成一次很慢、很歪、但真实发生的送水任务。
 \end{abstract}
-\keywords{世界模型、VLA、具身智能、轻量化、机器人基础模型}
+\keywords{世界模型、VLA、sim2real、视觉泛化、具身智能}
 
-\section{引言}
+\section{从失败日志开始}
 
-如果说上一章讨论的是机器人怎样稳定地“看见”与“动起来”，那么这一章要讨论的，就是机器人怎样先在内部“排演”世界，再把一句自然语言指令变成一串真的动作。
-截至目前，公开研究路线已经逐渐收敛出一个很鲜明的趋势：单纯更大的感知模型或更深的控制器，都不足以支撑开放环境中的长时序任务；系统需要同时具备未来预测能力和语义动作对齐能力。
+上一章结束时，练习室地板上多了三段胶带。
+蓝色标着偏航，黄色标着避障太晚，红色标着水瓶晃动。
+这些胶带看起来像事故现场，实际上是零号机第一次拥有的训练数据。
 
-世界模型与 VLA 正好对应这两半。
-世界模型更像是“脑内排演”，关心的是如果我这样动，环境接下来会怎样变；VLA 更像是“从听懂到出手”的执行接口，关心的是给定图像、历史状态和语言目标，下一段动作应该怎么发出。
-它们并不是互斥路线，恰恰相反，今天越来越多系统在把两者拼成一个分层整体：上层负责想象、检索与挑技能，下层负责输出动作块并接受安全与实时控制约束\cite{geminirobotics2025ch5,flare2025ch5,helix022026ch5}。
+P：我本来想把地板恢复原状。
 
-P：也就是说，世界模型像彩排，VLA 像正式上台？
+広：不可以。那是它的记忆。
 
-広：嗯，而且真正困难的地方是，彩排和上台不能各演各的。机器人和普罗丢色桑一样不是写完方案就算赢了，它得在刹那里把方案接到自己的肌肉——电机上。
+P：它自己还记不住。
 
-这一章会围绕四个问题展开：第一，今天的世界模型究竟在建模什么；第二，它们在具身系统里到底怎么用；第三，VLA 如何从“会看懂指令”走向“会稳定出手”；第四，为什么轻量化与端侧部署已经变成决定路线成败的硬指标。
+広：所以先替它贴在地上。
 
-\section{世界模型}
+零号机现在的问题已经不只是“会不会动”。
+它能沿着胶带走一段，也能在看见椅子后停下，还能用两关节小臂碰到水瓶。
+但是每次场景稍微变化，它就像第一次来初星学园。
 
-世界模型，一开始是李飞飞提出的，用来让机器人在不知道环境动力学的情况下，通过学习环境的潜在表示来预测下一步的动作。
+\begin{itemize}[leftmargin=2em]
+\item 光照变化，胶带颜色在摄像头里变淡。
+\item 椅子位置变化，局部避障停在尴尬角落。
+\item 広换上 Alice 风格服装，视觉模型开始犹豫。
+\item 指令从“推水瓶”变成“把水送到広身边的安全胶带旁”，系统不知道先理解人，还是先找胶带。
+\end{itemize}
 
-如果字面理解的话，世界模型就像是让机器人学会构建一个内部的“世界”，机器人可以基于这个世界里面学习到的物理规律进行推理和规划。
+于是本章的问题变成：
 
-\subsection{世界模型不等于“会生成下一帧”}
+\begin{center}
+只会反应不够。它需要先预测一点，理解一点，再动一点。
+\end{center}
 
-学术上，世界模型最核心的目标不是把未来视频画得尽量像，而是形成一个可供预测、规划和决策使用的内部状态。
-一个常见的抽象写法是
+这就是世界模型、VLA 和 sim2real 登场的位置。
+它们听起来像前沿论文里的大词，但在零号机这里，目标很小：不要每次都从同一种错误重新开始。
+
+\section{Alice 测试：换衣服以后还认得出吗}
+
+服装间门口的测试先从一件很不严肃的事情开始。
+広换上 Alice 风格的衣服，站在蓝色胶带后面。
+Producer 给零号机的指令是：
+
+\begin{center}
+找到 Alice 前方的蓝色安全胶带，把水送到胶带边，不要靠近人的脚。
+\end{center}
+
+如果系统只把“広”记成平时训练服的颜色、发型和站姿，它就会在这里出问题。
+这类问题不只是“识别失败”，更准确地说，是分布外泛化失败。
+训练时看到的外观分布太窄，一换衣服、一换灯光、一被服装架遮住半边，它就不知道同一个目标还在不在。
+
+P：所以 Alice 不是角色扮演。
+
+広：是压力测试。
+
+P：你把压力测试穿得太可爱了。
+
+広：这样失败的时候，画面会比较好看。
+
+在具身系统里，视觉理解不能只停在“图片里有一个人”。
+它要把身份、位置、任务目标和安全边界连起来。
+对零号机来说，正确理解不是“向広移动”，而是：
+
+\begin{itemize}[leftmargin=2em]
+\item 识别 Producer 指令里的目标对象：水瓶、蓝色胶带、Alice。
+\item 估计它们在地图中的位置。
+\item 知道人脚是禁区，不能直接贴过去。
+\item 把“送到広身边”改写成“送到広附近的安全胶带边”。
+\end{itemize}
+
+広：语言很容易把危险藏起来。
+
+P：比如“送到我身边”。
+
+広：嗯。听起来温柔，执行起来可能撞人。
+
+\section{世界模型：给零号机一间脑内练习室}
+
+\subsection{世界模型不等于漂亮地生成下一帧}
+
+世界模型并不是近几年突然出现的魔法词。
+它背后连接着模型化环境动力学、模型预测控制、模型式强化学习，以及深度学习时代的潜在状态预测\cite{ha2018worldmodels}。
+在本章里，我们把它压缩成一句实用定义：
+
+\begin{center}
+世界模型是在机器人真正行动前，用内部状态预演“如果我这样动，接下来可能会怎样”的模型。
+\end{center}
+
+一个常见抽象可以写成
 \begin{equation}
 z_t = e_\theta(o_t), \qquad
-\hat{z}_{t+1}=f_\theta(z_t,a_t), \qquad
-\hat{o}_{t+1}=d_\theta(\hat{z}_{t+1}),
+\hat{z}_{t+1}=f_\theta(z_t,a_t),
 \end{equation}
-其中 $o_t$ 是当前观测，$z_t$ 是压缩后的潜在状态，$a_t$ 是动作，$f_\theta$ 负责预测潜在动力学，$d_\theta$ 则把潜在状态还原为可解释的未来观测。
-如果这个内部状态足够好，机器人就不必每一步都从零理解世界，而是可以在潜空间里先演几步，再决定要不要真的动手。
+其中 $o_t$ 是当前观测，$z_t$ 是压缩后的内部状态，$a_t$ 是候选动作，$f_\theta$ 负责预测下一步潜在状态。
+如果需要把未来画回图像，还可以再加一个解码器，但对机器人来说，真正重要的不是“画得像不像”，而是这个状态能不能支持规划和避错。
 
-这也是为什么今天很多研究不再把“世界模型”狭义地理解成视频生成器。
-有的路线更重视抽象状态预测，例如 V-JEPA 2 这种预测语义一致的未来表征，而不是逐像素复原\cite{vjepa22025ch5}；
-有的路线则更强调可交互、可控制的环境生成，例如 Genie 2 这种从单张图像和文本提示生成可玩世界的做法\cite{genie22024ch5}；
-还有的路线直接把世界模型接到数据引擎、仿真器和机器人预训练链路里，例如 NVIDIA 的 Cosmos、DreamGen 与 FLARE\cite{cosmos2025ch5,dreamgen2025ch5,flare2025ch5}。
+P：也就是先在脑内练习室走一遍。
 
-P：看起来世界模型的定义很广泛，也不是单纯意义上的想象过程啊。
+広：嗯。但是不能只幻想舞台灯光。要连椅子腿和地板摩擦也一起想。
 
-広：对哦。抽象一点来比喻的话，尤其是面对新的任务时，世界模型就像是一个内部的“预演室”，让你在真正执行前先“试演”几遍，看看哪些动作可行，哪些会出问题。
+\subsection{三种用法：预演、补数据、学稳定表征}
 
-P：这些不同的路线看起来就像不同的“预演室”啊，有的更注重视觉效果，有的更注重交互体验，有的则是直接在日常练习里面进行。
+在零号机项目里，世界模型有三种最朴素的用途。
 
-图 \ref{fig:wmvla-stack} 给出了一种今天很常见的组合方式：多模态观测先进入世界模型形成状态与未来预测，再由 VLA 或技能策略输出动作候选，最后交给执行层和安全层做闭环。
-
-\begin{figure}[htbp]
-\centering
-\resizebox{0.96\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-\node[draw, rounded corners=2pt, fill=accent!12, minimum width=2.1cm, minimum height=0.85cm] (obs) at (0,0) {多模态观测 $o_t$};
-\node[draw, rounded corners=2pt, fill=accent!8, minimum width=2.3cm, minimum height=0.85cm] (wm) at (3.4,0) {世界模型 $z_t,\hat{z}_{t+1}$};
-\node[draw, rounded corners=2pt, fill=accent!12, minimum width=2.2cm, minimum height=0.85cm] (vla) at (6.9,0) {VLA / 技能策略};
-\node[draw, rounded corners=2pt, fill=accent!8, minimum width=2.0cm, minimum height=0.85cm] (ctrl) at (10.0,0) {控制与安全层};
-
-\node[draw, rounded corners=2pt, fill=accent!6, minimum width=2.3cm, minimum height=0.75cm] (rollout) at (3.4,-1.5) {潜在 rollout 与检索};
-\node[draw, rounded corners=2pt, fill=accent!6, minimum width=2.2cm, minimum height=0.75cm] (chunk) at (6.9,-1.5) {动作块 $a_{t:t+K-1}$};
-\node[draw, rounded corners=2pt, fill=accent!6, minimum width=2.0cm, minimum height=0.75cm] (robot) at (10.0,-1.5) {真实机器人};
-
-\draw[->, thick] (obs) -- (wm);
-\draw[->, thick] (wm) -- (vla);
-\draw[->, thick] (vla) -- (ctrl);
-\draw[->, thick] (ctrl) -- (robot);
-\draw[->, thick] (wm) -- (rollout);
-\draw[->, thick] (rollout) -- (vla);
-\draw[->, thick] (vla) -- (chunk);
-\draw[->, thick] (chunk) -- (ctrl);
-\draw[->, thick] (robot.west) to[out=180,in=-45] (obs.south);
-\end{tikzpicture}}
-\caption{世界模型与 VLA 在具身系统中的一种协同方式}
-\label{fig:wmvla-stack}
-\end{figure}
-
-\subsection{前沿路线}
-
-如果只看 2024 年底到 2026 年上半年的公开资料，世界模型路线大致可以分成四类。
-第一类是可交互环境生成：DeepMind 的 Genie 2 明确把目标指向“从提示到可玩世界”，强调用单图加文本提示生成可以持续交互的 3D 环境，这对机器人数据扩增和反事实训练都很有吸引力\cite{genie22024ch5}。
-第二类是抽象表征预测：Meta 的 V-JEPA 2 强调预测语义层面的未来，而不是逐像素细节；官方材料显示它使用 1.2B 参数视频模型，并且在仅有 62 小时机器人数据的情况下完成取放与抓取规划，针对新物体与新环境的成功率达到 65\% 到 80\%\cite{vjepa22025ch5}。
-
-第三类是平台化世界模型：NVIDIA Cosmos 把世界基础模型、分词器、guardrail 和物理 AI 数据管线一起打包，官方资料强调其预训练覆盖 2000 万小时真实世界视频与 9000 万亿 token 级别的数据处理流程\cite{cosmos2025ch5}。
-第四类则更贴近机器人训练闭环：DreamGen 利用视频世界模型生成与重组机器人轨迹，官方页面给出的信号是，它可以只凭一个简单 pick-and-place 遥操作数据集，就泛化出 22 种新行为并适配 10 个新环境；而 FLARE 则直接把未来潜变量对齐写进机器人学习目标里，让“世界模型”不只是一个离线辅助模块，而是训练目标的一部分\cite{dreamgen2025ch5,flare2025ch5}。
-
-表 \ref{tab:wm-frontier} 把这几条路线放在一张图里看，会更容易抓住它们之间的差异。
-
-\begin{table}[htbp]
-\centering
-\caption{截至 2026 年 5 月具身智能中的代表性世界模型路线}
-\label{tab:wm-frontier}
-\scriptsize
-\begin{tabular}{L{1.7cm} L{1.4cm} L{2.4cm} L{2.0cm}}
-\toprule
-路线 / 系统 & 公开时间 & 具身用法 & 关键信号 \\
-\midrule
-Genie 2 & 2024.12 & 生成可交互环境，扩充训练场景 & 强调从单图与提示生成可玩世界 \\
-V-JEPA 2 & 2025.06 & 潜在预测、规划与视觉表征 & 1.2B 视频模型，仅 62 小时机器人数据即可规划抓取 \\
-Cosmos & 2025.01 & 世界模型平台、物理 AI 数据引擎 & 把模型、数据、guardrail 与仿真链路平台化 \\
-DreamGen & 2025.05 & 合成轨迹与行为扩增 & 从小规模遥操作数据扩展出新行为与新环境 \\
-FLARE & 2025 & 未来潜变量对齐，辅助策略学习 & 把隐式世界建模写进机器人训练目标 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-P：（看着表 \ref{tab:wm-frontier}）这样一排开就很明显了。有的在造“世界”，有的在学“未来”，有的在给机器人补数据。
-
-広：嗯嗯，所以不要把它们混成一个词就结束。真正重要的是，它们究竟服务于哪个环节，是规划，是表征，还是训练闭环。
-
-\subsection{世界模型在具身系统里到底怎么用}
-
-把名字拆开之后，今天最常见的用法其实只有三种。
-
-第一种是把世界模型当作规划器的内部舞台。
-给定当前潜在状态和一串候选动作，系统会在模型里先 rollout 几步，再选收益更高的一支：
+第一，预演动作。
+给定当前状态和几条候选动作，系统可以在内部 rollout 几步：
 \begin{equation}
-a_{t:t+H-1}^\star
+a_{t:t+H-1}^{\ast}
 =
-\arg\max_{a_{t:t+H-1}}
-\sum_{k=t}^{t+H-1}
-\mathrm{E}_{f_\theta}\!\left[r(z_k,a_k)\right].
+\arg\min_{a_{t:t+H-1}}
+\sum_{k=t}^{t+H}
+C(\hat{z}_k,a_k).
 \end{equation}
-这类思路的价值在于，它把昂贵、危险或者不可逆的试错挪到模型内部；一旦 rollout 足够可信，真实机器人就能少做很多“先撞一次才知道不行”的实验\cite{vjepa22025ch5}。
+这里的 $C$ 可以表示离障碍物太近、离目标太远、转向太急等代价。
+零号机不需要真的撞一次椅子，才知道那条路线很糟。
 
-第二种是把世界模型当作数据工厂。
-开放环境机器人最痛的往往不是模型结构，而是数据稀缺、分布太窄和失败样本不够。
-Genie 2、Cosmos 与 DreamGen 之所以重要，就是因为它们都在尝试解决同一个现实问题：真实机器人每天只能收很少数据，但世界模型可以批量生成“如果当时换个抓法会怎样”“如果门被半掩着又会怎样”这类反事实样本\cite{genie22024ch5,cosmos2025ch5,dreamgen2025ch5}。
+第二，补失败样本。
+真实练习室里的测试时间很宝贵，広的体力也不是无限资源。
+仿真练习室可以生成很多小变化：灯光变暗、椅子偏移、胶带反光、Alice 的裙摆遮住一部分腿。
+这些变化不一定完美真实，但可以让模型别只适应一个干净场景。
 
-第三种是把世界模型变成策略学习的辅助损失。
-在这种路线里，目标不再只有“模仿动作”或“最大化奖励”，而是让内部表征同时对未来保持一致。
-一个概括性的写法可以记成
-\begin{equation}
-\mathcal{L}
-=
-\mathcal{L}_{\mathrm{act}}
-+
-\lambda \mathcal{L}_{\mathrm{pred}}
-+
-\beta \mathcal{L}_{\mathrm{align}},
-\end{equation}
-其中 $\mathcal{L}_{\mathrm{act}}$ 约束动作学习，$\mathcal{L}_{\mathrm{pred}}$ 约束未来预测，$\mathcal{L}_{\mathrm{align}}$ 则负责把状态、视频或跨模态表征对齐。
-FLARE 与 NVIDIA 在 GR00T N1.5 上强调的“joint policy learning and world modeling objective”，都可以看作这一脉的代表\cite{flare2025ch5,gr00tn152025ch5}。
+第三，学习稳定表征。
+同一个水瓶换个角度还是水瓶，同一条胶带在光照变化后仍然是胶带。
+世界模型如果能学到这种跨时间的一致性，零号机就不容易一转弯就把世界看丢。
+Meta 的 V-JEPA 2 这类工作强调预测抽象表征而非逐像素复原，并展示了用较少机器人视频进行规划的可能性\cite{vjepa22025ch5}。
+对零号机来说，这个启发很直接：不必把未来每个像素都画对，但要知道“下一步哪里会更危险”。
 
-P：这就像一边练动作，一边被要求“脑内节拍不能乱掉”呢。
+\section{VLA：从听懂到出手}
 
-広：对呀。只有手会动，不代表它知道接下来会发生什么；但只会想象，也不代表它接得住真实世界的延迟和碰撞。
-
-\section{VLA}
-
-VLA，全称是Vision-Language-Action，是一种多模态的机器人控制模型。
-
-字面意思来看，VLA 就是让机器人结合语言（Language）的输入和视觉传感器（Vision）的输入，并执行相应的动作（Action）的某个一体化的模型。
-
-\subsection{从“看懂指令”到“稳定出手”}
-
-VLA 的核心目标，是把视觉、语言和动作放进同一个条件分布里。
-最常见的抽象写法可以写成
+VLA 是 Vision-Language-Action，也就是把视觉、语言和动作接到一起。
+如果用一个条件分布来概括，可以写成
 \begin{equation}
 p_\theta(a_{t:t+K-1}\mid o_{1:t}, q, s_t),
 \end{equation}
-其中 $o_{1:t}$ 是历史观测，$q$ 是语言指令，$s_t$ 可以是机器人自身状态、任务阶段或来自世界模型的潜在表征，输出则不再只是一个单步动作，而往往是一小段动作块 $a_{t:t+K-1}$。
-这背后的动机很直接：单步控制太短，长时序任务又太难，所以很多系统选择一次给出一小串“接下来先这样动”的动作 chunk。
+其中 $o_{1:t}$ 是历史观测，$q$ 是语言指令，$s_t$ 是状态或任务阶段，输出 $a_{t:t+K-1}$ 是接下来一小段动作。
 
-一旦任务变长，单层 VLA 很容易变成“既要想计划，又要顾 1kHz 伺服”的过载系统，于是分层结构开始回归。
-例如 Physical Intelligence 的 $\pi_{0.5}$ 明确把高层语言子任务生成和底层 action expert 分开；Figure 的 Helix 02 更是把全身控制拆成 S2、S1、S0 三个时间尺度，其中 S1 以 200Hz 运行，S0 以 1kHz 运行\cite{pi052025ch5,helix022026ch5}。
-如果写成更接近层级控制的形式，可以表示为
+这里最关键的是：输出不是一句解释，而是动作。
+它可以是一段轮速指令，也可以是移动到某个中间点，也可以是“先靠近桌边，再低速推水瓶”的动作块。
+
+P：所以 VLA 不是让机器人回答“我明白了”。
+
+広：嗯。是让它明白以后，不要撞上去。
+
+单层大模型当然很诱人。
+可是机器人不是纯软件。
+高层可以慢慢推理“蓝色胶带在哪里”，低层却要很快处理“轮子快碰到椅子脚了”。
+所以在现实系统里，VLA 常常和安全层、局部规划器、低层控制一起工作。
+Google DeepMind 当前公开的 Gemini Robotics 页面也把 VLA 模型和偏具身推理的 Robotics-ER 区分开来：一个把视觉和指令转成动作，另一个更像高层推理与规划模型\cite{geminirobotics2026ch5}。
+
+这对零号机很重要。
+Producer 不会把“把水送到広那里”直接交给一个黑箱动作输出。
+他会把任务改写成：
+
+\begin{itemize}[leftmargin=2em]
+\item 目标点：蓝色安全胶带边。
+\item 禁区：人的脚附近、红色失败胶带附近。
+\item 最大速度：低速。
+\item 动作块长度：短。
+\item 失败条件：水瓶晃动过大、目标丢失、距离人太近。
+\end{itemize}
+
+広：你把任务写得很过分。
+
+P：这是安全需求。
+
+広：嗯。过分得很准确。
+
+\section{sim2real：练习室和仿真器之间的缝}
+
+\subsection{不是让仿真完全等于现实}
+
+sim2real 的意思，是把仿真里学到的东西迁移到真实机器人上。
+听起来像是先在电脑里练习，再去真实场地考试。
+但真正困难的地方在于：仿真永远不可能完全等于现实。
+
+地板摩擦、轮径误差、相机曝光、延迟、桌腿材质、服装阴影，这些小差异都会让仿真里很漂亮的策略，一到真实练习室就开始发呆。
+所以常见思路不是把仿真做成一模一样，而是故意随机化，让模型见过很多“可能的现实”。
+这类 domain randomization 思路在 sim2real 研究里很经典\cite{tobin2017domain,peng2018dynamics}。
+
+可以把仿真参数记成 $\phi$，例如摩擦、光照、噪声、延迟。
+训练时不固定一个仿真世界，而是从一个分布里采样：
 \begin{equation}
-h_t \sim p_\phi(h_t\mid o_t,q), \qquad
-a_{t:t+K-1} \sim p_\theta(a\mid o_t,h_t,q),
+\phi \sim p(\phi), \qquad
+x_{t+1}=f_{\phi}(x_t,a_t).
 \end{equation}
-其中 $h_t$ 代表高层技能、子任务或语言中间状态。
-这类分层并不是“回到老方法”，而是承认不同时间尺度本来就不该被一个统一频率的黑箱全部吞掉。
+如果分布设计得足够好，真实练习室就不再是模型从没见过的单点，而是落在它经历过的许多变化之间。
 
-P：所以今天最前沿的 VLA，反而越来越不像一个孤零零的大黑箱了？
+P：也就是说，不是把仿真做得完美。
 
-広：确实呢。会推理的层，和会站稳、会抓紧的层，节拍本来就不一样。把它们硬挤成同一层，很多时候只会让每一层都过得很辛苦。
+広：嗯。是把仿真弄得很麻烦。
 
-広：不过，在VLA之前，无论是在传统机器人控制领域，还是更成熟的自动驾驶，这一整套控制系统其实早就有了分层结构。不如说，VLA当前还是刚刚起步，
-也许再发展几年，就会像前面提到的大模型一样，变成更黑箱更“端到端”的形式呢。
+P：这句话很像你会喜欢的训练。
 
-\subsection{公开材料里的主流 VLA 栈}
+広：现实本来就很麻烦。提前练习会比较亲切。
 
-截至目前，公开材料里最值得注意的 VLA 路线大致有六类。
+\subsection{零号机的仿真循环}
 
-第一类是通用多模态大模型向机器人执行延伸。
-Google DeepMind 在 2025 年 3 月发布 Gemini Robotics，把物理动作作为新的输出模态接到 Gemini 2.0 上；同一天公布的 Gemini Robotics-ER 则更偏具身推理\cite{geminirobotics2025ch5}。
-到 2025 年 9 月，Gemini Robotics 1.5 进一步强调“先思考，再行动”，并在 15 项学术具身推理基准上达到公开材料所称的最优水平\cite{geminirobotics152025ch5}。
+Producer 给零号机搭的仿真练习室很简陋。
+里面只有门、桌子、椅子、蓝色胶带、服装架和一个圆柱体水瓶。
+広看完以后，提出了四个追加条件：
 
-第二类是分层 generalist policy。
-$\pi_{0.5}$ 的官方技术报告强调，它先用高层 VLM 生成文字子任务，再由 50 步、约 1 秒长度的 action chunk 进行低层执行，目标是同时兼顾泛化与实时性\cite{pi052025ch5}。
-第三类是人形机器人全身 VLA。
-Figure 在 2026 年 1 月发布 Helix 02，公开描述中保留了 System 2、System 1 与 System 0 的层级划分；又在 2026 年 5 月 8 日展示 Helix-02 Bedroom Tidy，让两台机器人在没有显式共享规划器的情况下协同整理卧室，这可以看作截至 2026 年 5 月公开材料里非常新的长时序双机协作信号\cite{helix022026ch5,helixbed2026ch5}。
+\begin{itemize}[leftmargin=2em]
+\item 地板摩擦随机一点。
+\item 灯光方向随机一点。
+\item 椅子位置随机一点。
+\item Alice 的裙摆遮挡也随机一点。
+\end{itemize}
 
-第四类是平台型开放基础模型。
-NVIDIA 的 GR00T N1.6 在 2025 年 12 月公开，继续沿着“基础模型 + 仿真 + 数据管线”的方向推进；官方页面特别提到其 VLM 主干更大、DiT 主干翻倍，并针对双臂抓取做了 1 万到 3 万步的后训练\cite{gr00tn162025ch5}。
-第五类是学术与社区开放路线。
-OpenVLA 把 7B 规模 VLA 完整开源，并强调在 970k 机器人轨迹上预训练后，仅用 LoRA 微调约 1.4\% 参数就能接近 full fine-tuning\cite{openvla2024ch5}。
-第六类是更偏端侧与大众硬件的轻量路线。
-Hugging Face 的 SmolVLA 公开材料显示它只有 450M 参数，训练数据少于 3 万条 episode，但通过 layer skipping、token reduction 与 asynchronous inference，在消费级 GPU 上实现了约 30\% 更快响应与 2 倍任务吞吐\cite{smolvla2025ch5}。
+P：你这是在增加难度。
 
-表 \ref{tab:vla-frontier} 把这些路线压缩成一张对比图。
+広：不是。是在减少它回到现实以后受到的惊吓。
+
+零号机的训练循环可以写成六步：
+
+\begin{enumerate}[leftmargin=2em]
+\item 收集真机日志：偏航、急停、目标丢失、水瓶晃动。
+\item 搭建简化仿真：只保留与任务有关的门、桌、椅、胶带和水瓶。
+\item 随机化参数：摩擦、光照、目标位置、相机噪声、动作延迟。
+\item 在仿真里训练或筛选策略：让世界模型预演，让 VLA / 技能策略给出动作块。
+\item 真机低速回放：一次只放开一小段动作，保留急停。
+\item 把真机差异写回下一轮仿真。
+\end{enumerate}
+
+这不是一条通往万能机器人的捷径。
+它更像反复打磨一段很短的舞步：把错误缩小一点，把危险往外推一点，把成功变得可重复一点。
+
+\section{休息时间的前沿技术速览}
+
+零号机充电时，広坐在服装间外的长椅上。
+Producer 把几篇公开论文和官方页面翻出来，试图说明“外面的机器人世界已经发展到哪里了”。
+広听完以后，把问题改得更小：
+
+広：这些东西，哪个能让它少撞椅子？
+
+P：你这个筛选标准很严格。
+
+広：因为它还没有资格整理厨房。
+
+这半章不是公司新闻目录，而是把前沿路线压回零号机的问题。
+表 \ref{tab:frontier-zero} 用“能借来什么”来整理它们。
 
 \begin{table}[htbp]
 \centering
-\caption{截至 2026 年 5 月公开材料中的代表性 VLA 路线}
-\label{tab:vla-frontier}
+\caption{前沿路线给零号机的启发}
+\label{tab:frontier-zero}
 \scriptsize
-\begin{tabular}{L{1.8cm} L{1.4cm} L{2.3cm} L{2.0cm}}
+\begin{tabular}{L{1.7cm} L{2.4cm} L{3.0cm}}
 \toprule
-系统 & 公开时间 & 核心定位 & 轻量 / 落地启示 \\
+路线 & 公开信号 & 借给零号机的想法 \\
 \midrule
-Gemini Robotics / 1.5 & 2025.03 / 2025.09 & 通用多模态模型走向具身执行与推理 & 强调推理层与执行层协同 \\
-Gemini On-Device & 2025.06 & 端侧 VLA & 本地运行，50--100 个示教即可适配新任务 \\
-$\pi_{0.5}$ & 2025.04 & 高层 VLM + 低层 action expert & 用分层与 action chunk 兼顾泛化和实时性 \\
-Helix 02 & 2026.01 & 人形全身分层控制 & 200Hz / 1kHz 分频执行，保留稳定层 \\
-GR00T N1.6 & 2025.12 & 平台型开放基础模型 & 模型、数据与部署链路一体化 \\
-OpenVLA & 2024.06 & 开放学术底座 & LoRA 级参数高效微调能力强 \\
-SmolVLA & 2025.06 & 轻量开源 VLA & 450M 参数，强调消费级硬件可运行 \\
+OpenVLA & 7B 开源 VLA，使用 970k 真实机器人示例训练\cite{openvla2024ch5} & 视觉、语言、动作可以统一成接口，但底层安全仍要保留 \\
+Gemini Robotics / ER & Robotics 1.5 偏 VLA，Robotics-ER 1.6 偏高层具身推理\cite{geminirobotics2026ch5} & 把“想任务”和“出动作”分开，别让一个模型包办全部节拍 \\
+$\pi_{0.5}$ & 用多机器人、多任务和语义子任务增强泛化\cite{pi052025ch5} & 长任务可以拆成文字子任务，再交给动作专家 \\
+SmolVLA & 450M 开源小 VLA，强调消费级硬件可运行\cite{smolvla2025ch5} & 小模型和异步推理对低成本小车很有启发 \\
+V-JEPA 2 & 预测潜在表征，并用少量机器人视频做规划\cite{vjepa22025ch5} & 不必追逐像素级未来，先学会预测可行动的危险 \\
+Genie 2 / Cosmos & 可交互世界模型与物理 AI 世界模型平台\cite{genie22024ch5,cosmos2025ch5} & 生成更多仿真变化和反事实场景，补真实数据不够的问题 \\
+Helix 02 & 人形全身控制的公开路线\cite{helix022026ch5} & 不能照抄人形，但能学习多时间尺度分工 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-P：这样看下来，大家像是在同一个方向冲刺，但切入口完全不一样。
+P：这样看，前沿不是一个方向。
 
-広：对哦。有的先解决“最强推理”，有的先解决“最强全身控制”，有的先解决“普通团队也能跑起来”。前沿从来不只是一条赛道。
+広：嗯。有的负责想，有的负责动，有的负责在便宜硬件上活下来。
 
-\subsection{为什么轻量化已经变成主战场}
+P：你最喜欢哪个？
 
-如果说 2023 年到 2024 年更多是在证明 VLA “能不能 work”，那么 2025 年到 2026 年一个非常明显的变化，就是大家开始认真回答另一个问题：它“能不能在真正的机器人上及时 work”。
+広：能让它安全送水的。
 
-原因很简单。
-真实机器人并不喜欢云端幻觉。网络往返、端侧热功耗、相机帧率、电池、执行器延迟和安全回退，都会把一套在服务器上很漂亮的策略，挤压成一个在机身上并不实用的方案。
-因此，轻量化目标往往不只是“减参数”，而是同时约束任务性能、蒸馏误差和实时成本：
-\begin{equation}
-\mathcal{L}_{\mathrm{lite}}
-=
-\mathcal{L}_{\mathrm{task}}
-+
-\alpha \mathcal{L}_{\mathrm{distill}}
-+
-\beta \mathcal{C}_{\mathrm{latency}}.
-\end{equation}
-这里的 $\mathcal{C}_{\mathrm{latency}}$ 可以理解成端侧推理时间、显存占用、功耗或控制频率损失的综合代价。
-换句话说，轻量化已经不只是“模型压缩技术”，而是把“能不能上机”直接写进训练目标和系统设计里。
+P：很现实。
 
-截至 2026 年 5 月，公开路线里常见的轻量化办法主要有四种。
-第一种是端侧原生设计，例如 Gemini Robotics On-Device 直接把模型目标放在本地运行，并宣称 50 到 100 个示教即可适配新任务\cite{geminiondevice2025ch5}。
-第二种是小模型架构加推理工程，例如 SmolVLA 把参数规模压到 450M，同时利用 layer skipping、token reduction 和异步推理提升控制节拍\cite{smolvla2025ch5}。
-第三种是参数高效适配，例如 OpenVLA 强调 LoRA 只需约 1.4\% 参数就能接近全量微调，从而把“训练一整套 VLA”改写成“在底座上快速嫁接新机体”\cite{openvla2024ch5}。
-第四种则是时间尺度拆分，例如 $\pi_{0.5}$ 与 Helix 02 都没有执着于“所有事都一个模型做完”，而是主动让重推理慢一点、低层控制快一点\cite{pi052025ch5,helix022026ch5}。
+広：身体进入现实以后，浪漫要排队。
 
-表 \ref{tab:lite-strategy} 把这些办法按工程目的做了一个更直白的整理。
+\section{三轮优化实验}
 
-\begin{table}[htbp]
-\centering
-\caption{具身 VLA 常见轻量化策略}
-\label{tab:lite-strategy}
-\scriptsize
-\begin{tabular}{L{1.8cm} L{2.2cm} L{2.1cm} L{1.5cm}}
-\toprule
-策略 & 代表路线 & 主要收益 & 代价 \\
-\midrule
-端侧原生设计 & Gemini Robotics On-Device & 低时延、弱联网依赖 & 模型容量受限 \\
-小模型 + 推理工程 & SmolVLA & 消费级硬件可运行，吞吐更高 & 语义上限与长时序能力受限 \\
-参数高效微调 & OpenVLA + LoRA & 适配新机体更便宜 & 仍依赖强底座质量 \\
-分层分频执行 & $\pi_{0.5}$, Helix 02 & 兼顾推理与稳定控制 & 系统集成更复杂 \\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsection{第一轮：Alice 服装导致目标犹豫}
 
-広：到轻量化这里，我们就能讨论怎么实体化一个普罗丢色了。
+第一次实验，零号机识别到了人形目标，也识别到了蓝色胶带。
+可是它没有把 Alice 和平时的広稳定对应起来。
+画面里裙摆遮住了腿部，服装颜色也改变了原来的外观特征。
+系统一度把“把水送到広身边”理解成“向最像平时広的位置移动”，结果路径指向了错误的站位标记。
 
-P：我觉得实体化一个小広会更有趣。
+Producer 立刻停止测试。
+広低头看了看裙摆，很平静。
 
-広：居然不满足于我一个小広吗？鬼畜。
+広：它不是认错我。
 
-\section{展望}
+P：那是什么？
 
-\subsection{未来具身智能大概率会怎么收敛}
+広：它认错了“我通常出现的样子”。
 
-如果只根据截至 2026 年 5 月的公开资料来做判断，未来三年具身智能很可能沿着五个方向继续收敛。
+修正策略是把目标绑定得更具体。
+任务不再是模糊的“送到広身边”，而是：
 
-第一，世界模型和 VLA 会更深地耦合。
-一边是像 FLARE 这样把未来一致性写进策略学习目标；另一边是像 Gemini Robotics 1.5、Helix 02 这样更明确地区分推理层、技能层和稳定层\cite{flare2025ch5,geminirobotics152025ch5,helix022026ch5}。
-它们共同说明一件事：未来最强的系统，大概率不是“只有一个模型”，而是“有一个共享表征中心，加若干个不同时间尺度的执行头”。
+\begin{center}
+找到 Alice 前方最近的蓝色胶带，把水送到胶带边，保持半米安全距离。
+\end{center}
 
-第二，数据来源会进一步从“机器人示教”扩展到“人类视频 + 合成轨迹 + 少量真机校准”。
-Project Go-Big 这类工作已经在尝试把大规模人类动作视频直接迁移到机器人训练里\cite{gobig2025ch5}；世界模型路线又在持续提高反事实数据和合成场景的可用性。
-这意味着未来最贵的资源，可能不再是“某一次演示”，而是“谁能把异构经验变成统一可学习表示”。
+同时，视觉模块不只依赖衣服颜色，而结合位置、语音确认、人体区域、胶带关系和 Producer 的指令。
+这不是让零号机真正“理解広”，但至少能防止它把衣服当成本体。
 
-第三，多模态会从视觉扩展到触觉、力觉与音频。
-目前公开世界模型和 VLA 仍以视觉为主，但真实操作里最关键的失败往往发生在接触瞬间。
-谁先把“看到杯子”和“感到杯子快滑了”真正并起来，谁就更有机会做出稳定的细操作系统。
+\subsection{第二轮：仿真成功，真机偏航}
 
-第四，评测标准会从单任务成功率转向长时序与开放环境评测。
-Helix-02 Bedroom Tidy 这类公开演示已经在提示一件事：真正难的不是“能不能拿起一个物体”，而是“能不能在多物体、多步骤、多人类约束的环境里连续不出错”\cite{helixbed2026ch5}。
+第二轮在仿真里很漂亮。
+零号机绕开椅子，走到桌边，动作平稳得像广告视频。
 
-第五，机体与模型会协同设计。
-过去大家常说“给模型换一个身体”，但现实往往是：身体的自由度、传感器配置、带宽和触觉布局，本身就在决定模型可以学到什么。
-未来的人形、双臂、移动操作体，也许不会共享一套完全相同的执行头，而是共享更高层的语义与世界表征。
+回到真实练习室后，它向右偏了。
+原因很不高级：左轮接触到一段胶带边缘，摩擦和仿真不一样。
+再加上相机曝光变化，蓝色胶带在画面里比预期更暗。
 
-\subsection{真正还没解决的问题}
+P：仿真里它明明会。
 
-即便如此，未来具身智能仍然有几道很硬的门槛没有被越过去。
-如果把目标写成一个更完整的约束优化，它更像是
-\begin{equation}
-\pi^\star
-=
-\arg\max_\pi \mathrm{E}\!\left[\sum_{t=0}^{T} r_t\right]
-\quad
-\mathrm{s.t.}
-\quad
-P(\mathrm{unsafe}\mid \pi)\le \delta,
-\end{equation}
-也就是说，系统不仅要追求任务回报，还要把不安全事件压到可接受边界以下。
-在纯软件智能里，答错一句话通常只是“看起来笨一点”；在机器人里，答错一次动作，可能就是摔倒、夹手或把人撞到。
+広：仿真里的地板比较温柔。
 
-表 \ref{tab:future-bottleneck} 总结了几项截至 2026 年 5 月仍然没有被公开路线彻底解决的核心问题。
+P：现实地板很严格。
 
-\begin{table}[htbp]
-\centering
-\caption{未来具身智能的关键瓶颈}
-\label{tab:future-bottleneck}
-\scriptsize
-\begin{tabular}{L{1.6cm} L{2.3cm} L{2.3cm}}
-\toprule
-问题 & 当前症结 & 可能路线 \\
-\midrule
-长时序记忆 & 任务跨分钟后易丢状态与子目标 & 分层记忆、检索增强世界模型 \\
-接触可靠性 & 视觉强，触觉与力控仍弱 & 触觉建模、阻抗控制与策略联合训练 \\
-数据闭环 & 真机数据昂贵，失败样本稀缺 & 合成轨迹、反事实数据、少量真机对齐 \\
-安全验证 & 端到端策略难解释、难验证 & 安全层、形式约束、可回退执行栈 \\
-成本与能耗 & 大模型推理重，端侧频率不够 & 小模型、蒸馏、异步推理、专用硬件 \\
-\bottomrule
-\end{tabular}
-\end{table}
+広：嗯。很好。
 
-这也是为什么本章最后想强调的，不是“世界模型已经成熟”或者“VLA 即将统一机器人学”，
-而是另一件更冷静、也更接近现实的事：目前，前沿系统确实已经能在更开放的环境里做更长的事，但它们之所以越来越像“真正的机器人智能”，恰恰是因为它们开始重新尊重物理世界的慢、脏、贵和危险。
-世界模型让系统学会先想一步，VLA 让系统更像能直接动手的通用执行体，轻量化则逼着这两者从“论文里成立”走向“机身上成立”。
-如果未来真的会出现更通用的具身智能，那它大概也不会只是更大的脑子，而会是更会想象、更会协作、也更会克制的一整套身体与模型系统。
+修正策略是增加随机化。
+仿真不再只调椅子位置，也随机轮径、摩擦、相机曝光、动作延迟和观测噪声。
+真机部署时，速度进一步降低，轨迹跟踪的闭环频率提高。
+这让零号机变慢了，但也让它不那么自信地犯错。
 
-P：我说我完全没听懂，你相信吗。
+\subsection{第三轮：动作块太长}
 
-広：我相信。
+第三轮的问题来自 VLA。
+系统正确理解了指令，也生成了一段看起来合理的动作块：靠近桌边、对准水瓶、推向蓝色胶带。
+可是动作块太长。
+中途水瓶轻微滚动，局部避障和急停层还没来得及接管，末端已经继续往前推。
+
+P：它明白了任务，但太急了。
+
+広：像是唱到下一句之前，没有听见节拍乱了。
+
+P：那就缩短动作块。
+
+広：嗯。让它更频繁地听世界说话。
+
+修正策略有三条。
+第一，缩短动作块长度，让系统更频繁地重新观测。
+第二，把“水瓶晃动”写成停止条件，而不是等整段动作结束后再评价。
+第三，复杂任务拆成子任务：移动到胶带旁、确认目标、低速接触、轻推、停止。
+
+这样以后，零号机不再试图一口气完成全部动作。
+它开始像一个很谨慎的新手，一小段一小段地确认。
+
+\section{已经不是零}
+
+傍晚时，活动室的光线变得很软。
+広坐在蓝色安全胶带后面，手边放着训练记录。
+Producer 把水瓶放在桌边，确认急停按钮就在手里。
+
+P：最后一次。只送到胶带边，不靠近人。
+
+広：嗯。
+
+零号机启动。
+它先向左偏了一点，又停下来修正。
+它绕开椅子时多走了半圈，像在认真犹豫。
+到桌边后，两关节小臂抬起，末端轻轻碰到水瓶。
+水晃了一下。
+它停住。
+重新观察。
+再推了一点。
+
+水瓶最后停在蓝色胶带边。
+离広还有一段安全距离。
+不完美，不漂亮，也没有任何值得发表的惊人成绩。
+但它完成了任务。
+
+P：可复现一次。待验证。
+
+広：很严格。
+
+P：这是记录。
+
+広：嗯。很慢。很笨。也不稳定。
+
+P：然后呢？
+
+広伸手，把水拿起来。
+她看着零号机停在原地，像看一段终于接上的句子。
+
+広：但是，已经不是零了。
 
 \begin{thebibliography}{99}
+\bibitem{ha2018worldmodels} D. Ha and J. Schmidhuber, ``World Models,'' arXiv:1803.10122, 2018.
+\bibitem{vjepa22025ch5} Meta AI, ``V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning,'' 2025. [Online]. Available: \href{https://ai.meta.com/research/publications/v-jepa-2-self-supervised-video-models-enable-understanding-prediction-and-planning/}{research page}
+\bibitem{geminirobotics2026ch5} Google DeepMind, ``Gemini Robotics,'' accessed May 27, 2026. [Online]. Available: \href{https://deepmind.google/models/gemini-robotics/}{model page}
+\bibitem{tobin2017domain} J. Tobin et al., ``Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World,'' arXiv:1703.06907, 2017.
+\bibitem{peng2018dynamics} X. B. Peng et al., ``Sim-to-Real Transfer of Robotic Control with Dynamics Randomization,'' arXiv:1710.06537, 2018.
+\bibitem{openvla2024ch5} M. J. Kim et al., ``OpenVLA: An Open-Source Vision-Language-Action Model,'' arXiv:2406.09246, 2024.
+\bibitem{pi052025ch5} Physical Intelligence et al., ``$\pi_{0.5}$: A Vision-Language-Action Model with Open-World Generalization,'' arXiv:2504.16054, 2025.
+\bibitem{smolvla2025ch5} Hugging Face, ``SmolVLA: Efficient Vision-Language-Action Model trained on Lerobot Community Data,'' Jun. 3, 2025. [Online]. Available: \href{https://huggingface.co/blog/smolvla}{official blog}
 \bibitem{genie22024ch5} Google DeepMind, ``Genie 2: A large-scale foundation world model,'' Dec. 4, 2024. [Online]. Available: \href{https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model/}{official blog}
-\bibitem{vjepa22025ch5} Meta AI, ``V-JEPA 2 world model enables prediction, planning, and robot control,'' Jun. 11, 2025. [Online]. Available: \href{https://ai.meta.com/blog/v-jepa-2-world-model-benchmarks/}{official blog}
-\bibitem{cosmos2025ch5} NVIDIA, ``Cosmos world foundation models platform for physical AI,'' Jan. 6, 2025. [Online]. Available: \href{https://research.nvidia.com/labs/dir/cosmos-world-foundation-models/}{research page}
-\bibitem{dreamgen2025ch5} NVIDIA, ``DreamGen: Unlocking generalization in robot learning through video world models,'' 2025. [Online]. Available: \href{https://research.nvidia.com/labs/gear/dreamgen/}{project page}
-\bibitem{flare2025ch5} R. Zheng et al., ``FLARE: Robot Learning with Implicit World Modeling,'' in \emph{Proc. Conference on Robot Learning (CoRL)}, 2025.
-\bibitem{geminirobotics2025ch5} Google DeepMind, ``Gemini Robotics brings AI into the physical world,'' Mar. 12, 2025. [Online]. Available: \href{https://deepmind.google/discover/blog/gemini-robotics-brings-ai-into-the-physical-world/}{official blog}
-\bibitem{geminiondevice2025ch5} Google DeepMind, ``Gemini Robotics On-Device brings AI to local robotic devices,'' Jun. 24, 2025. [Online]. Available: \href{https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/}{official blog}
-\bibitem{geminirobotics152025ch5} Google DeepMind, ``Gemini Robotics 1.5 brings AI closer to human-like reasoning,'' Sep. 25, 2025. [Online]. Available: \href{https://deepmind.google/discover/blog/gemini-robotics-1-5-brings-ai-closer-to-human-like-reasoning/}{official blog}
-\bibitem{pi052025ch5} Physical Intelligence, ``$\pi_{0.5}$: A vision-language-action model with open-world generalization,'' Apr. 22, 2025. [Online]. Available: \href{https://www.physicalintelligence.company/blog/pi05}{official blog}
-\bibitem{helix022026ch5} Figure, ``Introducing Helix 02: Full-body autonomy,'' Jan. 27, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02}{official page}
-\bibitem{helixbed2026ch5} Figure, ``Helix-02 Bedroom Tidy,'' May 8, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02-bedroom-tidy}{official page}
-\bibitem{gr00tn152025ch5} NVIDIA, ``GR00T N1.5: An improved open foundation model for generalist humanoid robots,'' Jun. 11, 2025. [Online]. Available: \href{https://research.nvidia.com/labs/gear/gr00t-n1_5/}{research page}
-\bibitem{gr00tn162025ch5} NVIDIA, ``Isaac GR00T N1.6 open foundation model for humanoid robot double-arm manipulation,'' Dec. 15, 2025. [Online]. Available: \href{https://developer.nvidia.com/blog/isaac-gr00t-n1-6-open-foundation-model-for-humanoid-robot-double-arm-manipulation/}{official blog}
-\bibitem{openvla2024ch5} OpenVLA Team, ``OpenVLA: An open-source vision-language-action model,'' 2024. [Online]. Available: \href{https://openvla.github.io/}{project page}
-\bibitem{smolvla2025ch5} Hugging Face, ``SmolVLA: A vision-language-action model for affordable and efficient robotics,'' Jun. 2, 2025. [Online]. Available: \href{https://huggingface.co/blog/smolvla}{official blog}
-\bibitem{gobig2025ch5} Figure, ``Project Go-Big: Direct human-to-robot transfer with internet-scale human action data,'' Jul. 18, 2025. [Online]. Available: \href{https://www.figure.ai/news/project-go-big}{official page}
+\bibitem{cosmos2025ch5} NVIDIA, ``NVIDIA Launches Cosmos World Foundation Model Platform to Accelerate Physical AI Development,'' Jan. 6, 2025. [Online]. Available: \href{https://nvidianews.nvidia.com/news/nvidia-launches-cosmos-world-foundation-model-platform-to-accelerate-physical-ai-development}{official newsroom}
+\bibitem{helix022026ch5} Figure, ``Introducing Helix 02: Full-Body Autonomy,'' Jan. 27, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02}{official page}
 \end{thebibliography}

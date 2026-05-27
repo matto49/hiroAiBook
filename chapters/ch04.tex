@@ -1,332 +1,465 @@
-% ==================== 章节4：具身智能？理解与感知 ====================
+% ==================== 章节4：具身智能 | 门把手、胶带和零号机 ====================
 
 % --- 章节标题页（竖排） ---
-\hirochapter{具身智能 | 假如给我三天光明}
+\hirochapter{具身智能 | 门把手、胶带和零号机}
 
 % --- 小剧场对话 ---
-\section*{初星学园——2:00P.M. 活动准备室}
+\section*{初星学园——2:00P.M. 活动准备室门口}
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
-広：Agent 会说，会想，也会调工具。可是，还没有身体。
+P：等一下，平板上的路线是对的。先把资料放到活动室，再去服装间拿水，最后回练习室。
 
-P：所以一碰到现实任务，难度就会突然变重。
+広：嗯。很合理。
 
-広：嗯。杯子会滑，门把手会转，地面也不总是平的。世界很麻烦。
+P：然后我们现在卡在门口。
 
-P：听起来像是在给模型追加体能测试。
+広：因为门没有听从路线规划。
 
-広：差不多。但不只是体能。还要会摔倒，会修正，会继续。
+P：门把手不支持 API。
 
-P：这样一说，机器人像是被直接推进了练习室。
+広：很遗憾。它比 agent 更接近现实。
 
-広：而且没有彩排。……很过分，だ、ね。
+P：你先别笑。资料快滑下去了。
 
-P：那今天就把这件事讲清楚。
+広：我没有笑。只是觉得，今天的课题出现得很准确。
 
-広：嗯。先从“看见世界以后，为什么还是会撞上去”开始。
+P：课题？
+
+広：只会安排的东西，不能接手。它没有身体，所以门还是没有开。
+
+P：所以你想给“小広计划”加一个身体。
+
+広：不是一下子变成人。那样预算、伦理和普罗丢色桑的精神都会坏掉。
+
+P：谢谢你还考虑了我的精神。
+
+広：先做一个小的。会走，会停，会知道自己偏了。最好还能把水推过来一点。
+
+P：低成本小车？
+
+広：嗯。零号机。
+
+P：听起来已经开始危险了。
+
+広：不会太危险。很慢，很小，很笨。
+
+P：这不是让人安心的形容。
+
+広：但是很适合开始。
 
 \clearpage
 
 % --- 论文正文（IEEE风格，单栏） ---
-\hiropapertitle{具身智能：从感知、理解到行动}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园偶像研究部}
+\hiropapertitle{具身智能实践课：差速小车、SLAM 与两关节小臂}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园放学后代理计划}
 
 \begin{abstract}
-本章围绕具身智能的四个问题展开：概念从何而来，机器人如何感知并理解环境，系统如何把决策落实为稳定动作，以及截至 2026 年上半年这一方向的代表性技术路线。
-在历史上，具身智能并不是大模型时代突然冒出来的新词，而是从行为主义机器人、具身认知与发展机器人学一路延展而来。
-在方法上，当前系统大致可分为感知、建图、规划、控制相对解耦的非端到端路线，以及以 VLA、模仿学习和强化学习为代表的端到端或近端到端路线。
-本章会先用较为严谨的术语给出定义，再由 hiro 用更直观的方式拆开解释，并通过公式、表格与公开论文，把这几条路线放进同一张技术地图里。
+本章把具身智能从抽象概念落到一个小项目上：制作一台真实可做的低成本“小広试作机零号”。它不是人形机器人，也不是万能助手，而是一台差速轮小车，带有摄像头、轮速计、IMU 和一个简单的两关节小臂。本章围绕它在初星学园练习室里的三次失败，讲解机器人运动的最小数学、状态估计、SLAM、导航、局部避障、两关节机械臂和低层控制。重点不是把公式讲得华丽，而是看清一件事：机器人要接手现实任务，必须把“看见、估计、计划、执行、修正”连成闭环。
 \end{abstract}
-\keywords{具身智能、SLAM、机器人控制、VLA、具身推理}
+\keywords{具身智能、差速小车、状态估计、SLAM、导航、两关节机械臂}
 
-\section{引言}
+\section{从“会说”到“会碰”}
 
-如果说 Agent 是灵魂的话，具身智能就是一副真的要去接触世界的身体。
-这副身体会受重力、摩擦、延迟、遮挡、噪声和电机带宽的约束，所以机器人面对的困难，和纯软件 Agent 并不在一个量级上。
+前几章里，agent 已经学会了很多看起来像工作的事情：整理训练记录、安排路线、拆分任务、提醒 Producer 不要忘记带钥匙。
+可是到了活动准备室门口，门拦住了agent的所有规划。
 
-在计算机里，会说、会搜、会调工具已经很强了；可一旦任务变成端杯子、开门、巡检、搬运、陪伴或导航，系统就必须把感知、理解、规划和动作真正接起来。
-也正因为如此，具身智能研究的重点从来不是“给大模型插两根线”，而是构造一个闭环：看见世界、形成状态、选择动作、执行动作、根据反馈再修正下一步行为。
+并非因为计划错了，计划甚至相当好。
+问题在于，门不会因为计划合理就自动打开，水瓶不会因为表格写得漂亮就自己移动，快滑下来的资料也不会因为模型已经“理解任务”就停在半空。
 
-P：所以这里最难的，不是“有没有答案”，而是“答案能不能穿过身体，变成稳定动作”？
+P：那么今天的课题就是自动开门，移动水瓶和让资料漂浮？
 
-広：对。想到了，不等于做得到。做不到的话，就继续把误差看清楚。
+広：嗯。今天的课题是具身智能呢，这些都可以做到的哦。
 
-这一章会依次讨论四件事：第一，具身智能这个概念到底是怎么来的；第二，机器人如何通过传感器和算法理解环境；第三，控制与执行这一层为什么更像“小脑”；第四，截至 2026 年 5 月，公开论文和技术报告里最值得注意的技术栈是什么样子。
+P：包括资料漂浮吗。。。
 
-\section{什么是具身智能}
+広：包括资料漂浮哦，如果加一些高速风扇的话。
 
-\subsection{概念的来由}
+具身智能关心的不是“智能体能不能给出答案”，而是答案能不能穿过身体，进入真实世界。
+对机器人来说，任务不是停在一句“把水拿过来”上，而是要经过一串很麻烦的过程：
 
-学术上，具身智能强调的是智能体与身体、环境之间的耦合关系，而不是把“智能”理解成一个脱离物理世界的纯推理模块。
-Brooks 在 1991 年对传统“先建完整世界模型、再统一推理”的路线提出了强烈批评，主张让机器人通过分层行为直接与环境耦合\cite{brooks1991}。
+\begin{center}
+观测世界 $\rightarrow$ 估计状态 $\rightarrow$ 规划路线 $\rightarrow$ 执行动作 $\rightarrow$ 根据反馈修正。
+\end{center}
 
-Pfeifer 与 Bongard 后来把这一思想推进得更完整：身体形态、材料特性、传感器布局和控制器本身，会共同决定智能系统能够如何学习、如何感知、如何行动\cite{pfeifer2007}。
-再往后，发展机器人学把问题进一步改写成“机器人能否像儿童一样，在持续互动中长出能力”，于是感知、动作和概念之间的对应关系，逐渐成为核心议题\cite{cangelosi2015}。
+这个闭环听起来像机器人学，其实也很像偶像排练。
+站位不是脑子里记住就够了，还要看镜子、听节拍、感觉脚下的地板、发现自己偏了，再把下一步拉回来。
+只不过机器人没有“差不多”的身体直觉，它必须把每一件事拆成传感器、坐标、角度和控制量。
 
-P：也就是说，身体不是装智能的壳。身体本身就在参与求解。
+広：舞台上偏半步，会被发现。
 
-広：嗯。材料、结构、传感器的位置……都会改写答案。不是附属品，是题目的一部分。
+P：小车偏半步，会撞椅子。
 
-\subsection{今天常说的三条路线}
+広：嗯。椅子比观众更严格。
 
-到了深度学习时代，具身智能逐渐分化出三条最常见的技术路线。
-第一条是分层系统路线，把感知、定位建图、任务规划、运动规划和控制执行拆开；第二条是机器人学习路线，让策略从轨迹数据中直接学习技能；第三条是具身基础模型路线，把语言、视觉和动作统一到同一个模型或模型簇里，代表性工作包括 SayCan、PaLM-E、RT-1 和 RT-2\cite{ahn2022saycan,driess2023palme,brohan2022rt1,brohan2023rt2}。
+\section{零号机任务书}
 
-为了不让名词飘在空中，表 \ref{tab:routes} 先把三条路线放在一起。
-这样后面看到“端到端”“VLA”“非端到端骨架”这些词时，至少不会先把几条路线混成一团。
+为了不让“小広计划”突然变成无法收场的大工程，Producer 给试作机画了一条很窄的边界。
+它不是人形，不做拥抱，不扶人，不搬重物，也不在広体力不稳的时候靠近她。
+它的第一阶段目标只有一个：
+
+\begin{center}
+从练习室门口出发，沿着胶带标出的区域移动到桌边，避开椅子，把水瓶推到安全胶带旁。
+\end{center}
+
+表 \ref{tab:zero-spec} 是零号机的最小配置。
+这些部件并不神秘，甚至有点朴素。
+但正因为朴素，它很适合当一台“能看见失败”的教学机器人。
 
 \begin{table}[htbp]
 \centering
-\caption{具身智能主流技术路线对比}
-\label{tab:routes}
+\caption{小広试作机零号的最小配置}
+\label{tab:zero-spec}
 \small
-\begin{tabular}{L{1.8cm} L{2.7cm} L{2.7cm}}
+\begin{tabular}{L{2.0cm} L{2.7cm} L{2.6cm}}
 \toprule
-路线 & 优点 & 主要局限 \\
+模块 & 作用 & 本章关注的问题 \\
 \midrule
-分层系统 & 可解释、易调试、安全约束明确 & 模块误差会级联，语义泛化有限 \\
-机器人学习 & 适合高维接触与复杂技能 & 数据昂贵，分布外泛化困难 \\
-具身基础模型 & 语义泛化强，跨任务迁移潜力高 & 训练成本高，执行稳定性仍依赖底层护栏 \\
+差速轮底盘 & 前进、后退、原地转向 & 运动学、里程计误差 \\
+摄像头 / 深度线索 & 看到胶带、桌腿、椅子、水瓶 & 视觉观测、遮挡、光照 \\
+轮速计 / IMU & 估计移动距离和转向 & 状态估计、漂移修正 \\
+两关节小臂 / 推杆 & 推近水瓶或轻道具 & 关节角、末端位置、力度 \\
+急停与低速限制 & 防止撞人和撞坏东西 & 安全边界、回退策略 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-如果进一步从研究主题上划分，当前学者们主要在做四件事：研究身体形态与交互结构，研究世界模型与状态表征，研究技能获取与泛化，研究推理与执行如何对齐。
-Open X-Embodiment、Octo 和 OpenVLA 之所以重要，不只是因为模型更大，更因为它们把跨机器人共享数据与共享经验变成了真正可复现的研究基础设施\cite{openx2023,octo2024,openvla2024}。
+P：这个配置是不是太寒酸了？
 
-P：那你为什么先讲分层路线？现在大家不是都更喜欢端到端吗？
+広：很好。寒酸的话，失败会比较清楚。
 
-広：因为机器人很诚实。它会漂移，会摔，会失手。先知道是哪一层出了错，才有资格谈“全部交给模型”。
+P：你对“清楚”的要求总是有点残酷。
 
-所以，后面两节会先把非端到端路线讲清楚。
-不是因为它“旧”，而是因为直到今天，它依然是大量可部署系统的骨架；而端到端方法，很多时候是长在这副骨架上的新肌肉。
+広：因为它现在最需要的不是威严。是知道自己在哪里。
 
+\section{运动的最小数学}
 
-\section{感知与理解}
+\subsection{坐标系：先把练习室铺成一张纸}
 
-\subsection{传感器不是越多越好，而是要互补}
+要让零号机移动，第一步不是“让它聪明”，而是给它一个坐标系。
+我们可以把练习室地板想象成一张平面图，取门口某个胶带角作为原点。
+小车在这张图上的状态可以先写成
+\begin{equation}
+x_t =
+\left[
+\begin{array}{c}
+p_x \\ p_y \\ \theta
+\end{array}
+\right]_t,
+\end{equation}
+其中 $p_x$ 和 $p_y$ 表示它在地板上的位置，$\theta$ 表示车头朝向。
+这三个量听起来很少，但已经足够描述一台差速小车“在哪里、朝哪边”。
 
-感知这一层最正式的说法，是机器人通过观测模型把外部世界映射为内部状态估计。
-常见的状态转移和观测关系，通常可以写成
+如果小车以线速度 $v_t$ 前进，以角速度 $\omega_t$ 转向，在很短时间 $\Delta t$ 内，它的位置可以近似更新为
+\begin{equation}
+\begin{array}{l}
+p_{x,t+1} = p_{x,t} + v_t \cos \theta_t \Delta t,\\
+p_{y,t+1} = p_{y,t} + v_t \sin \theta_t \Delta t,\\
+\theta_{t+1} = \theta_t + \omega_t \Delta t.
+\end{array}
+\end{equation}
+
+车头朝哪里，向前滚一小段以后，位置就会沿着那个方向变一点；同时，如果左右轮速度不一样，车头角度也会变。
+
+P：所以它不是“走到桌边”，而是很多个很短的“往前一点、转一点”累积出来的。
+
+広：对。偶像的走位也是这样。站到终点之前，先把每一步不要弄丢。
+
+\subsection{差速轮：左右轮速度会决定转弯}
+
+零号机用的是差速轮底盘。
+左轮速度记作 $v_L$，右轮速度记作 $v_R$，两轮间距记作 $b$。
+那么车体的近似线速度和角速度可以写成
+\begin{equation}
+v = \frac{v_R+v_L}{2}, \qquad
+\omega = \frac{v_R-v_L}{b}.
+\end{equation}
+
+左右轮一样快，小车大致向前走。
+右轮比左轮快，小车会向左转。
+左轮比右轮快，小车会向右转。
+如果一边前进一边后退，它甚至可以原地转身。
+
+听起来很听话。
+现实里没有这么乖。
+
+轮子会轻微打滑，地板上贴胶带的位置摩擦不同，车轮半径也不一定完全一致。
+于是公式里“应该走到”的地方，和真实世界里“实际停下”的地方，会慢慢分开。
+这就是里程计漂移。
+
+広：公式里的零号机很端正。
+
+P：真实的零号机已经斜着进了椅子腿下面。
+
+広：嗯。它开始像现实了。
+
+\subsection{预测与观测：不要只相信自己走了多少}
+
+机器人不能只靠轮子转了多少来判断自己在哪。
+轮速计告诉它“我大概动了这么远”，摄像头告诉它“我看见胶带在画面左边”，IMU 告诉它“我刚才转了一个角度”。
+这些信息都不是真相，只是线索。
+
+一个常见的状态估计写法是
 \begin{equation}
 x_t = f(x_{t-1}, u_t) + w_t, \qquad
 z_t = h(x_t, m) + v_t,
 \end{equation}
-其中 $x_t$ 表示时刻 $t$ 的状态，$u_t$ 是控制输入，$z_t$ 是传感器观测，$m$ 表示地图或环境表征，$w_t$ 与 $v_t$ 分别是过程噪声和观测噪声。
+其中 $x_t$ 是状态，$u_t$ 是控制输入，$z_t$ 是观测，$m$ 是地图或场地信息，$w_t$ 和 $v_t$ 分别代表运动噪声和观测噪声。
 
-这两个式子看起来很像老师上课会忽然丢出来的冷冰冰黑板字，但其实意思很朴素。
-第一式是在说“机器人动了一下以后，大概会到哪里”；第二式是在说“它看到的东西，和真实世界之间总会夹着噪声与误差”。
+这两个式子可以翻成排练室语言：
 
-P：所以传感器给的不是“真相”，只是一些带噪声的线索？
+\begin{itemize}[leftmargin=2em]
+\item 先根据动作预测：我应该从这条胶带走到下一条胶带附近。
+\item 再根据观测修正：可是摄像头看见桌腿比预期更近，所以我可能偏了。
+\item 然后把偏差写回状态：下一步不要继续沿着错误方向走。
+\end{itemize}
 
-広：对。光会变，遮挡会来，IMU 也会漂。机器人每天都在不完整的信息里猜世界。……猜错了，就再修。
+P：这和広训练时的复盘很像。
 
-现实系统里并不是摄像头越多越强，而是不同模态能否互补。
-RGB 相机成本低、信息密度高，适合检测、分割和语言对齐；双目、RGB-D 和激光雷达更擅长提供尺度与深度；IMU、轮速计和里程计能在短时间内给出稳定运动先验；机械臂和灵巧手则高度依赖关节编码器、力传感器和触觉阵列。
+広：先预测能做到。然后失败。再修正。
 
-表 \ref{tab:sensors} 给出了一种典型对应关系。
-它不一定覆盖所有系统，但很适合当第一张“传感器地图”。
+P：你为什么说得像很开心。
+
+広：因为这就是闭环。
+
+\section{SLAM 与导航：练习室里的迷你地图}
+
+\subsection{SLAM 要解决两件事}
+
+SLAM 是 simultaneous localization and mapping，也就是同时定位与建图。
+它要回答两个缠在一起的问题：
+
+\begin{itemize}[leftmargin=2em]
+\item 我在哪里？
+\item 我周围的世界长什么样？
+\end{itemize}
+
+如果已经有一张精确地图，定位会容易很多。
+如果已经知道自己在哪里，建图也会容易很多。
+但零号机第一次进入练习室时，两件事都不完整。
+它只能一边移动，一边把胶带、桌腿、椅子和墙角变成自己的迷你地图。
+
+经典概率机器人学会把这个过程写成对后验分布的估计\cite{thrun2005prob}：
+\begin{equation}
+p(x_t, m \mid z_{1:t}, u_{1:t}).
+\end{equation}
+意思是：给定到目前为止的观测 $z_{1:t}$ 和控制输入 $u_{1:t}$，同时估计机器人轨迹 $x_t$ 与地图 $m$。
+
+这类问题可以用滤波、图优化、视觉特征、惯性信息等多种方法解决。
+VINS-Mono 用视觉和 IMU 做状态估计\cite{qin2018vinsmono}，ORB-SLAM3 则展示了视觉、视觉惯性和多地图 SLAM 的完整系统化路线\cite{campos2021orbslam3}。
+在零号机这里，我们不需要真的实现论文级系统，但要理解它们共同面对的麻烦：每一步都有误差，误差会累积，累积到一定程度，小车就会把“桌边”认成“椅子旁边”。
+
+\subsection{从地图到路线}
+
+有了地图，还不等于能走。
+导航至少要再拆成两层：
+
+\begin{itemize}[leftmargin=2em]
+\item 全局路径：从门口到桌边，大方向从哪里走。
+\item 局部避障：眼前突然多了一把椅子，下一秒怎么绕。
+\end{itemize}
+
+在练习室里，全局路径像是排练前画在纸上的走位。
+局部避障像是排练中有人临时把道具箱放错位置，你不能一边说“我的路线很正确”一边撞上去。
 
 \begin{table}[htbp]
 \centering
-\caption{具身系统常见传感器与主要作用}
-\label{tab:sensors}
+\caption{导航栈与初星学园里的对应物}
+\label{tab:navi-map}
 \small
-\begin{tabular}{L{2.0cm} L{2.2cm} L{3.0cm}}
+\begin{tabular}{L{2.0cm} L{2.6cm} L{2.7cm}}
 \toprule
-传感器 & 主要优势 & 典型用途 \\
+机器人环节 & 学园里的对应物 & 问题 \\
 \midrule
-RGB 相机 & 成本低，语义信息丰富 & 检测、分割、识别、视觉语言对齐 \\
-RGB-D / 双目 & 直接提供深度线索 & 抓取定位、近场建图、避障 \\
-激光雷达 & 几何精度高，抗光照变化强 & 导航、建图、定位 \\
-IMU / 轮速计 & 高频、短时稳定 & 里程计、姿态估计、传感器融合 \\
-力觉 / 触觉 & 接触信息直接 & 装配、抓取稳定性、阻抗控制 \\
+定位 & 站在舞台地标上 & 我在哪里 \\
+建图 & 记住练习室障碍物 & 世界长什么样 \\
+全局规划 & 走位路线 & 从哪里绕过去 \\
+局部避障 & 临时让开椅子和同学 & 现实变了怎么办 \\
+轨迹跟踪 & 听节拍后修正脚步 & 偏了怎么拉回来 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{SLAM 与状态估计}
+局部避障方法有很多，Dynamic Window Approach 这类经典方法会在速度空间里挑选一段短时间内安全、可达、接近目标的速度\cite{fox1997dwa}。
+直觉上，它不是一次性规划完整人生，而是在问：
 
-对于需要移动的机器人来说，先知道自己在哪，通常比“理解一句复杂自然语言指令”更基础。
-SLAM 的核心任务，是在未知环境中同时估计机器人位姿并构建地图；对应到概率表达里，目标常常可以写成对后验分布 $p(x_t,m \mid z_{1:t},u_{1:t})$ 的递推估计。
+\begin{center}
+接下来这一小段，我能以什么速度走，既不撞东西，又离目标更近？
+\end{center}
 
-更常见的递推形式是 Bayes filter：
+広：很像普罗丢色桑给我的训练菜单。
+
+P：哪里像？
+
+広：不是问“最终能不能完美”。是问“下一段能不能安全地难一点”。
+
+P：这个解释我收下了。
+
+\section{两关节小臂：碰到世界之前，先别用力过猛}
+
+\subsection{为什么只做两关节}
+
+零号机不是来表演杂技的。
+如果第一阶段任务只是把水瓶推到安全胶带旁，一个两关节平面小臂就够了。
+它可以理解成两个连杆接在一起：第一段长度 $l_1$，第二段长度 $l_2$；两个关节角分别是 $\theta_1$ 和 $\theta_2$。
+
+末端位置可以写成
 \begin{equation}
-\mathrm{bel}(x_t)=\eta \, p(z_t \mid x_t,m)
-\int p(x_t \mid u_t,x_{t-1}) \, \mathrm{bel}(x_{t-1}) \, dx_{t-1},
+\begin{array}{l}
+x = l_1 \cos \theta_1 + l_2 \cos(\theta_1+\theta_2),\\
+y = l_1 \sin \theta_1 + l_2 \sin(\theta_1+\theta_2).
+\end{array}
 \end{equation}
-其中 $\eta$ 是归一化常数，$\mathrm{bel}(x_t)$ 表示时刻 $t$ 对状态的信念。
-这个式子把事情拆成了两步：先根据控制输入预测“我大概去了哪里”，再根据最新观测校正“我真正更可能在哪里”。
 
-P：这个式子翻成人话，就是先预测，再观测，再校正？
+这个式子是正运动学。
+它回答的是：如果两个关节转成这样，末端会到哪里。
+反过来，如果我们想让末端去某个点，就要解逆运动学。
+本章不展开复杂求解，只记住两件事：
 
-広：嗯。走一步，看一眼。偏了，就拉回来。身体虚弱的时候，也只能这样。
+\begin{itemize}[leftmargin=2em]
+\item 目标太远，超过 $l_1+l_2$，够不到。
+\item 目标在可达范围内，也可能有“手肘朝上”和“手肘朝下”两种姿态。
+\end{itemize}
 
-在具体算法上，视觉和视觉惯性路线常见 VINS-Mono\cite{qin2018vinsmono} 与 ORB-SLAM3\cite{campos2021orbslam3}。
-偏光度建模的直接法代表有 DSO\cite{engel2018dso}；面向移动平台的激光图优化路线则常见 Google Cartographer\cite{hess2016cartographer}。
-这些方法的共同目标不是“理解一切”，而是先把位姿、回环、漂移和地图精度稳住。
+P：所以它不是想推哪里就能推哪里。
 
-\subsection{从几何感知走向语义理解}
+広：对。身体的形状，会限制意志的范围。
 
-如果只有几何地图，机器人知道“这里有个凸起”“那里有面墙”，却未必知道“这个是杯子，那个抽屉能拉开，这把椅子暂时不能撞”。
-所以在具身系统里，感知的终点通常不是一张纯几何地图，而是带有类别、实例、可供性和任务状态的语义地图。
+P：这句话听起来突然很重。
 
-所谓可供性，学术上指的是环境或物体对某个动作所提供的可操作可能性。
-翻成人话，就是机器人不仅要认出杯子，还要知道这个杯子是不是能抓、从哪里抓、抓了会不会碰倒旁边的东西。
+広：但是很准确。
 
-P：所以“理解”不是多会认名词，而是更清楚“能不能动、该怎么动”？
+\subsection{小脑层：低层控制要快、稳、克制}
 
-広：对。看到杯子，不只是知道它叫杯子。还要知道从哪里碰它，碰了之后，别把旁边也一起弄倒。
-
-今天常见的视觉理解模块包括目标检测、实例分割、关键点估计、6D 位姿估计、抓取检测、场景描述和视觉问答。
-对于固定工位操作，系统往往更看重 6D 位姿和抓取候选；对于开放家庭场景，则更依赖开放词汇检测、多模态检索和视觉语言模型，把自然语言目标转成可执行对象。
-
-PaLM-E 和 RT-2 的价值，就在于它们证明了互联网语义知识能够迁移到机器人任务语义上\cite{driess2023palme,brohan2023rt2}。
-但这并不等于几何方法失效了。真正成熟的系统，通常还是几何层兜底定位，语义层负责“这到底是什么、该做什么”，两者一起工作。
-
-\section{控制与执行}
-
-\subsection{机械结构决定了控制难度的上限}
-
-感知更像是在回答“世界是什么样”，控制更像是在回答“身体应该怎么动”。
-这部分通常比感知更受实时性约束，因为几十毫秒的误差就可能让抓取偏掉，几百毫秒的误差就足以让双足系统失衡。
-
-如果任务以移动为主，常见底盘包括差速轮、全向轮和 Ackermann 结构；如果任务以操作为主，最常见的是 6 或 7 自由度串联机械臂；如果目标是走进人类环境，则往往会转向双臂、人形或轮腿混合结构。
-末端执行器方面，二指夹爪仍然是工业界极高性价比的方案，而灵巧手虽然潜力更大，却也把控制、感知和数据成本一起推高了。
-
-P：是不是可以先粗暴记成，身体越通用，控制越难？
-
-広：大体上对。自由度越多，可能性也越多。控制器会很辛苦。……很好。
-
-\subsection{从任务规划到底层伺服}
-
-成熟机器人系统的控制栈，往往不是一层，而是多层。
-高层决定任务顺序，中层负责轨迹和避障，低层负责关节、力矩、阻抗和接触稳定。Khatib 的操作空间控制让“在末端空间直接定义任务”这件事变得系统化\cite{khatib1987}；Hogan 的阻抗控制则奠定了机器人安全接触环境时的基本范式\cite{hogan1985}。
-
-如果把阻抗控制写成一个常见形式，可以表示为
+高层可以说“把水瓶推近一点”。
+两关节小臂真正执行时，控制器要在很短时间里反复计算误差。
+最朴素的形式可以写成 PID 控制：
 \begin{equation}
-F = K(x_d-x) + B(\dot{x}_d-\dot{x}) + M(\ddot{x}_d-\ddot{x}),
+u_t = K_p e_t + K_i \sum_{\tau=0}^{t} e_\tau + K_d(e_t-e_{t-1}),
 \end{equation}
-其中 $x_d$ 是期望位置，$x$ 是实际位置，$K$、$B$、$M$ 分别刻画刚度、阻尼和惯性项。
-这个式子的直观含义是：机器人不是死硬地追踪某个点，而是像一个“有弹性、有阻尼”的系统那样去靠近目标，因此在接触任务里更安全、更顺手。
+其中 $e_t$ 是目标和当前位置的误差，$u_t$ 是控制输出。
+$K_p$ 像是“偏多少就拉多少”，$K_i$ 处理长期偏差，$K_d$ 则抑制动作太猛。
 
-P：所以阻抗控制不是硬拧过去，而是带着顺应性靠过去？
+P：听起来像小脑。
 
-広：嗯。接触不是撞上去。是靠近，感受，再调整。不然就会把正确的事做得很难看。
+広：嗯。它不负责想“为什么要拿水”。只负责别把水打翻。
 
-\subsection{轨迹优化与模型预测控制}
+如果执行层只追求快，就会冲过头。
+如果执行层太软，就推不动。
+接触任务里还需要一点顺应性：碰到水瓶时，不是硬撞，而是轻轻靠上去、感到阻力、再继续一点。
+这也是为什么成熟机器人系统常把高层任务、路径规划和低层伺服分开。
+高层慢一点没关系，低层必须及时。
 
-只靠逆运动学，通常只能回答“有没有一个姿态能到”；但机器人真要动起来，还要考虑碰撞、速度、加速度和平滑性。
-因此，机械臂和移动操作系统常常在 IK 之外叠加运动规划与轨迹优化。CHOMP 的代表性形式可以写成
-\begin{equation}
-J(\xi) = J_{\mathrm{smooth}}(\xi) + \lambda J_{\mathrm{obs}}(\xi),
-\end{equation}
-其中 $\xi$ 表示轨迹，第一项鼓励平滑，第二项惩罚靠近障碍物\cite{ratliff2009chomp}。
+\section{三次测试日志}
 
-一旦机器人开始跑、跳、上下楼梯，或者频繁切换接触，问题又会进一步变成模型预测控制。一个典型的 MPC 目标函数可以写成
-\begin{equation}
-\min_{u_{0:T-1}} \sum_{k=0}^{T-1}
-\left(
-\|x_k-x_k^\ast\|_Q^2 + \|u_k\|_R^2
-\right)
-+\|x_T-x_T^\ast\|_{Q_f}^2,
-\end{equation}
-同时满足动力学和接触约束。
-这个式子表达的意思是：在一个有限时间窗里，机器人一边追踪目标状态，一边尽量不把控制输入用得太猛。MIT Cheetah 3 的工作就展示了这种思路在动态 locomotion 中的效果\cite{dicarlo2018mpc}。
+\subsection{第一次：能走，但找不到自己}
 
-P：所以 MPC 有点像先把接下来几步都排演一遍，再选代价最小的那条？
+零号机第一次从门口出发时，路线看起来很顺利。
+它沿着蓝色胶带走了约一米，车头轻轻偏向右侧。
+Producer 以为这是小问题，直到它下一步把偏差继续放大，最后停在椅子腿前。
 
-広：对。而且每过很短一会儿，就重算一次。它不是犹豫。是谨慎。
+日志里，轮速计显示它“应该”还在胶带中央。
+摄像头画面却显示胶带已经跑到画面左侧。
+这就是只相信里程计的后果：每一步误差很小，但小误差会累积成明显偏航。
 
-\subsection{为什么今天仍然需要混合架构}
+P：它不是突然走错的。
 
-对于双手协同、柔性物体整理、开抽屉和精细插接这类任务，纯解析建模经常又难又脆。
-于是模仿学习、扩散策略和 VLA 政策开始承担更多局部技能执行工作，但在大量可落地系统里，它们通常不会直接取消底层安全护栏，而是与状态机、规划器、阻抗控制和伺服环共同工作。
+広：嗯。它是很认真地一点点错下去。
 
-这也是为什么现实系统经常采用混合控制架构。
-高层负责理解任务和挑技能，中层组织动作序列，低层保证每一个动作不会发飘、发散或者突然撞上什么不该撞的东西。
+修正办法并不华丽：降低速度，提高观测频率，把摄像头检测到的胶带位置作为校正信号。
+更完整的系统会把轮速计、IMU 和视觉观测放进滤波或图优化框架里。
+零号机阶段先做一件小事就够了：不要只相信自己走了多少，要经常抬头看。
 
-\section{当前进展}
+\subsection{第二次：能看，但不懂临时变化}
 
-\subsection{公开论文能看见的主流技术栈}
+第二次测试前，Producer 故意把一把椅子挪到路线附近。
+全局路径还是门口到桌边，地图上那条线没有问题。
+问题出在局部。
 
-截至 2026 年 5 月，具身智能前沿已经很明显地从“单技能机器人学习”走向“基础模型 + 多机体数据 + 分层执行架构”。
-如果只看论文与技术报告，最清晰的一点不是端到端全面替代了分层系统，而是越来越多团队在尝试把两者拼接到一起。
+零号机看见椅子晚了一点，停得也晚了一点。
+它没有撞上去，但停在了一个尴尬的位置：再往前会碰椅子，往后退又会离开胶带。
 
-Google DeepMind 这条线很有代表性。SayCan 把语言模型语义先验与机器人技能 affordance 结合，在 101 个任务上实现了 84\% 的规划成功率和 74\% 的执行成功率\cite{ahn2022saycan}；PaLM-E 把连续观测注入语言模型嵌入空间，使同一个模型同时处理机器人规划和视觉语言任务\cite{driess2023palme}；RT-1 与 RT-2 则把大规模真实机器人轨迹训练和 VLA 泛化能力进一步推高\cite{brohan2022rt1,brohan2023rt2}。到了 2025 年，Gemini Robotics 又明确展示了“推理层 + 执行层”分工更细的体系\cite{gemini2025,geminiondevice2025}。
+P：它看见了，但反应太慢。
 
-开放生态这边，Open X-Embodiment、Octo 和 OpenVLA 把“跨机器人共享经验”真正做成了开放研究栈\cite{openx2023,octo2024,openvla2024}。
-对研究团队来说，这一脉的意义非常现实：不必从零搭建所有数据和模型管线，而是可以站在已有底座上做机体适配和任务微调。
+広：像我发现体力不够的时候。
 
-P：也就是说，有些团队在追最强模型，有些团队在做最稳的通用底座。
+P：你一般发现得太晚。
 
-広：嗯。一个负责把上限抬高，一个负责别让系统先倒下去。两边都不能少。
+広：嗯。所以需要 Producer 急停。
 
-Physical Intelligence 的 $\pi_0$ 更强调多机体预训练后的小数据适配能力\cite{pi02024,openpi2025}。
-Figure 的 Helix 与 Helix 02 则特别值得注意，因为它们即使强调端到端，也没有把所有时间尺度揉成一个统一黑箱，而是明确保留了不同频率的语义、动作和全身稳定层\cite{figure2025helix,figure2026helix02}。
+这次失败说明，导航不是一张静态路线图。
+练习室里的椅子会被挪，服装架会展开，路过的同学会临时经过。
+因此局部规划要不断重算“接下来一点点能怎么走”。
+在真实机器人里，这一层往往比高层语义更接近安全。
+它不需要懂很多话，但必须知道“眼前这个东西不能撞”。
 
-NVIDIA Isaac GR00T N1 与 N1.5 更像平台化路线，不仅给模型，也给仿真、数据、训练与部署链路\cite{gr00t2025,gr00t152025}。
-如果把这些公开材料放在一起，表 \ref{tab:companies} 可以帮助我们快速抓住“各家公司究竟在突出什么”。
+\subsection{第三次：能碰，但角度和力气不合适}
 
-\begin{table}[htbp]
-\centering
-\caption{截至 2026 年 5 月公开材料中的代表性路线}
-\label{tab:companies}
-\scriptsize
-\begin{tabular}{L{1.7cm} L{2.0cm} L{3.2cm}}
-\toprule
-主体 & 代表工作 & 路线特点 \\
-\midrule
-Google DeepMind & SayCan, PaLM-E, RT-1, RT-2, Gemini Robotics & 从语言规划走向 VLA 与具身推理协同 \\
-Open 社区 & Open X, Octo, OpenVLA & 强调开放数据、跨机体训练与可复现底座 \\
-Physical Intelligence & $\pi_0$, openpi & 多机体预训练，小数据后训练适配 \\
-Figure & Helix, Helix 02 & 人形任务中采用分频分层的执行架构 \\
-NVIDIA & GR00T N1, N1.5 & 模型、仿真、数据与部署平台一体化 \\
-\bottomrule
-\end{tabular}
-\end{table}
+第三次，零号机终于接近桌边。
+两关节小臂抬起来，末端对准水瓶。
+从公式看，它已经把末端送到了目标附近。
+从现实看，它的角度偏了几度。
 
-\subsection{哪些方案更接近落地}
+于是水瓶不是被轻轻推近，而是被斜着碰了一下。
+瓶身晃动，Producer 立刻按下急停。
 
-如果把“能发论文”和“能稳定部署”分开看，今天最稳的落地方案通常有三类。
-第一类是导航与移动操作系统，典型组合仍然是传感器融合、SLAM、语义感知、全局与局部规划、轨迹跟踪；第二类是定点操作系统，往往由视觉定位、运动规划、阻抗控制和局部学习策略共同组成；第三类是人形或双臂长时序任务系统，更常见的做法是让 VLA 或 LLM 负责任务层与技能层，而把全身控制、MPC 与安全监控留在执行层。
+広坐在旁边，看着水瓶停稳。
+她没有先评价成功或失败，只问：
 
-P：说到底，眼下更能落地的，还是“新模型负责变聪明，老骨架负责不出事”。
+広：偏了多少？
 
-広：可以这么说。先活下来，再变聪明。对机器人来说，这个顺序很重要。
+P：末端大概偏了三厘米。力也大了。
 
-对于 Tesla Optimus、宇树、优必选、Boston Dynamics 等公司，公开演示很多，但外界能直接核验的训练细节和论文级披露仍然有限。
-因此，按学术写法最稳妥的表述不是替它们脑补内部实现，而是承认：从公开材料看，它们大概率也在采用“学习模块 + 状态估计 + 规划控制 + 安全回退”的混合技术栈，但外界很难仅凭演示视频精确还原其内部方法。
+広：嗯。很有价值。
 
-这也正是本章想引出的结论。
-非端到端方法并没有被新时代淘汰，反而正在作为骨架、护栏和调试接口，与端到端模型一起支撑今天真正能跑起来的具身系统。
+P：你先确认水没洒。
+
+広：也很有价值。
+
+这次失败把机械臂的两个问题暴露得很清楚。
+第一，末端位置不是只看目标点，还要看姿态和接触方向。
+第二，接触不是单纯“到达”，而是要控制速度、力度和停止条件。
+对零号机来说，下一步不是让它抓起水瓶，而是先学会在低速下轻轻推，并且一旦观测到水瓶晃动就停止。
+
+\section{失败地图}
+
+练习结束后，広在练习室地板上贴了三段不同颜色的胶带。
+蓝色是偏航开始变明显的位置。
+黄色是局部避障停得太晚的位置。
+红色是水瓶晃动的位置。
+
+P：你把失败点标得这么醒目，别人会以为这里发生过什么事故。
+
+広：发生过。很小的事故。
+
+P：你说得太平静了。
+
+広：因为这是地图。
+
+失败地图不是为了纪念失败，而是为了让下一次训练有入口。
+零号机现在还不聪明。
+它会偏，会犹豫，会把水瓶推得很难看。
+但是它已经不再只是平板里的一段计划。
+它开始把轮子、摄像头、角度和急停一起带进现实。
+
+这也是具身智能最朴素的地方。
+身体不是智能的外壳，而是题目本身的一部分。
+只要进入现实，世界就会把所有“差不多”改成具体的误差：几厘米，几度，几毫秒，几次失败。
+
+P：接下来呢？
+
+広：让它先在一个小小的世界里多失败几次。
+
+P：仿真？
+
+広：嗯。再让它听懂一点人的话。
+
+P：世界模型和 VLA？
+
+広：下一章的目录。已经贴在地上了。
 
 \begin{thebibliography}{99}
-\bibitem{brooks1991} R. A. Brooks, ``Intelligence Without Representation,'' \emph{Artificial Intelligence}, vol. 47, no. 1--3, pp. 139--159, 1991.
-\bibitem{pfeifer2007} R. Pfeifer and J. Bongard, \emph{How the Body Shapes the Way We Think: A New View of Intelligence}. Cambridge, MA, USA: MIT Press, 2007.
-\bibitem{cangelosi2015} A. Cangelosi and M. Schlesinger, \emph{Developmental Robotics: From Babies to Robots}. Cambridge, MA, USA: MIT Press, 2015.
+\bibitem{thrun2005prob} S. Thrun, W. Burgard, and D. Fox, \emph{Probabilistic Robotics}. Cambridge, MA, USA: MIT Press, 2005.
 \bibitem{qin2018vinsmono} T. Qin, P. Li, and S. Shen, ``VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator,'' \emph{IEEE Transactions on Robotics}, vol. 34, no. 4, pp. 1004--1020, 2018.
 \bibitem{campos2021orbslam3} C. Campos, R. Elvira, J. J. Gomez Rodriguez, J. M. M. Montiel, and J. D. Tardos, ``ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM,'' \emph{IEEE Transactions on Robotics}, vol. 37, no. 6, pp. 1874--1890, 2021.
-\bibitem{engel2018dso} J. Engel, V. Koltun, and D. Cremers, ``Direct Sparse Odometry,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 40, no. 3, pp. 611--625, 2018.
-\bibitem{hess2016cartographer} W. Hess, D. Kohler, H. Rapp, and D. Andor, ``Real-Time Loop Closure in 2D LIDAR SLAM,'' in \emph{Proc. IEEE Int. Conf. on Robotics and Automation (ICRA)}, 2016, pp. 1271--1278.
-\bibitem{khatib1987} O. Khatib, ``A Unified Approach for Motion and Force Control of Robot Manipulators: The Operational Space Formulation,'' \emph{IEEE Journal on Robotics and Automation}, vol. 3, no. 1, pp. 43--53, 1987.
-\bibitem{hogan1985} N. Hogan, ``Impedance Control: An Approach to Manipulation. Part I---Theory,'' \emph{Journal of Dynamic Systems, Measurement, and Control}, vol. 107, no. 1, pp. 1--7, 1985.
-\bibitem{ratliff2009chomp} N. Ratliff, M. Zucker, J. A. Bagnell, and S. Srinivasa, ``CHOMP: Gradient Optimization Techniques for Efficient Motion Planning,'' in \emph{Proc. IEEE Int. Conf. on Robotics and Automation (ICRA)}, 2009, pp. 489--494.
-\bibitem{dicarlo2018mpc} J. Di Carlo, P. M. Wensing, B. Katz, G. Bledt, and S. Kim, ``Dynamic Locomotion in the MIT Cheetah 3 Through Convex Model-Predictive Control,'' in \emph{Proc. IEEE/RSJ Int. Conf. on Intelligent Robots and Systems (IROS)}, 2018, pp. 1--9.
-\bibitem{ahn2022saycan} M. Ahn et al., ``Do As I Can, Not As I Say: Grounding Language in Robotic Affordances,'' in \emph{Proc. Conference on Robot Learning (CoRL)}, 2022.
-\bibitem{driess2023palme} D. Driess et al., ``PaLM-E: An Embodied Multimodal Language Model,'' arXiv:2303.03378, 2023.
-\bibitem{brohan2022rt1} A. Brohan et al., ``RT-1: Robotics Transformer for Real-World Control at Scale,'' arXiv:2212.06817, 2022.
-\bibitem{brohan2023rt2} A. Brohan et al., ``RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control,'' in \emph{Proc. Conference on Robot Learning (CoRL)}, 2023.
-\bibitem{autort2024} A. Irpan et al., ``AutoRT: Embodied Foundation Models for Large Scale Orchestration of Robotic Agents,'' arXiv, 2024.
-\bibitem{openx2023} Open X-Embodiment Collaboration, ``Open X-Embodiment: Robotic Learning Datasets and RT-X Models,'' 2023. [Online]. Available: \href{https://robotics-transformer-x.github.io/}{project page}
-\bibitem{octo2024} Octo Model Team et al., ``Octo: An Open-Source Generalist Robot Policy,'' in \emph{Proc. Robotics: Science and Systems (RSS)}, 2024.
-\bibitem{openvla2024} M. J. Kim et al., ``OpenVLA: An Open-Source Vision-Language-Action Model,'' arXiv:2406.09246, 2024.
-\bibitem{pi02024} K. Black et al., ``$\pi_0$: A Vision-Language-Action Flow Model for General Robot Control,'' Physical Intelligence technical report, 2024. [Online]. Available: \href{https://www.physicalintelligence.company/download/pi0.pdf}{technical report}
-\bibitem{openpi2025} Physical Intelligence, ``Open Sourcing $\pi_0$,'' Feb. 4, 2025. [Online]. Available: \href{https://www.physicalintelligence.company/blog/openpi}{official blog}
-\bibitem{figure2025helix} Figure, ``Helix: A Vision-Language-Action Model for Generalist Humanoid Control,'' Feb. 20, 2025. [Online]. Available: \href{https://www.figure.ai/news/helix}{official page}
-\bibitem{figure2026helix02} Figure, ``Introducing Helix 02: Full-Body Autonomy,'' Jan. 27, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02}{official page}
-\bibitem{gemini2025} Google DeepMind, ``Gemini Robotics brings AI into the physical world,'' Mar. 12, 2025. [Online]. Available: \href{https://deepmind.google/blog/gemini-robotics-brings-ai-into-the-physical-world/}{official blog}
-\bibitem{geminiondevice2025} Google DeepMind, ``Gemini Robotics On-Device brings AI to local robotic devices,'' Jun. 24, 2025. [Online]. Available: \href{https://deepmind.google/discover/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/}{official blog}
-\bibitem{gr00t2025} NVIDIA, ``NVIDIA Isaac GR00T N1: An Open Foundation Model for Humanoid Robots,'' Mar. 17, 2025. [Online]. Available: \href{https://research.nvidia.com/publication/2025-03_nvidia-isaac-gr00t-n1-open-foundation-model-humanoid-robots}{research page}
-\bibitem{gr00t152025} NVIDIA, ``GR00T N1.5: An Improved Open Foundation Model for Generalist Humanoid Robots,'' Jun. 11, 2025. [Online]. Available: \href{https://research.nvidia.com/labs/gear/gr00t-n1_5/}{research page}
+\bibitem{fox1997dwa} D. Fox, W. Burgard, and S. Thrun, ``The Dynamic Window Approach to Collision Avoidance,'' \emph{IEEE Robotics \& Automation Magazine}, vol. 4, no. 1, pp. 23--33, 1997.
 \end{thebibliography}
