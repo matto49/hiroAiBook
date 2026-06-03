@@ -1,7 +1,11 @@
-% ==================== 章节5：初星学园，化身为人 ====================
+% ==================== 章节5：初星学园，换装以后 ====================
 
 % --- 章节标题页（竖排） ---
-\hirochapter{初星学园，化身为人 | 世界模型、VLA 与 sim2real}
+\hirochapter{初星学园，换装以后 | 世界模型、VLA 与 sim2real}
+
+% codex-note: 我对 ch04 批注的理解：ch05 后续改写时要少用“不是 A 而是 B / 所以……”这类答题腔，
+% 多让场景动作、实验现象和技术对象自己推进段落；前沿路线也要落到可校对的机制、公式和引用上，
+% 不能停在“某模型很强、某方向很热”的泛泛综述。
 
 % --- 小剧场对话 ---
 \section*{初星学园——4:30P.M. 服装间门口}
@@ -24,13 +28,9 @@ P：确认什么？
 
 広：如果换一件衣服就认不出我，它还不能叫理解我。
 
-P：所以这是视觉泛化测试？
+P：我懂了。视觉泛化测试。先说好，裙摆不能靠近轮子，零号机不能靠近你的脚。
 
-広：嗯。也是插画素材。
-
-P：你倒是很诚实。先说好，裙摆不能靠近轮子，零号机不能靠近你的脚。
-
-広：边界很明确。很亲切。
+広：嗯，边界很明确。很亲切，放心，我不会被机器人抢走的。
 
 P：我只是担心你被它撞到。
 
@@ -40,17 +40,17 @@ P：你上次也这么说。
 
 広：这次会让它在仿真里多笨几次，再回来。
 
-P：今天的主题是世界模型、VLA 和 sim2real？
+広：今天的主题是世界模型、VLA 和 sim2real。
 
-広：嗯。让小小的身体，先在小小的世界里练习。
+広：让小小的身体，先在小小的世界里练习。
 
 \clearpage
 
 % --- 论文正文（IEEE风格，单栏） ---
-\hiropapertitle{让零号机少笨一点：世界模型、VLA 与 sim2real}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园放学后代理计划}
+\hiropapertitle{让零号机少犯同一种错：世界模型、VLA 与 sim2real}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园放学后代理计划}
 
 \begin{abstract}
-本章承接上一章的失败地图，讨论如何让“小広试作机零号”从会移动、会停下，进一步变成能听懂一点任务、预演一点未来、少犯同一种错误的小机器人。我们从 Alice 服装带来的视觉泛化测试开始，介绍世界模型如何提供内部预演，VLA 如何把视觉、语言和动作接成动作块，sim2real 如何用仿真随机化缩小现实差距。随后以休息时间闲聊的方式梳理 2024--2026 年公开资料中值得注意的世界模型和 VLA 路线，并把它们全部落回一个问题：哪些想法能让这台低成本小车不那么笨拙。结尾处，零号机完成一次很慢、很歪、但真实发生的送水任务。
+本章承接上一章的失败地图，把“小広试作机零号”的问题从会移动、会停下，推到更麻烦的一层：在变化过的练习室里听任务、预演未来、把同一种错误少犯一点。世界模型部分从 Dyna、模型预测控制和潜在动力学讲到 Dreamer、V-JEPA 2 与可交互世界模型，并把黄色胶带的避障失败改写成内部 rollout 与代价函数。VLA 部分从 SayCan 的语言-可供性打分、RT-1 的机器人数据规模化、RT-2 的视觉-语言-动作接口，延伸到 OpenVLA、$\pi_0/\pi_{0.5}$、SmolVLA 和 Gemini Robotics，并把 Alice 服装测试与动作块过长的问题嵌入其中。sim2real 部分用 domain randomization 和真机回放把这些机制拉回低成本小车。结尾处，零号机完成一次很慢、很歪、但真实发生的送水任务。
 \end{abstract}
 \keywords{世界模型、VLA、sim2real、视觉泛化、具身智能}
 
@@ -66,9 +66,9 @@ P：我本来想把地板恢复原状。
 
 P：它自己还记不住。
 
-広：所以先替它贴在地上。
+広：先替它贴在地上。
 
-零号机现在的问题已经不只是“会不会动”。
+零号机的问题清单往上长了一层。
 它能沿着胶带走一段，也能在看见椅子后停下，还能用两关节小臂碰到水瓶。
 但是每次场景稍微变化，它就像第一次来初星学园。
 
@@ -76,33 +76,39 @@ P：它自己还记不住。
 \item 光照变化，胶带颜色在摄像头里变淡。
 \item 椅子位置变化，局部避障停在尴尬角落。
 \item 広换上 Alice 风格服装，视觉模型开始犹豫。
-\item 指令从“推水瓶”变成“把水送到広身边的安全胶带旁”，系统不知道先理解人，还是先找胶带。
+\item 指令从“推水瓶”变成“把水送到広身边的安全胶带旁”，任务图里同时出现人、胶带和安全距离。
 \end{itemize}
 
-于是本章的问题变成：
+这一章从这里开题：
 
 \begin{center}
-只会反应不够。它需要先预测一点，理解一点，再动一点。
+反应之后，还要预测。理解之后，还要落到动作。
 \end{center}
 
-这就是世界模型、VLA 和 sim2real 登场的位置。
-它们听起来像前沿论文里的大词，但在零号机这里，目标很小：不要每次都从同一种错误重新开始。
+世界模型、VLA 和 sim2real 就从这三段胶带里长出来。
+在论文里它们常常很大，在零号机身上只有一个小目标：同一种错误，下一次少犯一点。
 
 \section{Alice 测试：换衣服以后还认得出吗}
 
-服装间门口的测试先从一件很不严肃的事情开始。
-広换上 Alice 风格的衣服，站在蓝色胶带后面。
-Producer 给零号机的指令是：
+広：Alice 测试先记成一个视觉泛化题。
+
+P：测试样本是你自己？
+
+広：嗯。样本很脆弱，边界很清楚。
+
+本轮指令写成：
 
 \begin{center}
 找到 Alice 前方的蓝色安全胶带，把水送到胶带边，不要靠近人的脚。
 \end{center}
 
-如果系统只把“広”记成平时训练服的颜色、发型和站姿，它就会在这里出问题。
-这类问题不只是“识别失败”，更准确地说，是分布外泛化失败。
-训练时看到的外观分布太窄，一换衣服、一换灯光、一被服装架遮住半边，它就不知道同一个目标还在不在。
+広：这里有两个变量要分开。第一个是身份，第二个是外观。
 
-P：所以 Alice 不是角色扮演。
+训练时看到的外观分布如果太窄，模型会把“広”压缩成训练服颜色、发型和站姿的组合。
+Alice 服装、舞台灯光、服装架遮挡，都会把这组组合撕开。
+更精确地说，这是分布外泛化：同一个目标换了外观，系统还能不能把身份、位置和安全边界一起保留下来。
+
+P：Alice 原来是压力测试。
 
 広：是压力测试。
 
@@ -110,9 +116,9 @@ P：你把压力测试穿得太可爱了。
 
 広：这样失败的时候，画面会比较好看。
 
-在具身系统里，视觉理解不能只停在“图片里有一个人”。
-它要把身份、位置、任务目标和安全边界连起来。
-对零号机来说，正确理解不是“向広移动”，而是：
+広：具身系统的视觉理解，要落到地图和动作上。
+
+零号机这次要组装出的执行语义包括：
 
 \begin{itemize}[leftmargin=2em]
 \item 识别 Producer 指令里的目标对象：水瓶、蓝色胶带、Alice。
@@ -127,118 +133,270 @@ P：比如“送到我身边”。
 
 広：嗯。听起来温柔，执行起来可能撞人。
 
-\section{世界模型：给零号机一间脑内练习室}
+\section{世界模型：从 Dyna 到脑内练习室}
 
-\subsection{世界模型不等于漂亮地生成下一帧}
+\subsection{旧问题：边学边计划}
 
-世界模型并不是近几年突然出现的魔法词。
-它背后连接着模型化环境动力学、模型预测控制、模型式强化学习，以及深度学习时代的潜在状态预测\cite{ha2018worldmodels}。
-在本章里，我们把它压缩成一句实用定义：
+広：先把“世界模型”拆开看。
 
-\begin{center}
-世界模型是在机器人真正行动前，用内部状态预演“如果我这样动，接下来可能会怎样”的模型。
-\end{center}
+这个词在前沿论文里很新，根系却很早。
+Sutton 的 Dyna 架构已经把学习、规划和反应放进同一个循环：真实交互更新模型，模型生成模拟经验，模拟经验再训练策略\cite{sutton1991dyna}。
+Ha 与 Schmidhuber 的 ``World Models'' 后来把“学一个内部世界，再在里面练习”的图像带进深度学习语境\cite{ha2018worldmodels}。
 
-一个常见抽象可以写成
+P：零号机的版本会小很多。
+
+広：嗯。小到一次偏航。
+
+它在练习室里真的偏航一次，就把这次偏航写进日志。
+下一次进仿真练习室，同样的偏航可以发生几百次，代价只是一点计算时间。
+
+模型预测控制给了更像控制器的写法。
+给定当前状态 $x_t$、候选动作 $a_t$ 和环境动力学 $f$，先把轮子动作留在模型里，往前算几步：
 \begin{equation}
-z_t = e_\theta(o_t), \qquad
-\hat{z}_{t+1}=f_\theta(z_t,a_t),
-\end{equation}
-其中 $o_t$ 是当前观测，$z_t$ 是压缩后的内部状态，$a_t$ 是候选动作，$f_\theta$ 负责预测下一步潜在状态。
-如果需要把未来画回图像，还可以再加一个解码器，但对机器人来说，真正重要的不是“画得像不像”，而是这个状态能不能支持规划和避错。
-
-P：也就是先在脑内练习室走一遍。
-
-広：嗯。但是不能只幻想舞台灯光。要连椅子腿和地板摩擦也一起想。
-
-\subsection{三种用法：预演、补数据、学稳定表征}
-
-在零号机项目里，世界模型有三种最朴素的用途。
-
-第一，预演动作。
-给定当前状态和几条候选动作，系统可以在内部 rollout 几步：
-\begin{equation}
+\hat{x}_{t+1}=f(\hat{x}_t,a_t), \qquad
 a_{t:t+H-1}^{\ast}
 =
 \arg\min_{a_{t:t+H-1}}
-\sum_{k=t}^{t+H}
-C(\hat{z}_k,a_k).
+\sum_{k=t}^{t+H} C(\hat{x}_k,a_k).
 \end{equation}
-这里的 $C$ 可以表示离障碍物太近、离目标太远、转向太急等代价。
-零号机不需要真的撞一次椅子，才知道那条路线很糟。
+広：这里的 $C$ 是代价函数。
+离椅子太近、离胶带太远、转向太急、水瓶晃动太大，都可以写进去。
+黄色胶带上的失败就从“它又撞椅子了”，变成一条可以扣分、可以比较、可以优化的路线。
 
-第二，补失败样本。
-真实练习室里的测试时间很宝贵，広的体力也不是无限资源。
-仿真练习室可以生成很多小变化：灯光变暗、椅子偏移、胶带反光、Alice 的裙摆遮住一部分腿。
-这些变化不一定完美真实，但可以让模型别只适应一个干净场景。
+P：先在纸上走一遍。
 
-第三，学习稳定表征。
-同一个水瓶换个角度还是水瓶，同一条胶带在光照变化后仍然是胶带。
-世界模型如果能学到这种跨时间的一致性，零号机就不容易一转弯就把世界看丢。
-Meta 的 V-JEPA 2 这类工作强调预测抽象表征而非逐像素复原，并展示了用较少机器人视频进行规划的可能性\cite{vjepa22025ch5}。
-对零号机来说，这个启发很直接：不必把未来每个像素都画对，但要知道“下一步哪里会更危险”。
+広：嗯。纸也会受伤就更好了。
 
-\section{VLA：从听懂到出手}
+P：那叫仿真。
 
-VLA 是 Vision-Language-Action，也就是把视觉、语言和动作接到一起。
-如果用一个条件分布来概括，可以写成
+広：很亲切的纸。
+
+\subsection{从像素到潜在状态}
+
+広：刚才的 $x_t$ 还像手写状态。
+小车带上摄像头以后，它会变得很吵。
+
+摄像头看到光照、裙摆、胶带反光和椅子腿；轮速计给出带误差的位移；IMU 给出抖动。
+深度世界模型先把这些观测压到潜在状态里：
+\begin{equation}
+z_t = e_\theta(o_t), \qquad
+\hat{z}_{t+1}=f_\theta(z_t,a_t).
+\end{equation}
+PlaNet 用潜在动力学从像素中规划\cite{hafner2019planet}。
+Dreamer 进一步在潜在想象中学习行为\cite{hafner2019dreamer}，DreamerV3 把同一套世界模型方法推到更多不同任务上\cite{hafner2023dreamerv3}。
+MuZero 也给了一个重要提醒：模型只要学到足够支持搜索和价值估计的未来，完整世界重建可以退到次要位置\cite{schrittwieser2020muzero}。
+
+広：零号机执行时读取 $z$ 里的可规划信息。
+目标还在何处、哪条路线的代价升高、水瓶会不会滚出安全胶带，这些比“预测画面漂不漂亮”更重要。
+需要可视化时，可以给潜在状态再接一个解码器，把预测画回图像。
+执行时，轮子只看风险。
+
+P：脑内练习室先走一遍。
+
+広：嗯。舞台灯光也要和椅子腿、地板摩擦一起进入练习。
+
+\subsection{小实验：黄色胶带的路线预演}
+
+広：黄色胶带那条日志，可以写成第一个世界模型小实验。
+
+P：那一次它在局部避障里犹豫太久，停在椅子脚和桌边之间。
+
+広：嗯。现象是“停住了”，算法上是候选路线的代价没有被提前拉开。
+
+広：操作上，先把候选路线丢进世界模型，向前 rollout 八步。
+
+\begin{equation}
+C_t =
+\lambda_g d(\hat{p}_t,p_g)
++ \lambda_o \frac{1}{d(\hat{p}_t,O)+\epsilon}
++ \lambda_s \|a_t-a_{t-1}\|^2
++ \lambda_b b_t .
+\end{equation}
+
+広：$p_g$ 是蓝色安全胶带旁的目标点，$O$ 是椅子和桌腿，$b_t$ 是水瓶晃动风险。
+黄色胶带附近的路线在第二项里被扣分，红色胶带附近的路线在 $b_t$ 里被扣分。
+
+第一次内部预演后，零号机绕开椅子，多走了半圈。
+很慢，但没有把椅子脚当成终点。
+
+広：它在绕远。
+
+P：路线更保守。
+
+広：嗯。很像刚学舞步的人。脚在道歉。
+
+広：这次小实验也暴露出世界模型的边界。
+
+光照一变，蓝色胶带在相机里暗了一截，潜在状态里的目标置信度掉下去。
+世界模型只会沿着自己看见的状态预测；入口看错，后面的未来也会从错误入口展开。
+这条日志要留给后面的 sim2real。
+
+\subsection{从表征到可行动的未来}
+
+P：世界模型论文很多，零号机该读哪一类？
+
+広：先问用途。
+能减少下一次急停的，就可以借。
+
+这一条路线可以整理成几种“借法”：
+
+\begin{table}[htbp]
+\centering
+\caption{世界模型路线给零号机的借法}
+\label{tab:worldmodel-zero}
+\scriptsize
+\begin{tabular}{L{1.9cm} L{2.7cm} L{2.6cm}}
+\toprule
+路线 & 文献脉络 & 借给零号机的想法 \\
+\midrule
+Dyna / MPC & 学到模型，再用模型生成经验或预演控制序列\cite{sutton1991dyna} & 把真实失败写成可重复的内部练习 \\
+PlaNet / Dreamer & 在潜在状态里规划和学习行为\cite{hafner2019planet,hafner2019dreamer,hafner2023dreamerv3} & 让摄像头、里程计和任务状态压成可规划表征 \\
+MuZero & 学会支持搜索的模型，完整重建退到次要位置\cite{schrittwieser2020muzero} & 预测“对选择有用”的未来 \\
+V-JEPA 2 & 预测抽象视频表征，并展示少量机器人视频规划\cite{vjepa22025ch5} & 像素级未来可以粗糙，行动风险要清楚 \\
+Genie 2 / Cosmos & 可交互世界模型和物理 AI 世界模型平台\cite{genie22024ch5,cosmos2025ch5} & 给仿真变化、反事实场景和数据扩增提供方向 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+広：它需要的未来很小。
+
+P：小到几步以后会不会撞椅子。
+
+広：嗯。几步以后会不会让我想按急停。
+
+\section{VLA：从可供性到动作块}
+
+\subsection{先把语言落到技能}
+
+広：语言进入机器人时，先落到技能候选。
+
+SayCan\cite{ahn2022saycan} 把语言模型的任务分解能力和机器人技能的可供性打分接在一起。
+一句“把水送过来”，会先拆成若干技能候选，再检查当前环境里哪个技能真的能做。
+简化写法是：
+\begin{equation}
+\mathrm{score}(u_i)
+=
+p_{\mathrm{LM}}(u_i \mid q)\,
+p_{\mathrm{afford}}(u_i \mid o_t).
+\end{equation}
+$q$ 是 Producer 的指令，$u_i$ 是候选技能，例如“靠近桌边”“对准水瓶”“低速推一下”。
+
+広：左边看语言是否合适，右边看环境是否允许。
+两边都高，技能才有资格出手。
+
+Alice 测试正好落在这一步。
+“把水送到広身边”在语言里很自然，在练习室里很危险。
+
+P：那就把指令写硬一点。
+
+広：嗯。写成槽位。
+\begin{center}
+目标物：水瓶；目标区域：Alice 前方最近的蓝色胶带；安全距离：半米；禁区：人的脚边。
+\end{center}
+零号机第一次识别到了人形目标，也识别到了蓝色胶带。
+裙摆遮住腿部后，视觉模块把“広”拉向训练服时代的外观模板，路径指向错误站位标记。
+
+広：它认错了。
+
+P：认错什么？
+
+広：“我通常出现的样子”。
+
+広：修正要靠约束。
+
+视觉模块加入衣服以外的线索：位置、语音确认、人体区域、胶带关系和 Producer 的指令。
+VLA 接到的是一组能执行的任务约束。
+
+\subsection{从机器人数据到 VLA}
+
+P：后来的 VLA，就是直接让模型输出动作？
+
+広：一步一步来。
+
+RT-1 把大量真实机器人示例组织成 Transformer 策略，推动了“同一模型处理多任务机器人控制”的路线\cite{brohan2022rt1}。
+PaLM-E 把视觉、语言和具身输入接到大语言模型里，让机器人任务能在更大的多模态上下文中推理\cite{driess2023palme}。
+RT-2 进一步把网络和机器人数据一起用于视觉-语言-动作模型，让模型把观察和指令转成动作 token\cite{brohan2023rt2}。
+
+広：在本章里，VLA 的接口写成：
 \begin{equation}
 p_\theta(a_{t:t+K-1}\mid o_{1:t}, q, s_t),
 \end{equation}
-其中 $o_{1:t}$ 是历史观测，$q$ 是语言指令，$s_t$ 是状态或任务阶段，输出 $a_{t:t+K-1}$ 是接下来一小段动作。
+其中 $o_{1:t}$ 是历史观测，$q$ 是语言指令，$s_t$ 是定位、世界模型或任务阶段，输出 $a_{t:t+K-1}$ 是接下来一小段动作块。
+动作块可以是一段轮速，也可以是“移动到桌边、低速接触水瓶、停止观察”。
 
-这里最关键的是：输出不是一句解释，而是动作。
-它可以是一段轮速指令，也可以是移动到某个中间点，也可以是“先靠近桌边，再低速推水瓶”的动作块。
+P：VLA 的考卷在轮子和小臂上。
 
-P：所以 VLA 不是让机器人回答“我明白了”。
+広：嗯。说“我明白了”没有分数，别撞上去才有。
 
-広：嗯。是让它明白以后，不要撞上去。
+広：近年的公开路线，可以按接口往哪边扩来读。
+OpenVLA 给出开源 VLA 底座\cite{openvla2024ch5}；$\pi_0$ 和 $\pi_{0.5}$ 把动作流、跨机体数据和语义子任务结合起来\cite{pi02024ch5,pi052025ch5}；SmolVLA 强调小模型和消费级硬件\cite{smolvla2025ch5}；Gemini Robotics 系列把动作模型与具身推理能力分层讨论\cite{geminirobotics2026ch5}。
 
-单层大模型当然很诱人。
-可是机器人不是纯软件。
-高层可以慢慢推理“蓝色胶带在哪里”，低层却要很快处理“轮子快碰到椅子脚了”。
-所以在现实系统里，VLA 常常和安全层、局部规划器、低层控制一起工作。
-Google DeepMind 当前公开的 Gemini Robotics 页面也把 VLA 模型和偏具身推理的 Robotics-ER 区分开来：一个把视觉和指令转成动作，另一个更像高层推理与规划模型\cite{geminirobotics2026ch5}。
+\begin{table}[htbp]
+\centering
+\caption{VLA 路线给零号机的借法}
+\label{tab:vla-zero}
+\scriptsize
+\begin{tabular}{L{1.8cm} L{2.8cm} L{2.6cm}}
+\toprule
+路线 & 文献脉络 & 借给零号机的想法 \\
+\midrule
+SayCan & 语言计划乘以技能可供性\cite{ahn2022saycan} & 先选能做的技能，再谈听懂 \\
+RT-1 / RT-2 & 从多任务机器人数据到 VLA 动作 token\cite{brohan2022rt1,brohan2023rt2} & 用统一接口输出短动作块 \\
+PaLM-E & 多模态具身语言模型\cite{driess2023palme} & 把视觉、语言和状态放进同一上下文 \\
+OpenVLA & 开源 VLA 基座\cite{openvla2024ch5} & 研究接口可复用，安全层继续兜住动作 \\
+$\pi_0/\pi_{0.5}$ & 动作流模型与开放世界泛化\cite{pi02024ch5,pi052025ch5} & 长任务拆成语义子任务，再交给动作专家 \\
+SmolVLA / Gemini Robotics & 轻量 VLA 与具身推理分层\cite{smolvla2025ch5,geminirobotics2026ch5} & 低成本小车优先小模型、短动作、安全接管 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-这对零号机很重要。
-Producer 不会把“把水送到広那里”直接交给一个黑箱动作输出。
-他会把任务改写成：
+\subsection{小实验：动作块唱得太长}
 
-\begin{itemize}[leftmargin=2em]
-\item 目标点：蓝色安全胶带边。
-\item 禁区：人的脚附近、红色失败胶带附近。
-\item 最大速度：低速。
-\item 动作块长度：短。
-\item 失败条件：水瓶晃动过大、目标丢失、距离人太近。
-\end{itemize}
+広：第二次 VLA 测试，语义已经过关。
 
-広：你把任务写得很过分。
+系统正确理解了指令，也生成了一段看起来合理的动作块：靠近桌边、对准水瓶、推向蓝色胶带。
+问题出在 $K$ 太长。
+中途水瓶轻微滚动，局部避障和急停层还没来得及接管，末端已经继续往前推。
 
-P：这是安全需求。
+P：它明白了任务，但太急了。
 
-広：嗯。过分得很准确。
+広：像是唱到下一句之前，没有听见节拍乱了。
+
+広：修正策略有三条。
+第一，把动作块长度从长段改成短段，让系统更频繁地重新观测。
+第二，把“水瓶晃动”提前写成停止条件，插在动作块内部。
+第三，复杂任务拆成子任务：移动到胶带旁、确认目标、低速接触、轻推、停止。
+
+调整后，零号机放弃一口气完成全部动作。
+它开始一小段一小段地确认。
 
 \section{sim2real：练习室和仿真器之间的缝}
 
-\subsection{不是让仿真完全等于现实}
+\subsection{让现实落进分布}
 
-sim2real 的意思，是把仿真里学到的东西迁移到真实机器人上。
-听起来像是先在电脑里练习，再去真实场地考试。
-但真正困难的地方在于：仿真永远不可能完全等于现实。
+広：世界模型和 VLA 在纸面上接好以后，真实地板会重新出题。
 
-地板摩擦、轮径误差、相机曝光、延迟、桌腿材质、服装阴影，这些小差异都会让仿真里很漂亮的策略，一到真实练习室就开始发呆。
-所以常见思路不是把仿真做成一模一样，而是故意随机化，让模型见过很多“可能的现实”。
-这类 domain randomization 思路在 sim2real 研究里很经典\cite{tobin2017domain,peng2018dynamics}。
+零号机先在电脑里的练习室撞墙、偏航、停下，再回到真实地板上低速试。
+难点落在那条缝里：现实总会多出仿真没有细算的摩擦、曝光、延迟和影子。
 
-可以把仿真参数记成 $\phi$，例如摩擦、光照、噪声、延迟。
-训练时不固定一个仿真世界，而是从一个分布里采样：
+domain randomization 的做法很直接：把仿真参数记成 $\phi$，训练时从参数分布里采样，让模型见过很多“可能的现实”\cite{tobin2017domain}。
+动力学随机化进一步把质量、摩擦、阻尼、延迟等物理参数一起扰动，用来减少控制策略上真机时的落差\cite{peng2018dynamics}。
 \begin{equation}
 \phi \sim p(\phi), \qquad
-x_{t+1}=f_{\phi}(x_t,a_t).
+x_{t+1}=f_{\phi}(x_t,a_t),
 \end{equation}
-如果分布设计得足够好，真实练习室就不再是模型从没见过的单点，而是落在它经历过的许多变化之间。
+\begin{equation}
+\theta^\ast =
+\arg\min_{\theta}
+\mathbf{E}_{\phi \sim p(\phi)}
+\left[
+\sum_t \ell(x_t,a_t)
+\right].
+\end{equation}
+広：这里的 $\ell$ 写进偏航、碰撞距离、目标丢失、水瓶晃动和急停次数。
+分布覆盖得越稳，真实练习室越像训练中见过的一次抽样。
 
-P：也就是说，不是把仿真做得完美。
+P：目标是把练习范围扩到现实会落进去。
 
 広：嗯。是把仿真弄得很麻烦。
 
@@ -246,113 +404,10 @@ P：这句话很像你会喜欢的训练。
 
 広：现实本来就很麻烦。提前练习会比较亲切。
 
-\subsection{零号机的仿真循环}
+\subsection{小实验：仿真成功，真机偏航}
 
-Producer 给零号机搭的仿真练习室很简陋。
+広：仿真练习室先保持简陋。
 里面只有门、桌子、椅子、蓝色胶带、服装架和一个圆柱体水瓶。
-広看完以后，提出了四个追加条件：
-
-\begin{itemize}[leftmargin=2em]
-\item 地板摩擦随机一点。
-\item 灯光方向随机一点。
-\item 椅子位置随机一点。
-\item Alice 的裙摆遮挡也随机一点。
-\end{itemize}
-
-P：你这是在增加难度。
-
-広：不是。是在减少它回到现实以后受到的惊吓。
-
-零号机的训练循环可以写成六步：
-
-\begin{enumerate}[leftmargin=2em]
-\item 收集真机日志：偏航、急停、目标丢失、水瓶晃动。
-\item 搭建简化仿真：只保留与任务有关的门、桌、椅、胶带和水瓶。
-\item 随机化参数：摩擦、光照、目标位置、相机噪声、动作延迟。
-\item 在仿真里训练或筛选策略：让世界模型预演，让 VLA / 技能策略给出动作块。
-\item 真机低速回放：一次只放开一小段动作，保留急停。
-\item 把真机差异写回下一轮仿真。
-\end{enumerate}
-
-这不是一条通往万能机器人的捷径。
-它更像反复打磨一段很短的舞步：把错误缩小一点，把危险往外推一点，把成功变得可重复一点。
-
-\section{休息时间的前沿技术速览}
-
-零号机充电时，広坐在服装间外的长椅上。
-Producer 把几篇公开论文和官方页面翻出来，试图说明“外面的机器人世界已经发展到哪里了”。
-広听完以后，把问题改得更小：
-
-広：这些东西，哪个能让它少撞椅子？
-
-P：你这个筛选标准很严格。
-
-広：因为它还没有资格整理厨房。
-
-这半章不是公司新闻目录，而是把前沿路线压回零号机的问题。
-表 \ref{tab:frontier-zero} 用“能借来什么”来整理它们。
-
-\begin{table}[htbp]
-\centering
-\caption{前沿路线给零号机的启发}
-\label{tab:frontier-zero}
-\scriptsize
-\begin{tabular}{L{1.7cm} L{2.4cm} L{3.0cm}}
-\toprule
-路线 & 公开信号 & 借给零号机的想法 \\
-\midrule
-OpenVLA & 7B 开源 VLA，使用 970k 真实机器人示例训练\cite{openvla2024ch5} & 视觉、语言、动作可以统一成接口，但底层安全仍要保留 \\
-Gemini Robotics / ER & Robotics 1.5 偏 VLA，Robotics-ER 1.6 偏高层具身推理\cite{geminirobotics2026ch5} & 把“想任务”和“出动作”分开，别让一个模型包办全部节拍 \\
-$\pi_{0.5}$ & 用多机器人、多任务和语义子任务增强泛化\cite{pi052025ch5} & 长任务可以拆成文字子任务，再交给动作专家 \\
-SmolVLA & 450M 开源小 VLA，强调消费级硬件可运行\cite{smolvla2025ch5} & 小模型和异步推理对低成本小车很有启发 \\
-V-JEPA 2 & 预测潜在表征，并用少量机器人视频做规划\cite{vjepa22025ch5} & 不必追逐像素级未来，先学会预测可行动的危险 \\
-Genie 2 / Cosmos & 可交互世界模型与物理 AI 世界模型平台\cite{genie22024ch5,cosmos2025ch5} & 生成更多仿真变化和反事实场景，补真实数据不够的问题 \\
-Helix 02 & 人形全身控制的公开路线\cite{helix022026ch5} & 不能照抄人形，但能学习多时间尺度分工 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-P：这样看，前沿不是一个方向。
-
-広：嗯。有的负责想，有的负责动，有的负责在便宜硬件上活下来。
-
-P：你最喜欢哪个？
-
-広：能让它安全送水的。
-
-P：很现实。
-
-広：身体进入现实以后，浪漫要排队。
-
-\section{三轮优化实验}
-
-\subsection{第一轮：Alice 服装导致目标犹豫}
-
-第一次实验，零号机识别到了人形目标，也识别到了蓝色胶带。
-可是它没有把 Alice 和平时的広稳定对应起来。
-画面里裙摆遮住了腿部，服装颜色也改变了原来的外观特征。
-系统一度把“把水送到広身边”理解成“向最像平时広的位置移动”，结果路径指向了错误的站位标记。
-
-Producer 立刻停止测试。
-広低头看了看裙摆，很平静。
-
-広：它不是认错我。
-
-P：那是什么？
-
-広：它认错了“我通常出现的样子”。
-
-修正策略是把目标绑定得更具体。
-任务不再是模糊的“送到広身边”，而是：
-
-\begin{center}
-找到 Alice 前方最近的蓝色胶带，把水送到胶带边，保持半米安全距离。
-\end{center}
-
-同时，视觉模块不只依赖衣服颜色，而结合位置、语音确认、人体区域、胶带关系和 Producer 的指令。
-这不是让零号机真正“理解広”，但至少能防止它把衣服当成本体。
-
-\subsection{第二轮：仿真成功，真机偏航}
 
 第二轮在仿真里很漂亮。
 零号机绕开椅子，走到桌边，动作平稳得像广告视频。
@@ -369,33 +424,43 @@ P：现实地板很严格。
 
 広：嗯。很好。
 
-修正策略是增加随机化。
-仿真不再只调椅子位置，也随机轮径、摩擦、相机曝光、动作延迟和观测噪声。
+広：这轮要随机化六类参数：
+\begin{itemize}[leftmargin=2em]
+\item 左右轮半径和轮速比例。
+\item 地板摩擦和胶带边缘阻力。
+\item 相机曝光、白平衡和运动模糊。
+\item 椅子位置、桌腿反光和服装架遮挡。
+\item VLA 动作块延迟和控制周期抖动。
+\item Alice 的裙摆遮挡范围。
+\end{itemize}
+
 真机部署时，速度进一步降低，轨迹跟踪的闭环频率提高。
-这让零号机变慢了，但也让它不那么自信地犯错。
+零号机变慢，也更频繁地停下来校正。
 
-\subsection{第三轮：动作块太长}
+\subsection{零号机的回流循环}
 
-第三轮的问题来自 VLA。
-系统正确理解了指令，也生成了一段看起来合理的动作块：靠近桌边、对准水瓶、推向蓝色胶带。
-可是动作块太长。
-中途水瓶轻微滚动，局部避障和急停层还没来得及接管，末端已经继续往前推。
+広：到这里，三件事接起来。
+世界模型负责预演，VLA 负责短动作块，sim2real 负责把失败送回仿真。
 
-P：它明白了任务，但太急了。
+零号机的训练循环写成六步：
 
-広：像是唱到下一句之前，没有听见节拍乱了。
+\begin{enumerate}[leftmargin=2em]
+\item 收集真机日志：偏航、急停、目标丢失、水瓶晃动。
+\item 搭建简化仿真：只保留与任务有关的门、桌、椅、胶带、服装架和水瓶。
+\item 随机化参数：摩擦、光照、目标位置、相机噪声、动作延迟。
+\item 在仿真里筛选策略：让世界模型预演，让 VLA / 技能策略给出短动作块。
+\item 真机低速回放：一次只放开一小段动作，保留急停。
+\item 把真机差异写回下一轮仿真。
+\end{enumerate}
 
-P：那就缩短动作块。
+広：这条循环只打磨一段很短的舞步。
+把错误缩小一点，把危险往外推一点，把成功变得可重复一点。
 
-広：嗯。让它更频繁地听世界说话。
+広：它还不会跳舞。
 
-修正策略有三条。
-第一，缩短动作块长度，让系统更频繁地重新观测。
-第二，把“水瓶晃动”写成停止条件，而不是等整段动作结束后再评价。
-第三，复杂任务拆成子任务：移动到胶带旁、确认目标、低速接触、轻推、停止。
+P：现在只是把脚放对。
 
-这样以后，零号机不再试图一口气完成全部动作。
-它开始像一个很谨慎的新手，一小段一小段地确认。
+広：嗯。放对一次，也很好。
 
 \section{已经不是零}
 
@@ -437,15 +502,24 @@ P：然后呢？
 広：但是，已经不是零了。
 
 \begin{thebibliography}{99}
+\bibitem{sutton1991dyna} R. S. Sutton, ``Dyna, an Integrated Architecture for Learning, Planning, and Reacting,'' ACM SIGART Bulletin, vol. 2, no. 4, pp. 160--163, 1991.
 \bibitem{ha2018worldmodels} D. Ha and J. Schmidhuber, ``World Models,'' arXiv:1803.10122, 2018.
+\bibitem{hafner2019planet} D. Hafner et al., ``Learning Latent Dynamics for Planning from Pixels,'' in Proc. ICML, 2019; arXiv:1811.04551.
+\bibitem{hafner2019dreamer} D. Hafner et al., ``Dream to Control: Learning Behaviors by Latent Imagination,'' in Proc. ICLR, 2020; arXiv:1912.01603.
+\bibitem{hafner2023dreamerv3} D. Hafner et al., ``Mastering Diverse Domains through World Models,'' arXiv:2301.04104, 2023.
+\bibitem{schrittwieser2020muzero} J. Schrittwieser et al., ``Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model,'' Nature, vol. 588, pp. 604--609, 2020.
 \bibitem{vjepa22025ch5} Meta AI, ``V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning,'' 2025. [Online]. Available: \href{https://ai.meta.com/research/publications/v-jepa-2-self-supervised-video-models-enable-understanding-prediction-and-planning/}{research page}
+\bibitem{ahn2022saycan} M. Ahn et al., ``Do As I Can, Not As I Say: Grounding Language in Robotic Affordances,'' arXiv:2204.01691, 2022.
+\bibitem{brohan2022rt1} A. Brohan et al., ``RT-1: Robotics Transformer for Real-World Control at Scale,'' arXiv:2212.06817, 2022.
+\bibitem{driess2023palme} D. Driess et al., ``PaLM-E: An Embodied Multimodal Language Model,'' arXiv:2303.03378, 2023.
+\bibitem{brohan2023rt2} A. Brohan et al., ``RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control,'' arXiv:2307.15818, 2023.
 \bibitem{geminirobotics2026ch5} Google DeepMind, ``Gemini Robotics,'' accessed May 27, 2026. [Online]. Available: \href{https://deepmind.google/models/gemini-robotics/}{model page}
 \bibitem{tobin2017domain} J. Tobin et al., ``Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World,'' arXiv:1703.06907, 2017.
 \bibitem{peng2018dynamics} X. B. Peng et al., ``Sim-to-Real Transfer of Robotic Control with Dynamics Randomization,'' arXiv:1710.06537, 2018.
 \bibitem{openvla2024ch5} M. J. Kim et al., ``OpenVLA: An Open-Source Vision-Language-Action Model,'' arXiv:2406.09246, 2024.
+\bibitem{pi02024ch5} Physical Intelligence et al., ``$\pi_0$: A Vision-Language-Action Flow Model for General Robot Control,'' arXiv:2410.24164, 2024.
 \bibitem{pi052025ch5} Physical Intelligence et al., ``$\pi_{0.5}$: A Vision-Language-Action Model with Open-World Generalization,'' arXiv:2504.16054, 2025.
 \bibitem{smolvla2025ch5} Hugging Face, ``SmolVLA: Efficient Vision-Language-Action Model trained on Lerobot Community Data,'' Jun. 3, 2025. [Online]. Available: \href{https://huggingface.co/blog/smolvla}{official blog}
 \bibitem{genie22024ch5} Google DeepMind, ``Genie 2: A large-scale foundation world model,'' Dec. 4, 2024. [Online]. Available: \href{https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model/}{official blog}
 \bibitem{cosmos2025ch5} NVIDIA, ``NVIDIA Launches Cosmos World Foundation Model Platform to Accelerate Physical AI Development,'' Jan. 6, 2025. [Online]. Available: \href{https://nvidianews.nvidia.com/news/nvidia-launches-cosmos-world-foundation-model-platform-to-accelerate-physical-ai-development}{official newsroom}
-\bibitem{helix022026ch5} Figure, ``Introducing Helix 02: Full-Body Autonomy,'' Jan. 27, 2026. [Online]. Available: \href{https://www.figure.ai/news/helix-02}{official page}
 \end{thebibliography}
