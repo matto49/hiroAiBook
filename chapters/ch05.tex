@@ -12,6 +12,8 @@
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
+\skitillustration{figures/skits/ch05-alice-test.png}
+
 P：筱澤広，你这身 Alice 风格的衣服……是演出服确认，还是新的危险计划？
 
 広：两边都是。
@@ -50,7 +52,7 @@ P：你上次也这么说。
 \hiropapertitle{让零号机少犯同一种错：世界模型、VLA 与 sim2real}{広\textsuperscript{1}，Producer\textsuperscript{通讯}}{\textsuperscript{1}初星学园偶像学部\quad \textsuperscript{通讯}初星学园放学后代理计划}
 
 \begin{abstract}
-本章承接上一章的失败地图，把“小広试作机零号”的问题从会移动、会停下，推到更麻烦的一层：在变化过的练习室里听任务、预演未来、把同一种错误少犯一点。世界模型部分从 Dyna、模型预测控制和潜在动力学讲到 Dreamer、V-JEPA 2 与可交互世界模型，并把黄色胶带的避障失败改写成内部 rollout 与代价函数。VLA 部分从 SayCan 的语言-可供性打分、RT-1 的机器人数据规模化、RT-2 的视觉-语言-动作接口，延伸到 OpenVLA、$\pi_0/\pi_{0.5}$、SmolVLA 和 Gemini Robotics，并把 Alice 服装测试与动作块过长的问题嵌入其中。sim2real 部分用 domain randomization 和真机回放把这些机制拉回低成本小车。结尾处，零号机完成一次很慢、很歪、但真实发生的送水任务。
+本章承接上一章的失败地图，把“小広试作机零号”的问题从会移动、会停下，推到更麻烦的一层：在变化过的练习室里听任务、预演未来、把同一种错误少犯一点。世界模型部分从 Dyna、模型预测控制和潜在动力学讲到 Dreamer、V-JEPA 2 与可交互世界模型，并把黄色胶带的避障失败改写成内部 rollout 与代价函数。VLA 部分从 SayCan 的语言-可供性打分、RT-1 的机器人数据规模化、RT-2 的视觉-语言-动作接口，延伸到 OpenVLA、$\pi_0/\pi_{0.5}$、SmolVLA 和 Gemini Robotics，并把 Alice 服装测试与动作块过长的问题嵌入其中。sim2real 部分用 domain randomization 和真机回放把这些机制拉回低成本小车。结尾处，零号机完成一次真实发生的送水任务。
 \end{abstract}
 \keywords{世界模型、VLA、sim2real、视觉泛化、具身智能}
 
@@ -86,7 +88,7 @@ P：它自己还记不住。
 \end{center}
 
 世界模型、VLA 和 sim2real 就从这三段胶带里长出来。
-在论文里它们常常很大，在零号机身上只有一个小目标：同一种错误，下一次少犯一点。
+在论文里它们一向是宽泛的概念，不过聚焦在零号机身上我们简化成一个小目标：同一种错误，下一次少犯一点。
 
 \section{Alice 测试：换衣服以后还认得出吗}
 
@@ -140,6 +142,7 @@ P：比如“送到我身边”。
 広：先把“世界模型”拆开看。
 
 这个词在前沿论文里很新，根系却很早。
+相比一开始的视频生成模型来说，世界模型更像是一个内部的模拟器，进行推理-交互-预测的循环。
 Sutton 的 Dyna 架构已经把学习、规划和反应放进同一个循环：真实交互更新模型，模型生成模拟经验，模拟经验再训练策略\cite{sutton1991dyna}。
 Ha 与 Schmidhuber 的 ``World Models'' 后来把“学一个内部世界，再在里面练习”的图像带进深度学习语境\cite{ha2018worldmodels}。
 

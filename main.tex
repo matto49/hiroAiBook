@@ -1,3 +1,5 @@
+% !TeX program = xelatex
+% !TeX encoding = UTF-8
 \documentclass[a5paper,10pt,twoside]{book}
 
 % ==================== 宏包 ====================
@@ -25,10 +27,11 @@
 % 超链接
 \hypersetup{
     colorlinks=true,
-    linkcolor=accent,
+    linkcolor=black,
     urlcolor=accent,
-    citecolor=accent,
+    citecolor=black,
 }
+\setcounter{tocdepth}{1}
 
 % A5 小册子正文密度：book 类最小稳定选项是 10pt，这里再收紧实际正文字号。
 \makeatletter
@@ -92,6 +95,44 @@
 \makeatother
 
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% 目录页 Logo 与章节小剧场插图
+\makeatletter
+\newcommand{\hiroclasslogo}{%
+  \begin{tikzpicture}
+    \node[
+      draw=black,
+      line width=0.6pt,
+      inner xsep=1.2em,
+      inner ysep=0.65em,
+      font=\bfseries\Large
+    ] {HIRO AI CLASS};
+    \draw[line width=0.4pt] (-3.2,-0.62) -- (3.2,-0.62);
+  \end{tikzpicture}%
+}
+
+\newcommand{\hirotoc}{%
+  \clearpage%
+  \thispagestyle{plain}%
+  \begin{center}%
+    \vspace*{0.8cm}%
+    \hiroclasslogo%
+    \vspace{1.1cm}%
+
+    {\Large\bfseries\contentsname\par}%
+  \end{center}%
+  \vspace{0.7cm}%
+  \@starttoc{toc}%
+  \clearpage%
+}
+\makeatother
+
+\newcommand{\skitillustration}[1]{%
+  \begin{center}%
+    \includegraphics[width=0.86\textwidth]{#1}%
+  \end{center}%
+  \vspace{0.4em}%
+}
 
 % 筱澤広小课堂章节标题页（竖排居中，单独占一整页）
 % 用法: \hirochapter{副标题，如“大语言模型的前世今生”}
@@ -173,13 +214,13 @@
 {\thispagestyle{empty}%
 \begin{tikzpicture}[remember picture,overlay]
   \node[inner sep=0pt] at (current page.center)
-    {\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{figures/cover_test.jpg}};
+    {\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{figures/hiroAIbook.png}};
 \end{tikzpicture}}
 \clearpage
 
 % --- 前言 ---
 \frontmatter
-\tableofcontents
+\hirotoc
 \input{chapters/frontmatter}
 
 % --- 正文 ---
