@@ -1,902 +1,770 @@
-% ==================== 章节2：大语言模型的前世今生 ====================
+% ==================== 章节2：从 GPT-2 到 Kimi K3 ====================
 
-% --- 章节标题页（竖排） ---
-\hirochapter{大语言模型的前世今生}
+\hirochapter{从 GPT-2 到 Kimi K3}
 
-% --- 小剧场对话 ---
+% Compact vector diagrams for the A5 page.
+\tikzset{
+  chflow/.style={->,thick,draw=primary},
+  chdash/.style={->,thick,dashed,draw=accent},
+  chbox/.style={draw=primary,thick,rounded corners=2pt,align=center,
+    minimum height=0.58cm,font=\scriptsize},
+  chlabel/.style={font=\scriptsize\bfseries,text=primary},
+  chnote/.style={font=\tiny,text=primary,align=center}
+}
+
 \section*{小剧场}
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
-\skitillustration{figures/skits/ch02-naming-meeting.png}
-
-放学后的空教室里，黑板被広写满了代号。
-
-Producer 推门进来时，第一眼看见的是“広试作体零号”，第二眼看见的是“小広候补 alpha”，第三眼看见的是一串已经开始像兵器开发计划的缩写。
-
-P：我只是来听大语言模型补课的。
-
-広：嗯。所以先开命名会议。
-
-P：东西还没做出来。
-
-広：名字会改变看待失败的方式。
-
-P：这句话听起来很有道理，但我还是觉得你想逃课。
-
-広摇头，把粉笔递给他。
-
-広：没有逃。命名也是需求的一部分。
-
-P：那“小広”不行吗？
-
-広：太像完成品。
-
-P：完成品不好？
-
-広：会让人误会它应该像我。可是我们现在只知道，它一定会失败。
-
-她在“小広”旁边轻轻画了一个括号，写下：
-
-\begin{center}
-失败记录先开始
-\end{center}
-
-P：那“広试作体零号”呢？
-
-広：太正式。普罗丢色桑会害怕预算。
-
-P：我已经在害怕了。
-
-広看向黑板，像在观察一排还没有出生的错误答案。
-
-広：还没长出来的东西，名字可以慢一点。
-
-P：那今天先讲什么？
-
-広擦掉最夸张的几个代号，只留下白板中央一行很小的字：
+放学后的活动室里，千奈正对着广的电脑输入文字。
 
 \begin{quote}
-给定前面的文字，预测后面会出现什么。
+\textbf{千奈：}这周末，如果我们三个人一起出去，花海同学想去哪里呢？
+
+\textbf{AI 佑芽：}游乐园！
+
+\textbf{千奈：}很不错呢。坐电车过去的话——
+
+\textbf{AI 佑芽：}跑过去！
+
+\textbf{千奈：}为什么要跑过去呢？
+
+\textbf{AI 佑芽：}因为这样从出发的时候就已经在玩了！早上跑步，中午去游乐园，晚上再一起吃饭团。一天可以做三件开心的事！
 \end{quote}
 
-P：只是这样？
-
-広：只是这样。所以很有趣。
-
-她把“预测”两个字圈起来。
-
-広：如果预测得很差，就是胡言乱语。如果预测得好一点，就是自动补全。如果预测得非常好，就会像是在回答问题、写文章、解释代码。
-
-P：那它是真的理解了吗？
-
-広扶住白板边缘，确认自己还站得稳。
-
-広：这个问题太快了。请再准确一点。
-
-她在左边写下“规则”，中间写下“统计”，右边写下“规模”。
-
-広：先看它怎么出生。做不到。再预测一次。
-
-她轻轻笑了一下。
-
-広：这里就是今天的课题。
-
-\clearpage
-
-% --- 课堂讲义正文（IEEE风格，单栏） ---
-\hiropapertitle{大语言模型的前世今生}{広}{初星学园}
-
-\begin{abstract}
-大语言模型的核心训练目标可以被概括为：给定上下文，预测下一个 token。这个目标很小，却在一次次撞到语言的边界之后，被迫长出新的结构：规则写不完真实语言，统计模型看不远，循环记忆训练太慢，预训练模型会续写却不一定会帮忙，聊天助手会帮忙却不一定可靠，能调用工具以后又必须面对权限、审计与责任。这堂“筱澤広小课堂”沿着这条问题链，结合代表性论文、公开产品节点、少量公式与原创示意图，说明大语言模型如何从“会接话”发展到“能协作”，并讨论它的能力边界、幻觉风险、系统可靠性与 agent 化趋势。
-\end{abstract}
-
-\keywords{大语言模型；Transformer；预训练；指令微调；RLHF；RAG；推理模型；AI agent}
-
-\section{太小的起点：预测下一个 token}
-
-如果只看结果，大语言模型很像突然出现的东西。
-
-昨天我们还在搜索框里输入关键词，今天就可以对一个聊天窗口说：“帮我解释这段代码”“把会议纪要整理成待办”“用更温柔的语气改写这封邮件”。它会回答，会追问，会犯错，也会在某些时刻显得异常聪明。
-
-于是问题来了：它到底是什么？
-
-最短的答案是：大语言模型是一种被大规模训练过的概率模型。它阅读上下文，然后预测下一个 token。所谓 token，可以先粗略理解成文字被切成的小片段。一个汉字、一个英文词、一段词根、一个标点，都可能成为 token。
-
-这听起来像文字接龙。可是，文字接龙接到极高水平时，会碰到很多我们原本以为属于“理解”的事情。要接好一句法律解释，它要知道术语关系；要接好一段代码，它要知道语法和运行结果；要接好一封道歉邮件，它要知道语气、责任和人际边界。
-
-所以，广没有急着判断它有没有“真正理解”。她先把问题收窄：
+千奈的手停在键盘上。她看了一眼坐在旁边的广，又继续问。
 
 \begin{quote}
-为什么预测下一个 token 这件事，可以一路长成今天的大语言模型？
+\textbf{千奈：}……的确很像花海同学会制定的计划呢。可是，筱泽同学和我，大概还没有走到游乐园就动不了了。
+
+\textbf{AI 佑芽：}没关系！到时候我背着千奈酱，再抱着广酱继续跑！
+
+\textbf{千奈：}两个人一起吗？
+
+\textbf{AI 佑芽：}还没有试过，所以正好可以试试看！
 \end{quote}
 
-这不是一条平滑的直线。更像一串很小的失败：规则覆盖不了，于是需要统计；统计看不远，于是需要表示和记忆；记忆会累、训练会慢，于是需要注意力；模型会续写，却不一定听题；模型会听题，却不一定说真话；模型能调用工具以后，又必须被边界约束。
+“广同学，千奈同学，你们在看什么？”
 
-也就是说，这堂课不是把技术名词排成年表。白板上只留下一个问题：
+真正的佑芽从门口探进头来。千奈把屏幕转向她。
 
-\begin{quote}
-每一代方法解决了什么，又把下一个问题暴露在哪里？
-\end{quote}
+“我正在和佑芽同学商量周末去哪里玩。”
+
+“可是我刚刚才过来啊？”佑芽飞快地读完聊天记录，“……跑去游乐园，听起来很不错！”
+
+然后，她终于看见窗口上方的说明：\textit{请扮演花海佑芽，与仓本千奈聊天。}
+
+佑芽又从头读了一遍。这次比刚才慢。
+
+“是 AI 酱在扮演我？”
+
+“嗯。”广回答。
+
+“AI 酱刚入学的时候，明明还会把美铃同学和毛球弄混，还说‘毛球是孤高的狼，从不贪嘴’……”佑芽抬起头，“怎么现在已经这么聪明了？”
+
+千奈也看向广。
+
+她们先猜了几种答案。也许是 AI 读过的资料更多了，也许是训练它的电脑更快了，也许模型变大了，也许人类终于学会了怎样教它说话。
+
+广没有否定任何一种。
+
+“都有关系。要全部说明，会变成很长的课。”
+
+她打开两个新的页面。
+
+“所以，先只看模型本身变成了什么样。一个是 2019 年公开的 GPT-2。另一个是 2026 年公开权重的 Kimi K3。”
+
+“从 GPT-2 到 Kimi K3，哪些基本结构还在，哪些地方已经换了做法……我想从这里开始。”
+
+\section{GPT-2：作为比较的起点}
+
+GPT-2 不是现代语言模型的起点，也不能代表 2019 年的一切。之所以从它开始，是因为它已经具有今天仍然熟悉的 decoder-only Transformer 外形，同时又足够简洁，适合拿来观察。\cite{waterloo-worklog,gpt2}
+
+文字先被切成 token。每个 token 得到一个向量，再加上位置向量。之后，表示依次穿过 Transformer block；最后的 LayerNorm 和语言模型头把隐藏状态投影到词表，得到每个候选 token 的 logits。
+
+\begin{lstlisting}[language=Python,caption={GPT-2 主干前向传播}]
+tok_emb = self.transformer.wte(idx)       # (B, T, C)
+pos_emb = self.transformer.wpe(pos)       # (T, C)
+x = self.transformer.drop(tok_emb + pos_emb)
+for block in self.transformer.h:
+    x = block(x)
+x = self.transformer.ln_f(x)
+logits = self.lm_head(x)
+return logits
+\end{lstlisting}
+
+一个 block 里有两次熟悉的动作：先做因果自注意力，再做 MLP。两者都采用 pre-norm，并通过残差连接把新结果加回原表示。
+
+\begin{lstlisting}[language=Python,caption={带注意力与 MLP 的 Transformer block}]
+class Block(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.ln_1 = LayerNorm(config.n_embd)
+        self.attn = CausalSelfAttention(config)
+        self.ln_2 = LayerNorm(config.n_embd)
+        self.mlp = MLP(config)
+
+    def forward(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+\end{lstlisting}
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2.8cm] (ctx) at (0,0) {上下文\\今天的课题是};
-  \node[draw, rounded corners, align=center, text width=2.8cm] (model) at (4,0) {语言模型\\计算概率分布};
-  \node[draw, rounded corners, align=center, text width=2.8cm] (next) at (8,0) {下一个 token\\``大''、``AI''、``...''};
-  \draw[->] (ctx) -- (model);
-  \draw[->] (model) -- (next);
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >=Latex,
+  flow/.style={->,thick,draw=primary},
+  box/.style={draw=primary,thick,rounded corners=2pt,
+    align=center,minimum height=0.58cm},
+  main/.style={box,minimum width=3.35cm},
+  head/.style={box,minimum width=1.28cm},
+  note/.style={font=\scriptsize\bfseries,text=primary}
+]
+% GPT-2 backbone
+\node[note] (lefttitle) at (0,3.15) {GPT-2 主干};
+\node[main,fill=codebg] (input) at (0,2.55) {token 表示 + 位置表示};
+\node[main,fill=yellow!25] (ln1) at (0,1.70) {LayerNorm};
+\node[main,fill=orange!25] (mha) at (0,0.85) {多头因果自注意力};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (add1) at (0,0.10) {$+$};
+\node[main,fill=yellow!25] (ln2) at (0,-0.65) {LayerNorm};
+\node[main,fill=blue!20] (mlp) at (0,-1.50) {MLP};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (add2) at (0,-2.25) {$+$};
+\node[main,fill=green!20] (vocab) at (0,-3.05) {LayerNorm $\rightarrow$ 词表投影};
+
+\draw[flow] (input) -- (ln1);
+\draw[flow] (ln1) -- (mha);
+\draw[flow] (mha) -- (add1);
+\draw[flow] (add1) -- (ln2);
+\draw[flow] (ln2) -- (mlp);
+\draw[flow] (mlp) -- (add2);
+\draw[flow] (add2) -- (vocab);
+\draw[flow,rounded corners=4pt] (input.west) -- ++(-0.34,0) |- (add1.west);
+\draw[flow,rounded corners=4pt] (add1.west) -- ++(-0.52,0) |- (add2.west);
+\node[note,anchor=west] at (1.82,-1.08) {$\times 12$};
+
+% One attention module, separated from the tall backbone.
+\node[note] (righttitle) at (5.05,3.15) {一次多头注意力};
+\node[head,fill=codebg] (q) at (3.45,2.30) {$Q$ 投影};
+\node[head,fill=codebg] (k) at (5.05,2.30) {$K$ 投影};
+\node[head,fill=codebg] (v) at (6.65,2.30) {$V$ 投影};
+\node[box,fill=red!10,minimum width=4.80cm,minimum height=0.78cm]
+  (attn) at (5.05,1.15) {缩放点积注意力\\因果掩码 $+$ Softmax};
+\node[box,fill=orange!18,minimum width=3.70cm]
+  (heads) at (5.05,0.05) {并行计算多个 head};
+\node[box,fill=codebg,minimum width=3.70cm]
+  (concat) at (5.05,-1.00) {拼接所有 head};
+\node[box,fill=green!18,minimum width=3.70cm]
+  (oproj) at (5.05,-2.05) {输出投影 $W_O$};
+
+\draw[flow] (q) -- (attn);
+\draw[flow] (k) -- (attn);
+\draw[flow] (v) -- (attn);
+\draw[flow] (attn) -- (heads);
+\draw[flow] (heads) -- (concat);
+\draw[flow] (concat) -- (oproj);
+\draw[->,thick,dashed,draw=accent]
+  (mha.east) to[out=5,in=180] node[above,font=\tiny,text=primary]{展开} (q.west);
 \end{tikzpicture}
-\caption{语言模型的最小直觉：读上下文，预测下一个 token。}
+\caption{GPT-2 主干与多头注意力展开。}
+\label{fig:ch02-gpt2-backbone}
 \end{figure}
 
-这张图就是课堂的起点。后面的复杂技术，都会回到它身上：怎样表示上下文，怎样计算概率，怎样训练参数，怎样让模型更听人话，怎样让它查资料、用工具、减少胡编。
-
-不过，“预测”这个词本身也容易让人误会。它不是简单地从词典里挑一个最常见的词，也不是像搜索引擎那样把某个网页片段搬出来。更接近的说法是：模型把前文压缩成一组数值表示，再在整个词表上计算一个概率分布。这个分布里，某些 token 的概率高，某些 token 的概率低。生成时，模型根据这个分布选择一个 token，把它接到上下文后面，再重复下一轮。
-
-Producer 举手：“token 是字吗？还是词？”
-
-“都可能。”广说，“也可能是半个词、一个标点，或者一段常见字符。”
-
-tokenizer 会先把原始文本切成模型词表里的小单位。中文里，一个 token 有时像一个字，有时像一个词；英文里，一个 token 可能是完整单词，也可能是词根或后缀。模型真正处理的不是纸面上的“句子”，而是一串 token 编号。编号查表变成向量，向量经过很多层计算，最后再变成下一个 token 的概率。
-
-她在“切分”下面画了一条线。
-
-“第一步不是理解。”
-
-“第一步是把文字变成机器能计算的颗粒。”
-
-所以，一次回答其实是一串很多小决定。每个 token 都只是一步，几百上千步连起来，才变成一段解释、一封邮件或一段代码。也正因为它是一步一步生成的，前面一步的小偏差会影响后面的路线。模型看起来是在“一口气回答”，内部却更像在一格一格铺路。
-
-这也是为什么同一个问题有时会得到不同答案。模型并不是只保存了一个唯一答案，而是在一个概率空间里行动。温度、采样策略、上下文细节，都会改变它最后走到哪里。先理解这一点，后面的“幻觉”“推理”“工具调用”才不会显得神秘。
-
-广把这里讲得很慢。
-
-“先不要把它想成会说话的人。”
-
-她停了一下，把马克笔换到左手，补上第二句。
-
-“先把它想成一台非常认真、非常庞大的预测机器。”
-
-\subsection*{数学骨架：把“接话”写成概率}
-
-论文里讲语言模型，通常不会从“会聊天”开始，而是从一个概率分解开始。假设一段文本被切成 token 序列：
+自注意力把输入投影成 Query、Key 和 Value。对当前位置的 Query 来说，Key 决定应该注意哪些位置，Value 提供从那些位置取回的内容。因果掩码遮住未来，Softmax 则把分数变成总和为一的权重。
 
 \[
-x_1,x_2,\ldots,x_T
+\operatorname{Attn}(Q,K,V)
+=
+\operatorname{softmax}\left(
+\frac{QK^{\mathsf T}}{\sqrt{d}}
++M_{\mathrm{causal}}
+\right)V
 \]
 
-语言模型要估计整段文本出现的概率。按照链式法则，可以写成：
+生成下一个 token 时，真正用于采样的只有最后一个位置的 logits。若每生成一步都重新计算整段前文，早期 token 的 Key 和 Value 也会被重复投影。KV Cache 的做法很直接：把已经算过的 Key、Value 留下来；下一步只为新 token 计算一份，再与缓存拼接。
+
+\begin{lstlisting}[language=Python,caption={带 KV Cache 的 Softmax 注意力核心}]
+q, k, v = split_heads(self.qkv_proj(x))
+
+if past_kv is not None:
+    k_past, v_past = past_kv
+    k = torch.cat((k_past, k), dim=2)
+    v = torch.cat((v_past, v), dim=2)
+
+scores = (q @ k.transpose(-1, -2)) / math.sqrt(d_head)
+if past_kv is None:
+    scores = scores.masked_fill(causal_mask, float("-inf"))
+
+attn = scores.softmax(dim=-1)
+out = attn @ v
+return self.o_proj(merge_heads(out)), (k, v)
+\end{lstlisting}
+
+这样避免了重复计算。不过，前文每增加一个 token，缓存中也会多出一对 Key、Value。计算被省下来了，记忆占用却会随上下文一起增长。后面的几种设计，都在尝试改变这种保存历史的方法。
+
+\section{线性注意力：把历史折叠成固定状态}
+
+线性注意力论文中的复杂度描述，放在今天读，容易让人迟疑。现在通常用 KV Cache 讨论解码，用 FlashAttention 讨论完整注意力矩阵的读写；但论文写于 2020 年。回到当时的实现语境，问题会清楚一些。\cite{linear-transformer}
+
+Softmax 注意力先让每个 Query 与每个 Key 相乘，再对这些成对分数施加指数与归一化。非线性夹在中间，乘法次序不能随意交换。线性注意力改为分别映射 Query 和 Key：
 
 \[
-P(x_{1:T})=\prod_{t=1}^{T}P(x_t\mid x_{<t})
+\phi(q)=\operatorname{ELU}(q)+1,\qquad
+\phi(k)=\operatorname{ELU}(k)+1.
 \]
 
-这里的 \(x_{<t}\) 表示第 \(t\) 个 token 之前的所有 token。也就是说，模型并不是一次性吐出整篇文章，而是在每个位置上问自己：已经看到前面这些内容，下一个 token 应该是什么？
-
-训练时，模型会在大量文本上反复猜答案。猜错了，就调整参数。常见的训练目标可以写成负对数似然：
+于是，历史可以先聚合成固定大小的状态
 
 \[
-\mathcal{L}=-\sum_{t=1}^{T}\log P(x_t\mid x_{<t})
+S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
+\qquad
+z_t=\sum_{i=1}^{t}\phi(k_i),
 \]
 
-这个式子不用吓人。它的意思很朴素：真实答案出现时，模型给它的概率越高，损失越小；模型越不相信真实答案，损失越大。训练就是让这个损失下降。
-
-Producer 在旁边写下“老师批改”。
-
-“差不多。”广说，“但这里没有老师逐句写评语。答案藏在文本自己里面。”
-
-这就是自监督学习的直觉。对于一段现成文本，前面的 token 可以自动变成题目，真实出现的下一个 token 可以自动变成答案。模型不需要人类给每一句话贴标签，也能构造出海量练习题。它不是被教会“事实是什么”，而是被训练成“在这种上下文后，什么 token 最像会出现”。
-
-模型最后输出的不是一个词，而是一整张候选 token 的分数表。通常会先得到一组 logits，可以粗略理解成“还没有归一化的倾向”。再用 softmax 把它们变成概率：
+再由当前 Query 读取：
 
 \[
-P_i=\frac{\exp(z_i)}{\sum_j\exp(z_j)}
+o_t=
+\frac{\phi(q_t)S_t}
+     {\phi(q_t)z_t}.
 \]
 
-这里 \(z_i\) 是第 \(i\) 个 token 的 logit，\(P_i\) 是它被选中的概率。softmax 有一个很直观的作用：把所有候选项压成一组总和为 1 的概率。高分 token 会更突出，低分 token 不会完全消失。
+\begin{lstlisting}[language=Python,caption={把历史 K、V 折叠进固定状态}]
+q, k, v = split_heads(self.qkv_proj(x))
+q = F.elu(q) + 1
+k = F.elu(k) + 1
 
-她用笔帽轻轻点了点分母。
+S, z = cache if cache is not None else (0.0, 0.0)
+S = S + k.transpose(-1, -2) @ v
+z = z + k.sum(dim=-2, keepdim=True)
 
-“大家都在里面。只是有的声音比较大。”
-
-Producer 问：“所以不是选一个绝对正确的词？”
-
-“嗯。是先给所有可能性排队。然后，让其中一个走出来。”
-
-这就解释了一个常见现象：模型既有稳定性，也有随机性。对于“法国的首都是”这种上下文，正确 token 的概率会非常集中；对于“请写一个有初星学园味道的开场”，合理续写可能有很多种，概率分布就会更分散。技术上这只是概率分布的形状；落到使用者眼里，就变成了“模型有时很确定，有时很有创意”。
-
-Bengio 等人在神经概率语言模型中已经把“预测下一个词”与分布式词表示结合起来\cite{ch02bengio2003}。后来的 Transformer、GPT 和聊天助手都没有离开这条骨架；它们真正改变的，是上下文怎样表示、参数怎样训练、输出怎样被约束，以及模型怎样接触外部世界。
-
-广把“预测”两个字又圈了一遍。
-
-过去的软件常常需要人先选择功能：翻译按钮、摘要按钮、问答按钮。语言模型则把许多任务都改写成“接下来应该出现什么文本”。翻译是接出另一种语言，摘要是接出压缩版，代码解释是接出自然语言说明。
-
-这也是为什么论文里常说它是 self-supervised learning。训练数据不需要人工逐条标注“这句话的类别是什么”。互联网规模的文本因此变成了巨大的练习册。它不是老师一题一题批改出来的，而是从人类留下的文字痕迹里自己构造题目。
-
-当然，这种训练方式有代价。它学到的是“文本中经常怎样说”，不是“世界事实上怎样运转”。如果许多文本把某个错误说法重复很多遍，模型也可能学进去。如果训练数据里缺少某个小众领域，模型对它的把握就会薄。语言模型的数学目标很漂亮，但它和真实世界之间仍然隔着数据、语境和验证。
-
-这就是它后来能成为通用接口的原因。
-
-她在白板边写下一句话：
-
-\begin{quote}
-同一个训练目标，覆盖了很多任务的入口。
-\end{quote}
-
-很简单。
-
-也很过分。
-
-不过，把目标写成概率，只是给问题画出骨架。语言本身不会因此变简单。下一步要问的是：如果人想直接把语言规则写进机器里，为什么很快就会失败？
-
-\section{语言太难：规则写不完，统计看不远}
-
-大语言模型的“前世”并不是一开始就有神经网络。
-
-早期聊天程序 ELIZA 是一个很好的入口。Weizenbaum 在 1966 年发表 ELIZA 论文时，展示了一个可以和人进行自然语言交流的程序\cite{ch02weizenbaum1966}。它最著名的 DOCTOR 脚本会模拟心理咨询式对话：用户说“我很难过”，程序可能把句子改写成“你为什么觉得自己很难过？”
-
-这不是现代意义上的理解。它主要依赖模式匹配和替换规则。
-
-所谓模式匹配，就是先在输入里找某种句式，再把句子的一部分填进预先写好的模板里。用户说“我觉得 X”，程序不需要知道 \(X\) 具体意味着什么，只要把它抽出来，套进“为什么觉得 X？”这样的回答里。规则系统的聪明，来自人事先写好的脚本；系统本身并不会从大量对话中更新自己的语言习惯。
-
-Producer 问：“那 ELIZA 和现在的聊天模型，都是在装懂？”
-
-“装懂这个词太快了。”广说，“ELIZA 是规则像懂。大语言模型是统计结构像懂。像的原因不同，危险也不同。”
+out = q @ S
+denom = q @ z.transpose(-1, -2)
+out = out / denom.clamp_min(1e-6)
+return self.o_proj(merge_heads(out)), (S, z)
+\end{lstlisting}
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2.6cm] (input) at (0,0) {用户输入\\我觉得 X};
-  \node[draw, rounded corners, align=center, text width=2.8cm] (rule) at (4,0) {规则表\\匹配 ``我觉得''};
-  \node[draw, rounded corners, align=center, text width=2.8cm] (output) at (8,0) {模板输出\\为什么觉得 X?};
-  \draw[->] (input) -- (rule);
-  \draw[->] (rule) -- (output);
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel,anchor=east] at (-0.15,1.15) {KV Cache};
+\foreach \x/\n in {0/1,1.45/2,2.90/3,5.10/t} {
+  \node[chbox,fill=orange!18,minimum width=1.20cm] (kv\n) at (\x,1.15) {$K_{\n},V_{\n}$};
+}
+\node at (4.15,1.15) {$\cdots$};
+\draw[chflow] (kv1) -- (kv2);
+\draw[chflow] (kv2) -- (kv3);
+\draw[chdash] (kv3) -- (kvt);
+\node[chnote,anchor=west] at (5.82,1.15) {随 token 增长};
+
+\node[chlabel,anchor=east] at (-0.15,-0.45) {固定状态};
+\node[chbox,fill=blue!16,minimum width=3.35cm,minimum height=0.82cm]
+  (state) at (1.45,-0.45) {$S_t=\sum_i\phi(k_i)^{\mathsf T}v_i$};
+\node[chbox,fill=green!16,minimum width=1.45cm,minimum height=0.82cm]
+  (norm) at (4.25,-0.45) {$z_t=\sum_i\phi(k_i)$};
+\node[chnote,anchor=west] at (5.20,-0.45) {尺寸固定};
+\draw[chflow] (state) -- (norm);
 \end{tikzpicture}
-\caption{规则系统的直觉：先匹配句式，再套用模板。}
+\caption{KV Cache 与固定状态的存储方式。}
+\label{fig:ch02-cache-vs-state}
 \end{figure}
 
-它像一个背了很多反问句的人。接话很顺，但没有在心里形成世界模型。可是 ELIZA 的重要性正在这里：它很早就让人看到，只要语言表面足够像理解，人类就可能把理解投射上去。
+这个改写很漂亮，但交换条件也很明确。KV Cache 为每个早期 token 保留独立的 Key 和 Value；固定状态只有有限的矩阵槽位。新的关联不断相加以后，早期信息不再彼此分离，甚至会相互干扰。空间不再随序列增长，代价是不能无损保存任意长的历史。
 
-这件事对今天仍然有提醒意义。很多人第一次和大语言模型聊天时，也会因为它的礼貌、连贯和自信而产生“它懂我”的感觉。ELIZA 时代靠规则制造这种错觉，今天靠大规模统计结构制造更强的错觉。机制不同，人的心理反应却有连续性。
+此外，$\operatorname{ELU}+1$ 只是在 Softmax kernel 之外选择了一种可分解的非负特征映射。它仍然完成“非负权重、归一化、Value 加权平均”这三件事，却不等价于原来的 Softmax 表达。
 
-规则系统的问题也很清楚。语言太柔软，场景太多，人又喜欢省略、反讽、打错字。规则写得少，覆盖不了；规则写得多，维护困难，还容易互相冲突。
+\section{DeltaNet：修改旧关联}
 
-例如“没关系”三个字，写进规则表时看起来很简单。可是在不同场景里，它可能表示真的原谅，也可能表示压抑不满，也可能只是礼貌结束话题。规则系统必须提前知道场景、语气、关系、前文。只靠句式匹配，很难判断这些看不见的东西。
-
-后来统计语言模型开始接过接力棒。一个经典近似是 n-gram：
+如果固定状态只会执行
 
 \[
-P(w_t\mid w_{<t})\approx P(w_t\mid w_{t-n+1},\ldots,w_{t-1})
+S_t=S_{t-1}+k_t^{\mathsf T}v_t,
 \]
 
-意思是：预测当前词时，不看全部前文，只看前面 \(n-1\) 个词。这样问题变得可计算，也能从大语料里统计频率。n-gram 的 \(n\) 指的是连续 \(n\) 个词组成的片段；bi-gram 看两个词，tri-gram 看三个词。它不理解句子，只数“这种前缀后面，历史上常接什么”。
+那么同一个方向上的新旧信息只会叠在一起。序列长到超过有效容量时，状态会逐渐变成许多关联的混合物。
 
-如果 \(n=2\)，模型只看前一个词；如果 \(n=3\)，就看前两个词。比如“语言 模型”后面常常接“可以”“训练”“生成”，模型就会给这些词更高概率。这个思路非常朴素，却把语言处理从手写规则推进到了数据驱动：我们不必把所有语法都写出来，可以让语料告诉机器哪些组合常见。
+Delta Rule 的想法不是继续添加完整的新 Value，而是先用当前 Key 读一次，看看这个位置已经保存了什么。\cite{fast-weight}
 
-Producer 看着公式：“那只要把 \(n\) 变得很大，不就解决了？”
+\begin{lstlisting}[language=Python,caption={带逐 token 写入强度的 Delta 更新}]
+q, k, v = split_heads(self.qkv_proj(x))
+q = F.normalize(F.silu(q), dim=-1)
+k = F.normalize(F.silu(k), dim=-1)
+beta = torch.sigmoid(self.w_beta(x)).view(B, 1, T, 1)
 
-“看起来是这样。”广点头，“但是词表会膨胀，组合会爆炸，没见过的组合会越来越多。”
+S = cache if cache is not None else 0.0
+v_old = k @ S
+u = beta * (v - v_old)
+S = S + k.transpose(-1, -2) @ u
 
-但短窗口有短窗口的命运。它看不远。
+out = q @ S
+return self.o_proj(merge_heads(out)), S
+\end{lstlisting}
 
-比如这句话：
+这里的 $\beta$ 是写入强度。若 Key 已归一化，同一个 Key 从 $k^{\mathsf T}v$ 中读回的就是 $v$。所以 $v-v_{\mathrm{old}}$ 表示真正需要补上的差值：旧内容被抵消，新内容写回同一方向。
 
-\begin{quote}
-那本放在图书馆最里面、封面已经褪色、被我拿来压住讲义的书，终于被 Producer 找到了。
-\end{quote}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel] at (1.75,2.05) {纯加法写入};
+\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (0,0.85) {$S_{t-1}$};
+\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (1.90,0.85) {$k_t^{\mathsf T}v_t$};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (plus1) at (3.35,0.85) {$+$};
+\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (4.75,0.85) {$S_t$};
+\draw[chflow] (s1) -- (plus1);
+\draw[chflow] (write1) -- (plus1);
+\draw[chflow] (plus1) -- (new1);
+\node[chnote] at (2.40,0.10) {直接叠加};
 
-“找到”的对象是很早出现的“书”。如果模型只看前几个词，它很容易迷路。Bengio 等人指出，传统统计模型还会遇到维度灾难：词组合太多，很多合理句子在训练数据里根本没出现过\cite{ch02bengio2003}。
+\node[chlabel] at (7.65,2.05) {Delta Rule};
+\node[chbox,fill=codebg,minimum width=1.45cm] (s2) at (5.65,0.85) {$S_{t-1}$};
+\node[chbox,fill=yellow!22,minimum width=1.70cm] (read) at (7.45,1.35) {读取 $k_tS_{t-1}$};
+\node[chbox,fill=red!12,minimum width=1.55cm] (error) at (9.35,1.35) {差值 $v_t-v_{old}$};
+\node[chbox,fill=green!16,minimum width=1.55cm] (new2) at (9.35,0.25) {写回 $S_t$};
+\draw[chflow] (s2) -- (read);
+\draw[chflow] (read) -- (error);
+\draw[chflow] (error) -- (new2);
+\draw[chflow,rounded corners=3pt] (s2.south) |- (new2.west);
+\end{tikzpicture}
+\caption{纯加法写入与 Delta Rule。}
+\label{fig:ch02-delta}
+\end{figure}
 
-这叫数据稀疏。语言的组合太多了，哪怕语料很大，也不可能覆盖所有句子。一个人从没听过“我把训练记录夹在植物图鉴里”这句话，也能理解它；但如果统计模型完全依赖出现次数，这种新组合就会很难处理。它需要某种泛化能力：知道“训练记录”和“笔记”相近，“夹在书里”和“放进书页”相近，即使原句没出现过，也能推断它的合理性。
+可以把它理解成一块容量有限的白板。纯加法每次都在旧字上继续写；Delta Rule 先辨认同一位置原来写了什么，再只补上需要改变的部分。它提高了可修改性，却仍然没有回答另一件事：怎样一次清理整块白板上已经不再重要的内容。
 
-于是问题变成了：能不能不要把每个词都当作孤立符号？
+\section{分块并行：在块内展开，在块间递归}
 
-能不能让词语之间拥有可学习的距离？
+DeltaNet 的状态依赖前一步状态。逐 token 写出来很简单：
 
-\subsection*{词不是孤岛：从统计频率到连续表示}
+\begin{lstlisting}[language=Python,caption={顺序执行的 Delta 更新}]
+S = torch.zeros(B, H, D, D) if cache is None else cache
+outs = []
+for i in range(T):
+    k_i = k[:, :, i:i+1]
+    v_i = v[:, :, i:i+1]
+    b_i = beta[:, :, i:i+1]
+    v_old = k_i @ S
+    u_i = b_i * (v_i - v_old)
+    S = S + k_i.transpose(-1, -2) @ u_i
+    outs.append(q[:, :, i:i+1] @ S)
+out = torch.cat(outs, dim=2)
+\end{lstlisting}
 
-词向量的想法，是把词从离散编号变成连续空间里的点。
+但这也意味着，预填充一段长文本时，后一个 token 要等待前一个 token 更新完状态。为了把一部分工作重新变成矩阵计算，可以把序列分成 chunk。
 
-“猫”“狗”“动物”会因为上下文相似而靠近；“国王”“王后”“男人”“女人”之间可能形成某种方向关系。Mikolov 等人的 word2vec 工作让这种直觉变得非常有影响力：它用高效架构从大规模语料中学习连续词表示，并在词相似度与语法语义关系上取得很强效果\cite{ch02mikolov2013}。
+在一个 chunk 内，使用因果掩码同时计算当前位置之间的影响；不同 chunk 之间，只传递已经压缩好的状态。于是每个输出由两部分组成：从进入本块之前的状态读到的内容，以及本块内部此前位置贡献的内容。
 
-这背后有一个很重要的语言学直觉：词的意义可以从它出现的邻居里看出来。一个词如果经常和“训练”“舞台”“出汗”“节拍”一起出现，它就会被拉向偶像活动和身体练习的语境；一个词如果经常和“参数”“损失”“梯度”一起出现，它就会被拉向机器学习的语境。模型没有读词典，却从上下文里学到词的用法。
+\begin{lstlisting}[language=Python,caption={重参数化后的 chunk Delta 核心}]
+Q, K, V = map(lambda x: x.reshape(-1, C, D), (Q, K, V))
+beta = beta.reshape(-1, C)
+K_beta = K * beta.unsqueeze(-1)
+V_beta = V * beta.unsqueeze(-1)
 
-在神经网络里，词向量通常来自一个嵌入矩阵。词表里每个 token 对应一行向量。输入 token 之后，模型先查表得到向量，再把向量送入后续网络。这样，“猫”和“狗”不再只是两个互不相干的编号，而是两个可以比较距离、相似度和方向的点。
+Tmat = -(K_beta @ K.transpose(-1, -2)).tril(-1)
+for i in range(1, C):
+    Tmat[:, i, :i] += (
+        Tmat[:, i, :, None] * Tmat[:, :, :i]
+    ).sum(-2)
+Tmat = Tmat + torch.eye(C, device=K.device)
+W, U = Tmat @ K_beta, Tmat @ V_beta
 
-Producer 问：“所以向量就是给词换了一个编号？”
+for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
+    u_i = u0_i - w_i @ S
+    out_inter = q_i @ S
+    out_intra = (q_i @ k_i.T).tril() @ u_i
+    S = S + k_i.T @ u_i
+    outs.append(out_inter + out_intra)
+\end{lstlisting}
 
-“不是。”广说，“编号只负责区分。向量还负责靠近和远离。”
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel,anchor=east] at (-0.20,1.35) {prefill};
+\foreach \x/\n in {0/1,2.35/2,4.70/3,7.05/4} {
+  \node[chbox,fill=blue!12,minimum width=1.85cm,minimum height=1.05cm]
+    (c\n) at (\x,1.35) {chunk \n\\$t_1\;t_2\;t_3\;t_4$};
+}
+\draw[chflow] (c1) -- node[above,chnote]{状态 $S_1$} (c2);
+\draw[chflow] (c2) -- node[above,chnote]{状态 $S_2$} (c3);
+\draw[chflow] (c3) -- node[above,chnote]{状态 $S_3$} (c4);
+\foreach \n in {1,2,3,4} {
+  \draw[chdash] ([xshift=-0.55cm]c\n.south) -- ([xshift=0.55cm]c\n.south);
+}
+\node[chnote] at (3.52,0.08) {块内并行；块间递归};
 
-如果“猫”和“狗”只是编号 1357 和 2468，模型不知道它们有什么关系。词向量把它们放进连续空间里，相似词会因为上下文相似而靠近。这样，模型遇到训练集中没见过的新组合时，也可以借助相近词的经验做一点泛化。它不再只背“出现过的词串”，而是开始学习词和词之间的可计算关系。
+\node[chlabel,anchor=east] at (-0.20,-1.00) {decode};
+\node[chbox,fill=orange!16,minimum width=1.55cm] (cache) at (0.30,-1.00) {缓存状态 $S$};
+\node[chbox,fill=green!16,minimum width=1.55cm] (token) at (2.55,-1.00) {新 token};
+\node[chbox,fill=yellow!20,minimum width=2.05cm] (update) at (5.20,-1.00) {读取并更新一次};
+\node[chbox,fill=codebg,minimum width=1.55cm] (out) at (7.90,-1.00) {输出 + 新状态};
+\draw[chflow] (cache) -- (update);
+\draw[chflow] (token) -- (update);
+\draw[chflow] (update) -- (out);
+\end{tikzpicture}
+\caption{chunkwise prefill 与单步 decode。}
+\label{fig:ch02-chunk}
+\end{figure}
 
-衡量两个词向量相似，常用余弦相似度：
+chunk 等于整个序列时，它接近完整注意力；chunk 只有一个 token 时，它退回完全递归的形式。中间大小是在块内并行量与块间递归之间取平衡。
+
+Delta Rule 比纯加法更麻烦，因为每次修正都依赖“写入前读到的旧值”。论文通过重新参数化，把一个 chunk 内的连续修正整理为能够并行求出的块，再用同样的“块内结果 + 块前状态”组合输出。这里不继续展开 Householder 矩阵推导。对后文最重要的结论只有一个：递归记忆并不等于训练时必须逐 token 串行；它可以在块边界上保留递归，同时把块内部交给矩阵运算。
+
+\section{Gated DeltaNet：让旧状态衰减}
+
+Delta Rule 擅长替换某一条已经找到的关联。若上下文突然切换，它却没有一个简单动作，可以让许多旧关联一起淡出。
+
+门控更新给旧状态乘上 $\alpha_t$。\cite{gated-delta}
 
 \[
-\cos(v_a,v_b)=\frac{v_a\cdot v_b}{\|v_a\|\|v_b\|}
+S_t=
+\alpha_t S_{t-1}
++k_t^{\mathsf T}
+\left[\beta_t\left(v_t-k_tS_{t-1}\right)\right],
+\qquad 0\leq\alpha_t\leq1.
 \]
 
-如果两个向量方向接近，余弦值就高。你可以把它想成：两个词是否经常出现在相似语境里。
+\newpage
+\begin{lstlisting}[language=Python,caption={门控与 Delta Rule 的组合}]
+S_old = cache
+v_old = k @ S_old
+u = beta * (v - v_old)
+S = alpha * S_old + k.transpose(-1, -2) @ u
+\end{lstlisting}
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \draw[->] (-0.2,0) -- (7.2,0) node[right] {维度 1};
-  \draw[->] (0,-0.2) -- (0,3.6) node[above] {维度 2};
-  \node[circle, fill=accent, inner sep=2pt, label=above:{猫}] at (1.4,2.4) {};
-  \node[circle, fill=accent, inner sep=2pt, label=right:{狗}] at (2.0,2.1) {};
-  \node[circle, fill=accent, inner sep=2pt, label=above:{动物}] at (1.7,3.0) {};
-  \node[circle, fill=primary, inner sep=2pt, label=above:{代码}] at (5.2,1.1) {};
-  \node[circle, fill=primary, inner sep=2pt, label=right:{函数}] at (5.8,1.5) {};
-  \node[circle, fill=primary, inner sep=2pt, label=below:{编译}] at (4.8,0.6) {};
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chbox,fill=codebg,minimum width=1.35cm] (x) at (0,0) {输入 $x_t$};
+\node[chbox,fill=yellow!22,minimum width=1.45cm] (norm) at (1.85,0) {RMSNorm};
+\node[chbox,fill=orange!18,minimum width=2.20cm] (proj) at (4.30,0.90) {$Q,K,V$\\$\alpha,\beta$};
+\node[chbox,fill=blue!16,minimum width=2.35cm,minimum height=0.85cm]
+  (delta) at (4.30,-0.70) {Gated Delta 更新\\$\alpha S+\Delta S$};
+\node[chbox,fill=yellow!22,minimum width=1.65cm] (onorm) at (6.85,-0.70) {输出归一化};
+\node[chbox,fill=green!16,minimum width=1.55cm] (gate) at (8.90,-0.70) {门控输出};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (add) at (10.30,-0.70) {$+$};
+\draw[chflow] (x) -- (norm);
+\draw[chflow] (norm) -- (proj);
+\draw[chflow] (proj) -- (delta);
+\draw[chflow] (delta) -- (onorm);
+\draw[chflow] (onorm) -- (gate);
+\draw[chflow] (gate) -- (add);
+\draw[chflow,rounded corners=3pt] (x.south) -- ++(0,-1.35) -| (add.south);
+\node[chnote] at (4.30,-1.70) {状态跨 token 传递};
 \end{tikzpicture}
-\caption{词向量的直觉示意：语境相似的词，在空间中更接近。}
+\caption{Gated DeltaNet block 的数据流。}
+\label{fig:ch02-gated-delta}
 \end{figure}
 
-\section{模型长出身体：注意力、预训练与规模}
+$\alpha_t=1$ 时，旧状态完整保留；$\alpha_t$ 接近零时，过去大范围衰减。某项信息经过多步以后，会累计乘上中间所有门值。于是模型同时获得两种操作：Delta Rule 对一个 Key 方向做定点修正，门控则管理整体记忆寿命。
 
-词向量解决了“词不是孤岛”的问题，但文本还有顺序。句子不是一袋词，而是一条时间线。
+它们并不重复。只会衰减的系统无法精确替换一条关联；只会 Delta 更新的系统又缺少广泛遗忘。Gated DeltaNet 把这两种能力放进同一个固定状态更新中。
 
-“Producer 批评了我”和“我批评了 Producer”用到几乎同一批词，但意思完全不同。词向量能表示词的关系，却不能单独解决顺序和句法。模型还需要知道谁在前，谁在后，哪个修饰哪个，哪个动作指向哪个对象。
+\section{KDA：更细粒度的记忆门}
 
-循环神经网络尝试按顺序读文本。一个非常简化的状态更新可以写成：
+Gated DeltaNet 的 $\alpha_t$ 是一个标量。同一时间步里，不同通道都按相同比例保留旧状态。Kimi Delta Attention（KDA）把门变成向量，让各通道拥有不同的衰减速度。\cite{kimi-linear}
 
 \[
-h_t=f(Wx_t+Uh_{t-1})
+\boldsymbol{\alpha}_t
+=\sigma(W_\alpha x_t),
+\qquad
+S_t=
+\operatorname{diag}(\boldsymbol{\alpha}_t)S_{t-1}
++\Delta S_t.
 \]
 
-这里 \(h_t\) 是读到第 \(t\) 个位置时的隐藏状态。它既看当前输入 \(x_t\)，也看上一步的记忆 \(h_{t-1}\)。LSTM 则进一步引入门控机制，试图缓解普通循环网络在长序列里容易遗忘的问题\cite{ch02lstm1997}。
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel] at (1.55,1.60) {Delta Rule};
+\node[chbox,fill=blue!12,minimum width=3.00cm,minimum height=0.88cm]
+  (d) at (1.55,0.55) {$S_t=S_{t-1}+\Delta S_t$};
+\node[chnote] at (1.55,-0.18) {无衰减};
 
-LSTM 的“门”可以粗略理解成三个决定：哪些旧信息要留下，哪些新信息要写入，哪些状态要输出。它比普通 RNN 更像一个会整理笔记的人，不是每读一个词就把所有信息混在一起，而是尝试决定什么值得记住。
+\node[chlabel] at (5.05,1.60) {Gated Delta};
+\node[chbox,fill=orange!14,minimum width=3.00cm,minimum height=0.88cm]
+  (g) at (5.05,0.55) {$S_t=\alpha_tS_{t-1}+\Delta S_t$};
+\node[chnote] at (5.05,-0.18) {标量衰减};
 
-这一段可以很短，因为 RNN 不是终点。它的贡献，是把“顺序读”和“带着记忆读”变成了神经网络里的自然操作；它的限制，也正来自这里。它必须一步一步读，不能轻易跳过时间线。
+\node[chlabel] at (8.55,1.60) {KDA};
+\node[chbox,fill=green!14,minimum width=3.00cm,minimum height=0.88cm]
+  (kda) at (8.55,0.55) {$S_t=\mathrm{diag}(\boldsymbol\alpha_t)S_{t-1}+\Delta S_t$};
+\node[chnote] at (8.55,-0.18) {逐通道衰减};
+\draw[chdash] (d) -- (g);
+\draw[chdash] (g) -- (kda);
+\end{tikzpicture}
+\caption{Delta Rule、Gated Delta 与 KDA 的门控粒度。}
+\label{fig:ch02-kda-evolution}
+\end{figure}
 
-这像边读边做笔记。问题是，笔记本越传越厚，训练越慢；句子越长，早期信息越难稳定保留。模型想记住前文，但前文隔得太远时，它还是会累。
+\begin{lstlisting}[language=Python,caption={三种状态更新在实现上的差别}]
+# Delta Rule: no decay
+S = S + delta
 
-更麻烦的是，循环结构天然按时间一步一步计算。第 \(t\) 步必须等第 \(t-1\) 步算完。对于短句，这还可以接受；对于互联网规模的文本训练，这会成为巨大瓶颈。模型不只是要会记忆，还要能被成千上万张计算卡高效训练。
+# Gated DeltaNet: one scalar per token/head
+S = alpha[..., None, None] * S + delta
 
-广说：
+# KDA: one decay value for every state channel
+S = alpha[..., :, None] * S + delta
+\end{lstlisting}
 
-\begin{quote}
-会累不是失败。\\
-是结构在告诉我们，下一步该换方法了。
-\end{quote}
+这项变化看起来很小，却改变了容量的分配方式。模型可以让某些通道快速忘记局部信息，同时让另一些通道保留更久。固定状态仍然有限，但“哪些方向应该腾出空间”不再只有一个统一答案。
 
-说完以后，广发现它很像训练记录，也很像模型史。
+Kimi Linear 并没有要求所有层都只使用这种递归记忆。它把 KDA 与 Multi-head Latent Attention（MLA）交错使用：多数层依靠固定状态处理历史，周期性的 MLA 层仍能对 token 上下文执行 Softmax 检索。前者控制持续增长的缓存，后者保留精确回看具体位置的能力。
 
-\subsection*{注意力成为骨架：让每个位置看向别处}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel,anchor=east] at (-0.20,1.15) {注意力};
+\foreach \x/\id/\name/\fill in {0/a/KDA/blue!14,2.15/b/KDA/blue!14,4.30/c/KDA/blue!14,6.45/d/Gated MLA/orange!18} {
+  \node[chbox,fill=\fill,minimum width=1.65cm] (\id) at (\x,1.15) {\name};
+}
+\draw[chflow] (a) -- (b);
+\draw[chflow] (b) -- (c);
+\draw[chflow] (c) -- (d);
+\draw[chdash,rounded corners=3pt] (d.east) -- ++(0.65,0) |- node[right,chnote]{重复} (a.south);
 
-2017 年，Vaswani 等人发表 \textit{Attention Is All You Need}，提出 Transformer 架构\cite{ch02vaswani2017}。这篇论文的关键主张很大胆：处理序列不一定要依赖循环结构，也不一定要依赖卷积；注意力机制本身就可以成为核心骨架。
+\node[chlabel,anchor=east] at (-0.20,-0.25) {前馈层};
+\foreach \x in {0,2.15,4.30,6.45} {
+  \node[chbox,fill=green!14,minimum width=1.65cm] at (\x,-0.25) {MoE};
+}
+\node[chnote] at (3.25,-1.05) {$3$ KDA $+\,1$ MLA};
+\end{tikzpicture}
+\caption{Kimi Linear 的 KDA/MLA 周期。}
+\label{fig:ch02-kimi-linear}
+\end{figure}
 
-注意力的基本公式是：
+\section{Kimi K3：把不同记忆机制组合起来}
+
+Kimi K3 值得注意的地方，不是某个单独的全新模块，而是这些模块怎样被安排在一起。\cite{kimi-k3}
+
+它的注意力主干反复采用“三层 KDA、一层 Gated MLA”的节奏。官方架构汇总中共有 69 个 KDA 层与 24 个 Gated MLA 层。第一层使用稠密前馈网络，之后的前馈部分主要使用 LatentMoE：每个 token 不必经过全部专家，而是由路由器选择少数专家，并保留共享专家。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chbox,fill=codebg,minimum width=1.45cm] (inputk3) at (0,0) {token 表示};
+\node[chbox,fill=yellow!22,minimum width=1.65cm] (dense) at (2.05,0) {稠密首层};
+\node[draw=primary,thick,rounded corners=3pt,minimum width=4.65cm,
+  minimum height=2.65cm,fill=blue!5] (cycle) at (5.45,0) {};
+\node[chlabel] at (5.45,0.95) {宏循环 $\times 23$};
+\node[chbox,fill=blue!16,minimum width=1.25cm] (k1) at (4.05,0.20) {KDA};
+\node[chbox,fill=blue!16,minimum width=1.25cm] (k2) at (5.45,0.20) {KDA};
+\node[chbox,fill=blue!16,minimum width=1.25cm] (k3) at (6.85,0.20) {KDA};
+\node[chbox,fill=orange!18,minimum width=2.00cm] (mla) at (5.45,-0.65) {Gated MLA};
+\draw[chflow] (k1) -- (k2);
+\draw[chflow] (k2) -- (k3);
+\draw[chflow] (k3) |- (mla);
+\node[chnote] at (5.45,-1.05) {每层配合 LatentMoE};
+\node[chbox,fill=green!16,minimum width=1.65cm] (attnres) at (8.95,0.75) {AttnRes};
+\node[chbox,fill=codebg,minimum width=1.45cm] (outputk3) at (8.95,-0.55) {最终表示};
+\draw[chflow] (inputk3) -- (dense);
+\draw[chflow] (dense) -- (cycle);
+\draw[chflow] (cycle) -- (outputk3);
+\draw[chdash] (cycle) -- (attnres);
+\draw[chflow] (attnres) -- (outputk3);
+\end{tikzpicture}
+\caption{Kimi K3 的主干循环。}
+\label{fig:ch02-k3-cycle}
+\end{figure}
+
+这套组合里，每种容量有不同职责：
+
+\begin{itemize}[leftmargin=1.5em]
+  \item KDA 用固定大小的递归状态保存和更新关联；
+  \item Gated MLA 周期性地回到 token 级上下文，执行选择性检索；
+  \item LatentMoE 把前馈容量分散到专家，只激活与当前 token 相关的一小部分；
+  \item 门控决定从注意力输出中放多少信息进入残差流；
+  \item AttnRes 则沿模型深度回看较早的表示。
+\end{itemize}
+
+所以，从 GPT-2 走到这里，改变的不只是“层更多”。历史信息不再只有一条保存路线：有些被压进递归状态，有些仍留在 token 上下文中等待完整注意力取回，计算容量通过专家路由分配，深层网络还会重新选择较早的中间表示。
+
+Kimi K3 的专家网络还采用 SiTU 激活。输入先沿最后一维分成 gate 与 up 两半；可学习参数控制双曲正切的截断范围，再与 sigmoid 门相乘。
+
+\begin{lstlisting}[language=Python,caption={SiTU 激活函数}]
+d = x.shape[-1] // 2
+gate = x[..., :d].to(torch.float32)
+up = x[..., d:].to(torch.float32)
+
+situ_a = (
+    self.beta
+    * torch.tanh(gate / self.beta)
+    * torch.sigmoid(gate)
+)
+if self.linear_beta is not None:
+    up = self.linear_beta * torch.tanh(up / self.linear_beta)
+return (situ_a * up).to(x.dtype)
+\end{lstlisting}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel] at (2.25,1.85) {普通 MoE};
+\node[chbox,fill=codebg,minimum width=1.35cm] (min) at (0,0.55) {$d_{model}$};
+\node[chbox,fill=yellow!20,minimum width=1.35cm] (router1) at (1.75,0.55) {路由器};
+\node[chbox,fill=orange!16,minimum width=2.15cm] (expert1) at (4.15,0.55) {选中的完整专家\\$d_{model}\rightarrow d_{ff}$};
+\node[chbox,fill=codebg,minimum width=1.35cm] (mout) at (6.35,0.55) {$d_{model}$};
+\draw[chflow] (min) -- (router1);
+\draw[chflow] (router1) -- (expert1);
+\draw[chflow] (expert1) -- (mout);
+
+\node[chlabel] at (3.30,-0.55) {LatentMoE};
+\node[chbox,fill=codebg,minimum width=1.35cm] (lin) at (0,-1.65) {$d_{model}$};
+\node[chbox,fill=blue!16,minimum width=1.45cm] (down) at (1.75,-1.65) {降维投影};
+\node[chbox,fill=yellow!20,minimum width=1.35cm] (router2) at (3.65,-1.65) {路由器};
+\node[chbox,fill=orange!16,minimum width=1.65cm] (expert2) at (5.65,-1.65) {潜空间专家};
+\node[chbox,fill=green!16,minimum width=1.45cm] (up) at (7.60,-1.65) {升维投影};
+\node[chbox,fill=codebg,minimum width=1.35cm] (lout) at (9.45,-1.65) {$d_{model}$};
+\draw[chflow] (lin) -- (down);
+\draw[chflow] (down) -- node[above,chnote]{$d_{latent}$} (router2);
+\draw[chflow] (router2) -- (expert2);
+\draw[chflow] (expert2) -- (up);
+\draw[chflow] (up) -- (lout);
+\node[chnote] at (3.20,-2.45) {潜空间计算};
+\end{tikzpicture}
+\caption{普通 MoE 与 LatentMoE。}
+\label{fig:ch02-latent-moe}
+\end{figure}
+
+\FloatBarrier
+\section{AttnRes：沿深度选择较早的表示}
+
+普通残差网络把此前各层的输出不断相加。用简化写法表示，第 $l$ 层看到的是
 
 \[
-\mathrm{Attention}(Q,K,V)=
-\mathrm{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
+h_l=h_1+\sum_{i=1}^{l-1}f_i(h_i).
 \]
 
-公式里有三个角色：Query、Key、Value。可以把 Query 理解成“我现在在找什么”，Key 是“每个位置提供的索引”，Value 是“真正要取出的信息”。模型用 \(QK^T\) 计算当前位置和其他位置的相关程度，再用 softmax 变成权重，最后加权汇总 Value。
+所有历史层默认以同样的加法进入当前状态。网络当然可以在后续层里学习抵消或放大，但它不能直接说：“这次更需要第 4 层的表示，少看一点第 20 层。”
 
-在实现上，\(Q,K,V\) 通常都来自同一批输入向量，只是经过不同线性变换：
+Attention Residual（AttnRes）把固定求和改为带权混合：
 
 \[
-Q=XW_Q,\quad K=XW_K,\quad V=XW_V
+h_l=
+\alpha_0h_1+
+\sum_{i=1}^{l-1}\alpha_i f_i(h_i),
+\qquad
+\sum_i\alpha_i=1.
 \]
 
-这里没有人手工规定“主语应该看谓语”或“代词应该看名词”。模型要在训练中自己学会：哪些位置之间互相有用。不同层、不同注意力头会形成不同观察方式：有的头关注相邻词，有的头关注标点，有的头追踪长距离指代。
+这些权重来自当前层的 Query 与较早残差表示的 Key 之间的匹配。早期表示同时作为 Value，被按权重重新组合。
 
-Producer 把“注意力”圈起来：“这是不是就等于理解？”
-
-“不等于。”广说，“注意力只是计算关联的一种方法。它让位置之间更容易交换信息，不保证交换出来的东西一定正确。”
-
-self-attention 的重点在 self：同一段序列里的 token 彼此计算相关性。每个位置都可以形成自己的 Query，去和其他位置的 Key 比较，再按权重汇总 Value。这样，模型不必像 RNN 那样把前文压进一条递推状态，而是可以在一层计算里让许多位置直接建立联系。
-
-这听起来抽象。换成课堂比喻就简单一点。
-
-老师问：“这句话里的‘它’指什么？”
-
-学生不能只盯着“它”这个字。需要回头看前文：是“语言模型”，还是“训练数据”，还是“注意力机制”？注意力就是让模型在不同位置之间分配目光。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[every node/.style={font=\small}]
-  \node at (0,2.6) {查询词：它};
-  \foreach \x/\word/\shade in {0/模型/30,1.6/读过/10,3.2/很多/15,4.8/文本/45,6.4/所以/8,8.0/它/80} {
-    \node[draw, fill=accent!\shade, minimum width=1.1cm, minimum height=0.65cm] at (\x,1.4) {\word};
-  }
-  \node[align=center, text width=7.8cm] at (4,0.25) {颜色越深，表示当前 token 对该位置分配的注意力越高。};
-\end{tikzpicture}
-\caption{注意力热力图的简化示意。真实模型会在多层、多头中学习更复杂的关系。}
-\end{figure}
-
-Transformer 还需要位置编码。因为它不按 RNN 那样一步一步读，所以必须把位置信息注入 token 表示里。原论文使用正弦、余弦位置编码，让模型知道“这个 token 在第几个位置”\cite{ch02vaswani2017}。
-
-它适合大规模训练，原因有三个。
-
-第一，注意力可以直接建立远距离联系。第二，它比循环结构更容易并行计算。第三，多层堆叠后，模型可以逐层组合局部和全局信息。
-
-这里还要加一个边界。Transformer 不是永远让所有 token 随便互看。BERT 这类编码器模型通常可以同时看左右文；GPT 这类自回归生成模型会使用 causal mask，让当前位置不能看到未来 token。也就是说，它能在允许的范围内直接看向别的位置，但生成时仍然要遵守“从左到右”的时间方向。
-
-“多头注意力”也值得多说一句。单个注意力头像一束视线，多头注意力则像从多个角度同时看同一句话。一个头看语法关系，一个头看主题词，一个头看引用对象，一个头看格式边界。它们的结果拼接起来，再经过前馈网络处理。这样，模型不是用一种目光理解文本，而是用许多目光同时扫描。
-
-广把四支不同颜色的笔并排放在桌上。
-
-“同一句话，可以有很多种看法。”
-
-她看向 Producer。
-
-“你看我走路，会看步幅。看呼吸。看脸色。看我是不是在说谎。”
-
-“你经常在说‘没事’的时候说谎。”
-
-“嗯。所以需要多头注意力。”
-
-这也是 Transformer 和早期模型气质不同的地方。RNN 像一个人沿着走廊一步步走，边走边记；Transformer 像把整段话摊在桌上，让每个词在规则允许的范围内直接看向其他词。对于长文本和大规模训练，这种结构上的变化非常关键。
-
-这就是现代大语言模型真正的转折点。
-
-不是因为它第一次会说话，而是因为它终于拥有了一副可以被放大的身体。
-
-\subsection*{预训练：先读很多书}
-
-Transformer 之后，预训练成为主线。
-
-BERT 代表一种理解型路线。它使用双向 Transformer，从左右两侧上下文中学习语言表示。论文强调，BERT 可以在无标注文本上预训练，然后只加很少的任务层，就在问答、自然语言推理等多种任务上取得强效果\cite{ch02bert2018}。
-
-可以把 BERT 想成做完形填空的学生：
-
-\begin{quote}
-白板上写着 [MASK]。
-\end{quote}
-
-模型要根据左右文判断，遮住的词可能是什么。它擅长理解句子内部关系。
-
-BERT 的代表性任务叫 masked language modeling：把输入里一部分 token 遮住，让模型根据左右文恢复它。因为它做题时能同时看前后，所以很适合给整段文本做判断、匹配、分类和抽取。
-
-Producer 问：“那它不能写文章吗？”
-
-“不是完全不能。”广说，“只是它出生时练的题型，不是从左到右续写。”
-
-GPT 路线更偏生成。GPT-2 和 GPT-3 使用自回归语言建模：只看左边上下文，从左到右生成后续 token\cite{ch02gpt22019,ch02gpt32020}。自回归的意思是，模型把自己刚生成的 token 也放回上下文里，再预测下一个。它像一边走一边铺轨道：前一步写出来的东西，会变成下一步的条件。
-
-这两条路线的差别，不是好坏之分，而是训练目标不同。BERT 在预训练时能同时看左边和右边，所以特别适合做分类、匹配、抽取式问答等“读懂整段文本再判断”的任务。GPT 在生成时只能看左边，所以天然适合继续写：它每一步都只需要回答“接下来是什么”。
-
-后来聊天式大模型大多沿着 GPT 式生成路线发展。原因很实际：对话、写作、代码、计划，最后都要生成一串新 token。理解当然重要，但它被包进生成过程里。模型必须先从上下文里读出任务，再继续写出合适输出。
+\begin{lstlisting}[language=Python,caption={blockwise AttnRes 的核心操作}]
+V = torch.stack(blocks + [partial_block])  # [N+1,B,T,D]
+K = norm(V)
+logits = torch.einsum(
+    "d,nbtd->nbt", proj.weight.squeeze(), K
+)
+h = torch.einsum(
+    "nbt,nbtd->btd", logits.softmax(0), V
+)
+return h
+\end{lstlisting}
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=3.2cm] (bert) at (0,0) {BERT\\看左右文\\填空理解};
-  \node[draw, rounded corners, align=center, text width=3.2cm] (gpt) at (5.2,0) {GPT\\看左文\\继续生成};
-  \node[align=center, text width=3.3cm] at (0,-1.4) {白板上 [MASK]};
-  \node[align=center, text width=3.3cm] at (5.2,-1.4) {白板上 → 写下};
+\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\node[chlabel] at (2.10,2.15) {普通残差};
+\foreach \y/\id in {1.35/r1,0.25/r2,-0.85/r3} {
+  \node[chbox,fill=blue!12,minimum width=2.25cm] (\id) at (2.10,\y) {Transformer block};
+}
+\draw[chflow] (r1) -- (r2);
+\draw[chflow] (r2) -- (r3);
+\draw[chflow,rounded corners=3pt] (r1.west) -- ++(-0.50,0) |- (r2.west);
+\draw[chflow,rounded corners=3pt] (r2.west) -- ++(-0.70,0) |- (r3.west);
+\node[chnote] at (2.10,-1.60) {固定相加};
+
+\node[chlabel] at (7.45,2.15) {AttnRes};
+\foreach \y/\id/\name in {1.35/b1/块 1,0.25/b2/块 2,-0.85/b3/当前块} {
+  \node[chbox,fill=green!12,minimum width=2.10cm] (\id) at (7.45,\y) {\name};
+}
+\node[chbox,fill=yellow!22,minimum width=1.60cm] (select) at (5.15,0.25) {深度注意力\\Softmax};
+\draw[chdash] (b1.west) -- node[above,chnote]{$K_1,V_1$} (select.north east);
+\draw[chdash] (b2.west) -- node[above,chnote]{$K_2,V_2$} (select.east);
+\draw[chdash] (b3.west) -- node[below,chnote]{$Q$} (select.south east);
+\draw[chflow] (select) -- node[above,chnote]{加权表示} (b3);
+\node[chnote] at (7.45,-1.60) {按需取回};
 \end{tikzpicture}
-\caption{BERT 与 GPT 的直觉差异：一个偏填空理解，一个偏顺序生成。}
+\caption{普通残差与 AttnRes。}
+\label{fig:ch02-attnres}
 \end{figure}
 
-预训练的意义，是让模型先在大量文本中学到通用语言规律，再迁移到具体任务。过去很多 NLP 系统要为每个任务单独设计结构；预训练模型则把大量知识和语言模式压进参数里。
+若每一层都保存并检索全部早期状态，成本仍会增长。Kimi K3 使用 blockwise 形式：先在一组层内累积普通残差，只在固定边界保存一个块级表示；后面的边界再从这些块中选择。它与 MLA 的检索方向不同。MLA 沿序列长度回看 token，AttnRes 沿网络深度回看中间表示。
 
-这里的“知识”要打引号。它不是数据库里的整齐条目，而是从文本分布中学到的关联。模型知道很多事情，是因为相关表述在训练数据中反复出现；它也会混淆很多事情，因为文本本身有噪声、矛盾和过时信息。
+\section{回到活动室}
 
-预训练还有一个重要后果：模型内部没有清晰的“知识出处”。人类读书时可以说“我在某本书第几章看到过”，数据库可以返回某条记录，预训练模型却只是把大量文本压进参数。它回答问题时，不是在翻开某一页，而是在参数空间里生成一个看起来合理的延续。这一点会在后面的 RAG 部分变得很重要。
+讲解到这里，结构图也缩回了一页。
 
-广把预训练称作“漫长的旁听”。
+从 GPT-2 到 Kimi K3，最容易看到的是规模增长；但只看规模，会漏掉模型内部保存信息的方法已经发生的变化。
 
-没有老师逐题讲解。
+GPT-2 的 Softmax 注意力保留 token 级的 Key 与 Value。线性注意力把历史压进固定状态。Delta Rule 让状态可以定点改写，门控让旧内容能够衰减，KDA 又把衰减细化到不同通道。Kimi K3 没有把一种机制用到底，而是让递归状态、周期性完整检索、专家路由和深度方向的残差检索各自承担一部分工作。
 
-只是坐在那里，听了非常多句子。
+“所以，AI 酱变聪明，就是因为这些吗？”佑芽问。
 
-嗯。
+“只是一部分。”
 
-很像我旁听体能课。
+我关掉代码窗口。
 
-脑子懂了。
+“模型结构决定它怎样计算、保存和取回信息。训练数据、训练方法、后训练，还有使用时提供的上下文，也都在改变回答。今天只观察了最容易从公开实现里看清的一条线。”
 
-身体还没有。
+千奈又看了一遍屏幕里的周末计划。
 
-“听得太久，也会累吧？”Producer 问。
+“那……跑去游乐园这件事呢？”
 
-“会。”广说，“但是累不一定不好。说明容量正在被使用。”
+真正的佑芽立刻举手。
 
-\subsection*{上下文里学任务：规模带来的临场适应}
+“我觉得可以！”
 
-GPT-3 的重要性，不只在于参数大。它更醒目的地方，是把 few-shot learning 变成了大语言模型时代的标志性能力\cite{ch02gpt32020}。
+“我和千奈，大概不可以。”
 
-所谓 few-shot，就是不用重新训练模型，只在提示词里给几个例子。比如：
+“那就按 AI 酱说的，我来背你们！”
 
-\begin{quote}
-中文：早上好。\\
-日文：おはよう。\\
-中文：谢谢。\\
-日文：ありがとう。\\
-中文：今天的训练很难。\\
-日文：
-\end{quote}
+我想了一下。模型确实抓住了她会怎样解决问题。
 
-模型看到这种格式，就会继续补出对应答案。它没有为“这个翻译任务”单独更新参数，而是在上下文里识别任务模式。
+只是，把一个人说得很像，并不等于已经解释了这个人。模型也是一样。
 
-这件事后来被称作 in-context learning。它像一种临场适应：参数不变，但上下文改变了模型当前的行为。你给它三个翻译例子，它就进入翻译模式；你给它几条 JSON 样例，它就尝试继续生成 JSON；你给它一段角色设定，它就调整语气和词汇。
+\begin{thebibliography}{9}
 
-这也是提示词为什么重要。提示词不是对模型“下命令”这么简单，它更像临时搭了一个小环境。环境里有规则、示例、格式、限制和语气。模型根据这个环境继续生成。环境越清楚，模型越容易落到正确轨道；环境越含糊，它就越可能走偏。
+\bibitem{waterloo-worklog}
+waterloo\_intern,
+\textit{From GPT2 to Kimi3, Explained},
+X Article, 2026.
+\url{https://x.com/waterloo_intern/status/2081762065392541951}
 
-Producer 问：“所以 prompt engineering 是给模型写说明书？”
+\bibitem{gpt2}
+Alec Radford et al.,
+\textit{Language Models are Unsupervised Multitask Learners},
+OpenAI, 2019.
+\url{https://cdn.openai.com/better-language-models/language-models.pdf}
 
-“不只是说明书。”广说，“更像布置考场。”
+\bibitem{linear-transformer}
+Angelos Katharopoulos et al.,
+\textit{Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention},
+ICML, 2020.
+\url{https://arxiv.org/abs/2006.16236}
 
-说明书告诉它要做什么，例子告诉它题型是什么，格式告诉它答案长什么样，角色和语气告诉它要站在哪里说话。强模型会从这些上下文线索里推断当前任务。弱模型也会照着格式走，但可能只学到表面。
+\bibitem{fast-weight}
+Ido Schlag, Kazuki Irie, Jürgen Schmidhuber,
+\textit{Linear Transformers Are Secretly Fast Weight Programmers},
+ICML, 2021.
+\url{https://arxiv.org/abs/2102.11174}
 
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2.1cm] (ex1) at (0,0) {示例 1\\输入→输出};
-  \node[draw, rounded corners, align=center, text width=2.1cm] (ex2) at (2.8,0) {示例 2\\输入→输出};
-  \node[draw, rounded corners, align=center, text width=2.1cm] (q) at (5.6,0) {新问题\\输入→?};
-  \node[draw, rounded corners, align=center, text width=2.1cm] (a) at (8.4,0) {模型续写\\输出};
-  \draw[->] (ex1) -- (ex2);
-  \draw[->] (ex2) -- (q);
-  \draw[->] (q) -- (a);
-\end{tikzpicture}
-\caption{少样本学习的直觉：任务说明和例子直接放进上下文。}
-\end{figure}
+\bibitem{gated-delta}
+Songlin Yang et al.,
+\textit{Gated Delta Networks: Improving Mamba2 with Delta Rule},
+2024.
+\url{https://arxiv.org/abs/2412.06464}
 
-这件事很像临时看题型。老师没有重新训练学生的大脑，只是在卷面上给了两道样题。足够强的学生会看出格式，然后照着做第三题。
+\bibitem{kimi-linear}
+Kimi Team,
+\textit{Kimi Linear: An Expressive, Efficient Attention Architecture},
+2025.
+\url{https://arxiv.org/abs/2510.26692}
 
-GPT-3 论文同时也很谨慎。它指出模型在一些任务上仍然挣扎，也讨论了大规模网页语料带来的方法问题和社会影响\cite{ch02gpt32020}。这很重要：大，不等于稳；会举一反三，不等于每次都对。
+\bibitem{kimi-k3}
+Kimi Team,
+\textit{Kimi K3: Open Frontier Intelligence},
+2026.
+\url{https://arxiv.org/abs/2607.24653}
 
-few-shot 的能力尤其容易让人高估模型。因为它看起来像“读懂了新任务”。但很多时候，它是在捕捉格式、词面线索和相似任务模式。简单任务上这足够好，复杂任务里就可能露出问题：题目条件稍微变形，示例带有误导，输出格式和事实正确性同时受约束，模型就可能只学到了表面形式。
-
-所以，这一节的结论不是“模型突然会思考了”。
-
-更准确的说法是：当模型足够大、训练足够广，它开始能把上下文本身当作任务说明。
-
-广说：“它不是读懂了考试制度。”
-
-“它只是很会看题面。”
-
-这里还欠一个问题：为什么“足够大、训练足够广”会带来这种临场适应？它不是魔法，而是规模、数据和计算共同把损失压低以后，许多语言模式开始在同一个模型里相互借力。
-
-\subsection*{规模律：大，不只是参数大}
-
-为什么大模型会变强？业界论文里有一条重要线索叫 scaling laws。
-
-Kaplan 等人的工作发现，语言模型损失会随着模型规模、数据规模和训练计算量呈现较规律的幂律下降趋势\cite{ch02scaling2020}。简化地说，可以写成一种直觉形式：
-
-\[
-L(N,D,C)\downarrow
-\quad\mathrm{when}\quad
-N,D,C\uparrow
-\]
-
-其中 \(N\) 是参数量，\(D\) 是训练数据量，\(C\) 是计算量。实际论文里的拟合更细，但科普时抓住这个方向就够：变大通常会带来更低损失、更强能力。
-
-这里的“损失下降”不是一个抽象数字。它意味着模型在预测下一个 token 时更少惊讶。很多能力就是从这种“不那么惊讶”里浮出来的：它更熟悉代码结构，更熟悉论文写法，更熟悉多轮对话，更熟悉人类如何一步步解释问题。
-
-可是，如果只记住“越大越好”，就会误读这条线。
-
-Chinchilla 论文进一步指出，在固定计算预算下，很多大语言模型其实是“训练不足”的：参数很多，但数据不够。它建议模型参数量和训练 token 数应当更均衡地增长，并展示了 70B 参数的 Chinchilla 在相同计算预算下击败更大模型的结果\cite{ch02chinchilla2022}。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \draw[->] (0,0) -- (7.4,0) node[right] {参数量 \(N\)};
-  \draw[->] (0,0) -- (0,3.6) node[above] {训练数据 \(D\)};
-  \draw[thick, color=accent] (0.7,0.6) -- (6.4,3.1);
-  \node[align=center, text width=2.5cm] at (4.9,2.1) {较均衡\\训练更充分};
-  \node[draw, rounded corners, align=center, text width=2.3cm] at (5.2,0.8) {参数大\\数据不足};
-  \node[draw, rounded corners, align=center, text width=2.3cm] at (1.6,2.8) {数据多\\模型太小};
-\end{tikzpicture}
-\caption{Chinchilla 式直觉：固定预算下，模型大小和训练数据要匹配。}
-\end{figure}
-
-LLaMA 的思路也延续了这种更重视训练效率的方向。它强调用更多 token 训练较小模型，展示了开放权重基础模型可以在较低推理成本下取得很强表现\cite{ch02llama2023}。后来 Llama 3.1 等模型进一步把“开放权重模型也能接近前沿能力”变成产业事实之一\cite{ch02llama312024}。这里说开放权重，而不是简单说开源，是因为模型权重、训练数据、训练代码和使用许可的开放程度并不总是相同。
-
-这对产业也很关键。一个最大、最贵的模型可能在榜单上最好，但真实应用还要考虑延迟、成本、隐私、部署环境和可控性。客服系统、手机输入法、企业知识库、嵌入式设备，不一定都需要最大模型。它们需要的是在目标任务上足够好、足够快、足够便宜、足够安全。
-
-Producer 问：“那模型越小越好吗？”
-
-“也不是。”广说，“只是问题变成了匹配。”
-
-大模型像总科室，见多识广，但贵、慢、部署难；小模型像专门训练过的值日生，在固定场景里可能更快、更稳、更便宜。规模律讲的是趋势，不是替你做产品决策。真正的问题是：任务需要多少能力，数据能不能支撑，预算和延迟能不能接受。
-
-因此，规模不是单一旋钮。它像训练菜单。
-
-只加重量，不加恢复，会受伤。只加练习量，不提升动作质量，也会卡住。模型也一样：参数、数据、算力、训练配方、评测方式，都在共同决定它最后的能力。
-
-Producer 在旁边把“休息”两个字写得很大。
-
-广看了一眼。
-
-“我知道。”
-
-“你每次都说知道。”
-
-“因为每次都还没学会。嗯，很适合复习。”
-
-嗯。
-
-不是只要变大就好。
-
-要正确地变大。
-
-可是，正确地变大之后，模型仍然只是在续写。它可以看懂题面，却未必知道自己应该认真答题；它可以接出一段像答案的文字，却未必站在用户这一边完成任务。下一道墙，就在这里。
-
-\section{从续写到助手：对齐、幻觉与检索}
-
-原始预训练模型会续写文本，但它不一定会“听话”。
-
-你问它“请解释这段代码”，它可能解释，也可能续写成一篇博客，也可能编造上下文。原因很简单：预训练目标只要求它预测文本分布，没有明确告诉它“用户希望你完成任务”。
-
-InstructGPT 论文把这个问题讲得很清楚：更大的语言模型并不天然更符合用户意图，可能不真实、有害，或者根本不帮忙\cite{ch02instructgpt2022}。他们使用人类反馈进行训练，大致分三步：
-
-\paperitem{1}{收集人工示范，用监督学习微调模型。}
-\paperitem{2}{收集人类对多个回答的排序，训练奖励模型。}
-\paperitem{3}{用强化学习优化模型，让它生成更受人类偏好的回答。}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2.3cm] (sft) at (0,0) {人工示范\\SFT};
-  \node[draw, rounded corners, align=center, text width=2.5cm] (rm) at (3.4,0) {答案排序\\奖励模型};
-  \node[draw, rounded corners, align=center, text width=2.5cm] (rl) at (6.9,0) {强化学习\\优化策略};
-  \draw[->] (sft) -- (rm);
-  \draw[->] (rm) -- (rl);
-\end{tikzpicture}
-\caption{RLHF 的三阶段直觉：先学示范，再学偏好，最后按偏好优化。}
-\end{figure}
-
-一个直觉式的 RLHF 目标可以写成：
-
-\[
-\max_\pi \; r_\phi(x,y)-\beta D_{\mathrm{KL}}(\pi(y\mid x)\,\|\,\pi_0(y\mid x))
-\]
-
-这里 \(r_\phi\) 表示奖励模型给回答的分数，后面的 KL 项约束新模型不要离原模型太远。实际训练细节会更复杂；这个式子只是抓住一个核心直觉：让模型更接近人类偏好的回答，同时不要偏离原本语言能力太多。
-
-直觉上，它像 Producer 给广安排训练：可以把她推向更好的表现，但不能把人推到完全失控。
-
-“准确的严厉，是训练。”广说。
-
-“没有边界的严厉呢？”
-
-“那只是噪声。没有学习价值。”
-
-这里最容易误解的是“奖励”。奖励模型不是事实裁判，也不是道德本身。它只是从人类偏好数据中学到“哪种回答更像人类标注者喜欢的回答”。如果标注标准好，它会帮助模型更有用、更诚实、更安全；如果标准含糊，模型也可能学会讨好、回避或说得更漂亮。
-
-Producer 问：“那 RLHF 会让模型变真实吗？”
-
-“会改善。”广说，“但不能保证。”
-
-人类偏好可以奖励“承认不知道”，也可以奖励“说话有条理”。可是事实正确性还需要数据、检索、工具、评测和产品约束一起工作。一个回答听起来诚恳，不等于它引用的论文真的存在。对齐让模型更像助手，不让模型自动变成事实数据库。
-
-所以 RLHF 的意义不是让模型获得真理，而是把“续写互联网文本”的模型拉向“回答用户问题”的模型。它把原本开放的文本分布，收束到更符合助手角色的区域：更愿意遵循指令，更少输出危险内容，更常承认不确定。
-
-LaMDA 论文从对话模型角度讨论了质量、安全与事实扎根等指标\cite{ch02lamda2022}。ChatGPT 的发布则把这种指令跟随与对话交互推向大众产品\cite{ch02chatgpt2022}。
-
-对普通使用者来说，这一步比参数量更有体感。一个没有对齐的强模型像非常会写但不听题的学生；一个经过指令微调和人类反馈的模型，才像愿意按照题目作答的助手。ChatGPT 的“产品震感”很大程度来自这里：人第一次可以不写代码、不设计任务头，只用自然语言描述目标，就驱动模型工作。
-
-所以，ChatGPT 不是“语言模型突然会聊天”。它更像一个预训练模型被指令微调、人类反馈和产品化对话界面慢慢推到桌前，终于开始认真听题。
-
-广在白板角落补了一行：
-
-\begin{quote}
-它不是变成人。\\
-它只是终于知道，题目要求不是“继续写”，而是“帮我做”。
-\end{quote}
-
-\subsection*{会帮忙，不等于说真话}
-
-大语言模型最危险的地方，不是它什么都不会。
-
-而是它经常说得很像会。
-
-模型训练目标是生成高概率文本，不是保证事实正确。它可能把真实术语、相似人名、常见论文格式和不存在的细节拼在一起，生成一个看起来很可靠的错误答案。这就是常说的幻觉。
-
-幻觉的麻烦在于，它不是总以“明显错误”的样子出现。低质量答案很容易发现；高质量幻觉反而危险。它可能格式正确，语气稳重，引用看起来像真的，推理过程也很顺。如果只看表达流畅度，很容易被它带走。
-
-解决幻觉不能只靠“让模型更诚实”。很多时候，模型需要外部资料。
-
-RAG，也就是检索增强生成，把语言模型和信息检索结合起来。Lewis 等人的 RAG 工作把参数化生成模型与非参数化记忆结合，在知识密集型任务上取得改进\cite{ch02rag2020}。广在旁边写了更短的说法：不要只凭记忆答题，先查资料，再带着资料回答。
-
-RAG 的价值有两层。第一，它能补充新知识。模型训练完成后，参数里的知识会慢慢过时，而检索系统可以访问更新的文档。第二，它能提供可检查的证据。模型不只是给一个答案，还可以把相关资料片段带出来，让人知道它依据什么回答。
-
-Producer 问：“所以接了 RAG，就不会胡编了？”
-
-“不会。”广说，“只是多了一条能被检查的路。”
-
-RAG 至少有三件事要同时成立。第一，检索器要找对资料；第二，资料片段要真的进入模型上下文；第三，生成答案时要忠实使用这些资料。任何一层出错，最后都可能变成“带着资料胡编”。有时模型找到了正确文档，却引用错段落；有时资料本身过期；有时多个来源互相冲突，模型选择了看起来更顺口的那个。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2cm] (q) at (0,0) {问题};
-  \node[draw, rounded corners, align=center, text width=2.4cm] (ret) at (2.8,0) {检索器\\找资料};
-  \node[draw, rounded corners, align=center, text width=2.5cm] (ctx) at (5.9,0) {上下文\\证据片段};
-  \node[draw, rounded corners, align=center, text width=2.2cm] (gen) at (9,0) {模型\\生成回答};
-  \draw[->] (q) -- (ret);
-  \draw[->] (ret) -- (ctx);
-  \draw[->] (ctx) -- (gen);
-\end{tikzpicture}
-\caption{RAG 的直觉：先找证据，再生成回答。}
-\end{figure}
-
-GPT-4 技术报告也反复强调能力评测、安全评估与局限性\cite{ch02gpt42023}。Constitutional AI 则探索用一组原则和 AI 反馈来改进无害性，减少完全依赖人类逐条标注的成本\cite{ch02constitutional2022}。
-
-但 RAG 也不是万能药。检索器可能找错资料，资料本身可能过时，拼进上下文的证据可能被模型误读。更现实的问题是：当证据很多、互相冲突、质量不一时，模型仍然需要判断。可靠系统不能只写“接入 RAG”四个字，还要设计文档清洗、权限控制、引用格式、冲突处理、答案溯源和人工复核。
-
-这一段的重点是：可靠性不是一个按钮。
-
-它需要多层机制：更好的训练数据，更好的对齐，更好的检索，更明确的引用，更严格的评测，以及人在关键场景里的复核。
-
-广在这里停顿了一下。
-
-“它很强。所以更要确认。”
-
-这句话不是保守。
-
-是使用强工具时最基本的礼貌。
-
-她把讲义翻到引用列表那一页。
-
-“资料也会说谎。或者过期。或者只说了一半。”
-
-Producer 点头：“所以要看来源。”
-
-“嗯。プロデューサー也是。”
-
-“我？”
-
-“你说‘今天只练一点’，也需要验证。”
-
-到这里，模型已经从“会接话”走到“会回答”，又被事实和来源拉住。但现实工作不只是问答。很多任务需要查资料、算结果、改文件、操作系统界面。于是，语言模型开始从答案走向行动。
-
-\section{从回答到行动：工具、Agent 与边界}
-
-当模型能稳定对话后，人们很快发现：只让它直接给答案还不够。很多任务需要中间步骤。
-
-Chain-of-Thought 论文提出，在提示中给出推理过程示例，可以显著提升大模型在算术、符号和常识推理任务上的表现\cite{ch02cot2022}。它的直觉很简单：不要只让模型写最终答案，而是让它先把问题拆开。
-
-这里的 chain 不是神秘的大脑链条，而是可见的中间文本。模型先生成“我应该怎样分解问题”，再用这些文字继续生成后面的步骤。对自回归模型来说，前面生成的每一句话都会成为后面预测的上下文。因此，中间步骤写得好，后面更容易落到正确答案；中间步骤写错，也会把错误传下去。
-
-例如：
-
-\begin{quote}
-问题：练习室有 3 个水杯，我又拿来 2 个，Producer 收走 1 个，还剩几个？\\
-推理：先有 3 个，加 2 个变 5 个，收走 1 个，还剩 4 个。\\
-答案：4。
-\end{quote}
-
-注意，这不意味着模型真的像人一样在心里思考。它只是生成了中间文本，而这些中间文本会帮助后续 token 更容易落到正确轨道上。
-
-因此，链式思维更像一种外化的草稿纸。对复杂问题，人类也常常需要把步骤写出来。模型生成中间步骤后，后续生成可以引用前面的中间结果，减少一步跳到答案时的压力。不过，草稿纸也可能写错。一步错，后面每一步都可能跟着错。
-
-ReAct 进一步把 reasoning 和 acting 交替起来：模型一边写推理痕迹，一边执行动作，从外部环境获得观察结果\cite{ch02react2022}。Toolformer 则探索让模型学习什么时候调用外部 API、传什么参数、如何把工具返回结果融入后续预测\cite{ch02toolformer2023}。
-
-Producer 问：“只要会调用工具，就是 agent 吗？”
-
-“还不够。”广说，“会拿工具，和会完成任务，中间差很多。”
-
-从这里开始，模型不再只是语言空间里的续写器。它可以把“需要知道今天的天气”转成查询工具，把“要分析这份表格”转成代码执行，把“要安排会议”转成日历操作。语言变成控制层，工具变成手脚。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[>=stealth, every node/.style={font=\small}]
-  \node[draw, rounded corners, align=center, text width=2.3cm] (thought) at (0,0) {Thought\\需要查什么};
-  \node[draw, rounded corners, align=center, text width=2.3cm] (action) at (3.5,0) {Action\\调用工具};
-  \node[draw, rounded corners, align=center, text width=2.3cm] (obs) at (7,0) {Observation\\得到结果};
-  \draw[->] (thought) -- (action);
-  \draw[->] (action) -- (obs);
-  \draw[->] (obs) to[bend left=35] (thought);
-\end{tikzpicture}
-\caption{ReAct 式循环：推理、行动、观察交替进行。}
-\end{figure}
-
-这就是 AI agent 的雏形：模型不只是回答，还能规划、查资料、调用工具、观察结果、继续修正。
-
-agent 的关键不是“自主”两个字，而是闭环。只生成计划，不观察执行结果，还是纸上谈兵；只调用工具，不会解释目标，也只是自动脚本。真正有用的 agent 要能把目标拆成步骤，在每步之后读取环境反馈，再决定下一步。
-
-当然，这也放大了风险。一个只会写错答案的模型，最多误导你；一个会调用工具的模型，可能发错邮件、删错文件、查错数据。所以 agent 的核心不是“让模型自由行动”，而是给它边界、权限、回滚和审计。
-
-到 2025 年以后，这条路线已经进入产品层。OpenAI 的 Computer-Using Agent 把视觉输入、鼠标键盘操作和网页任务结合起来，说明 agent 不只是调用一个天气 API，也可能直接操作图形界面\cite{ch02cua2025}。这让边界问题更严肃：模型不只是在文本里犯错，而可能在真实软件里点错按钮。
-
-广说：
-
-\begin{quote}
-能动起来，不代表可以乱跑。
-\end{quote}
-
-プロデューサー 会先确认身体状态。
-
-系统也一样，要先确认安全边界。
-
-\subsection*{已经显形的未来：预测语言碰到世界边缘}
-
-讲义写到这里时，大语言模型的“未来”已经不完全是未来。几条路线正在同时产品化。
-
-先是多模态。模型不只处理文字，也处理图像、音频、视频和结构化数据。GPT-4 技术报告已经展示了更强的综合能力，虽然报告没有披露完整训练细节\cite{ch02gpt42023}。后续产品继续把文字、图像、语音、屏幕和文件放进同一个交互入口。
-
-多模态的意义，不只是“模型能看图”。更重要的是，语言可以成为不同信息形态之间的中转层。你可以指着一张图问“这里为什么不对”，也可以让模型把视频里的步骤整理成文字，把表格里的异常解释成自然语言。语言模型开始从文字世界伸向感知世界。
-
-Producer 问：“那它是不是开始看见世界了？”
-
-“看见了一些输入。”广说，“不是拥有世界。”
-
-图像、音频和屏幕只是新的上下文形态。模型能处理它们，不代表它自动理解现实因果、物理限制和社会责任。多模态让模型接近世界，但世界不是只靠输入格式就能被完全装进上下文窗口。
-
-另一个方向是开放权重和本地化。LLaMA 等模型说明，强模型不一定只存在于少数封闭系统里；更小、更高效的模型可以部署在企业内部、个人电脑或移动设备上\cite{ch02llama2023,ch02llama312024}。
-
-本地化会改变很多应用的边界。医疗、法律、企业内部知识库、个人笔记，都有隐私和合规要求。不是所有数据都适合发到远程服务。小模型、领域模型和本地推理会成为大模型生态的重要部分。它们未必在所有通用榜单上最好，却可能在固定流程里更可控。
-
-还有推理强化。DeepSeek-R1 展示了通过大规模强化学习激励推理能力的路线，尤其强调在没有先做监督微调的情况下，R1-Zero 也能出现显著推理能力\cite{ch02deepseekr12025}。OpenAI 的 o3 和 o4-mini 等推理模型也把“先分解、再求解、必要时使用工具”的产品形态推到更显眼的位置\cite{ch02openai2025o3}。
-
-这条路线让“训练模型回答什么”变成“训练模型怎样到达答案”。如果奖励只看最终对错，模型可能发展出更长的试探、验证和修正过程。数学、编程、逻辑题尤其适合这类训练，因为答案可以相对明确地检查。
-
-但推理模型也容易制造新的误会。长答案不一定更可靠，长推理不一定等于真推理。真正要看的不是它写了多少步骤，而是步骤能不能验证，工具结果是否真实，结论是否和证据一致。
-
-最后是工具化和工作流化。模型会越来越少以单独聊天窗口的形态出现，越来越多嵌入编辑器、表格、设计工具、客服系统、编程环境和机器人流程中。到 GPT-5.5 这样的节点，模型能力已经和长上下文、工具调用、代码执行、文件处理、协作界面更紧密地绑在一起\cite{ch02gpt552026}。
-
-这意味着未来的大语言模型未必总是以“一个人格化助手”的形式出现。很多时候，它会安静地藏在功能后面：自动补全一段说明，检查一条 SQL，给一封邮件换语气，把杂乱记录变成结构化字段。它越成熟，越可能变得不显眼。
-
-但有一个问题不会消失：
-
-\begin{quote}
-当机器越来越会使用语言时，人类要怎样判断它是真的可靠，还是只是说得像可靠？
-\end{quote}
-
-这不是纯技术问题。它涉及教育、劳动、创作、法律、隐私、版权和责任分配。
-
-所以，这堂课的结论要克制一点。
-
-大语言模型不是魔法。它是一个把“预测下一个 token”训练到极限附近，再叠加数据、架构、反馈、检索、工具和产品约束的系统。因为语言连接了知识、工作、关系和世界，所以预测语言，也就碰到了世界的边缘。
-
-广合上讲义，动作很轻，像是怕惊动纸页。
-
-“边缘很危险。”
-
-她想了想，又补上一句：
-
-“也很适合上课。”
-
-Producer 从她手边收走马克笔。
-
-“今天到这里。”
-
-“还可以再讲一点。”
-
-“不可以。边界。”
-
-广眨了眨眼。
-
-“嗯。被正确拒绝了。”
-
-她把这句话写进页边。
-
-“下次继续。”
-
-\begin{thebibliography}{99}
-\bibitem{ch02weizenbaum1966} J. Weizenbaum, ``ELIZA--A computer program for the study of natural language communication between man and machine,'' \textit{Communications of the ACM}, vol. 9, no. 1, pp. 36--45, 1966. [Online]. Available: \href{https://doi.org/10.1145/365153.365168}{doi.org/10.1145/365153.365168}
-\bibitem{ch02bengio2003} Y. Bengio, R. Ducharme, P. Vincent, and C. Jauvin, ``A neural probabilistic language model,'' \textit{Journal of Machine Learning Research}, vol. 3, pp. 1137--1155, 2003. [Online]. Available: \href{https://jmlr.org/papers/v3/bengio03a.html}{jmlr.org/papers/v3/bengio03a.html}
-\bibitem{ch02lstm1997} S. Hochreiter and J. Schmidhuber, ``Long short-term memory,'' \textit{Neural Computation}, vol. 9, no. 8, pp. 1735--1780, 1997. [Online]. Available: \href{https://doi.org/10.1162/neco.1997.9.8.1735}{doi.org/10.1162/neco.1997.9.8.1735}
-\bibitem{ch02mikolov2013} T. Mikolov, K. Chen, G. Corrado, and J. Dean, ``Efficient estimation of word representations in vector space,'' arXiv:1301.3781, 2013. [Online]. Available: \href{https://arxiv.org/abs/1301.3781}{arxiv.org/abs/1301.3781}
-\bibitem{ch02vaswani2017} A. Vaswani et al., ``Attention is all you need,'' arXiv:1706.03762, 2017. [Online]. Available: \href{https://arxiv.org/abs/1706.03762}{arxiv.org/abs/1706.03762}
-\bibitem{ch02bert2018} J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, ``BERT: Pre-training of deep bidirectional transformers for language understanding,'' arXiv:1810.04805, 2018. [Online]. Available: \href{https://arxiv.org/abs/1810.04805}{arxiv.org/abs/1810.04805}
-\bibitem{ch02gpt22019} A. Radford et al., ``Language models are unsupervised multitask learners,'' OpenAI, 2019. [Online]. Available: \href{https://cdn.openai.com/better-language-models/language-models.pdf}{cdn.openai.com/better-language-models/language-models.pdf}
-\bibitem{ch02gpt32020} T. B. Brown et al., ``Language models are few-shot learners,'' arXiv:2005.14165, 2020. [Online]. Available: \href{https://arxiv.org/abs/2005.14165}{arxiv.org/abs/2005.14165}
-\bibitem{ch02scaling2020} J. Kaplan et al., ``Scaling laws for neural language models,'' arXiv:2001.08361, 2020. [Online]. Available: \href{https://arxiv.org/abs/2001.08361}{arxiv.org/abs/2001.08361}
-\bibitem{ch02chinchilla2022} J. Hoffmann et al., ``Training compute-optimal large language models,'' arXiv:2203.15556, 2022. [Online]. Available: \href{https://arxiv.org/abs/2203.15556}{arxiv.org/abs/2203.15556}
-\bibitem{ch02instructgpt2022} L. Ouyang et al., ``Training language models to follow instructions with human feedback,'' arXiv:2203.02155, 2022. [Online]. Available: \href{https://arxiv.org/abs/2203.02155}{arxiv.org/abs/2203.02155}
-\bibitem{ch02lamda2022} R. Thoppilan et al., ``LaMDA: Language models for dialog applications,'' arXiv:2201.08239, 2022. [Online]. Available: \href{https://arxiv.org/abs/2201.08239}{arxiv.org/abs/2201.08239}
-\bibitem{ch02chatgpt2022} OpenAI, ``Introducing ChatGPT,'' Nov. 30, 2022. [Online]. Available: \href{https://openai.com/blog/chatgpt/}{openai.com/blog/chatgpt}
-\bibitem{ch02rag2020} P. Lewis et al., ``Retrieval-augmented generation for knowledge-intensive NLP tasks,'' arXiv:2005.11401, 2020. [Online]. Available: \href{https://arxiv.org/abs/2005.11401}{arxiv.org/abs/2005.11401}
-\bibitem{ch02gpt42023} OpenAI, ``GPT-4 technical report,'' arXiv:2303.08774, 2023. [Online]. Available: \href{https://arxiv.org/abs/2303.08774}{arxiv.org/abs/2303.08774}
-\bibitem{ch02constitutional2022} Y. Bai et al., ``Constitutional AI: Harmlessness from AI feedback,'' arXiv:2212.08073, 2022. [Online]. Available: \href{https://arxiv.org/abs/2212.08073}{arxiv.org/abs/2212.08073}
-\bibitem{ch02cot2022} J. Wei et al., ``Chain-of-thought prompting elicits reasoning in large language models,'' arXiv:2201.11903, 2022. [Online]. Available: \href{https://arxiv.org/abs/2201.11903}{arxiv.org/abs/2201.11903}
-\bibitem{ch02react2022} S. Yao et al., ``ReAct: Synergizing reasoning and acting in language models,'' arXiv:2210.03629, 2022. [Online]. Available: \href{https://arxiv.org/abs/2210.03629}{arxiv.org/abs/2210.03629}
-\bibitem{ch02toolformer2023} T. Schick et al., ``Toolformer: Language models can teach themselves to use tools,'' arXiv:2302.04761, 2023. [Online]. Available: \href{https://arxiv.org/abs/2302.04761}{arxiv.org/abs/2302.04761}
-\bibitem{ch02llama2023} H. Touvron et al., ``LLaMA: Open and efficient foundation language models,'' arXiv:2302.13971, 2023. [Online]. Available: \href{https://arxiv.org/abs/2302.13971}{arxiv.org/abs/2302.13971}
-\bibitem{ch02llama312024} Meta AI, ``Introducing Llama 3.1: Our most capable models to date,'' Jul. 23, 2024. [Online]. Available: \href{https://ai.meta.com/blog/meta-llama-3-1/}{ai.meta.com/blog/meta-llama-3-1}
-\bibitem{ch02cua2025} OpenAI, ``Computer-Using Agent,'' Jan. 23, 2025. [Online]. Available: \href{https://openai.com/index/computer-using-agent/}{openai.com/index/computer-using-agent}
-\bibitem{ch02openai2025o3} OpenAI, ``Introducing OpenAI o3 and o4-mini,'' Apr. 16, 2025. [Online]. Available: \href{https://openai.com/index/introducing-o3-and-o4-mini/}{openai.com/index/introducing-o3-and-o4-mini}
-\bibitem{ch02deepseekr12025} D. Guo et al., ``DeepSeek-R1: Incentivizing reasoning capability in LLMs via reinforcement learning,'' arXiv:2501.12948, 2025. [Online]. Available: \href{https://arxiv.org/abs/2501.12948}{arxiv.org/abs/2501.12948}
-\bibitem{ch02gpt552026} OpenAI, ``Introducing GPT-5.5,'' Apr. 23, 2026. [Online]. Available: \href{https://openai.com/index/introducing-gpt-5-5/}{openai.com/index/introducing-gpt-5-5}
 \end{thebibliography}
