@@ -9,20 +9,48 @@
 \usepackage{xcolor}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{amsmath}
 \usepackage[superscript]{cite}
 \usepackage{hyperref}
 \usepackage{titlesec}
 \usepackage{titletoc}
 \usepackage{fancyhdr}
 \usepackage{enumitem}
+\usepackage{placeins}
 \usepackage{microtype}
 \usepackage{tikz}
+\usepackage{listings}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,decorations.pathreplacing}
 \setlength{\emergencystretch}{2em}
 
 % ==================== 样式设置 ====================
 % 颜色
 \definecolor{primary}{HTML}{2C3E50}
 \definecolor{accent}{HTML}{3498DB}
+\definecolor{codebg}{HTML}{F6F8FA}
+\definecolor{codecomment}{HTML}{6A737D}
+
+% A5 页面上的短代码片段：优先保证可读与自动换行。
+\lstdefinestyle{hirocode}{
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{accent}\bfseries,
+    commentstyle=\color{codecomment},
+    stringstyle=\color{primary},
+    backgroundcolor=\color{codebg},
+    frame=single,
+    framerule=0.3pt,
+    rulecolor=\color{black!20},
+    xleftmargin=0.5em,
+    xrightmargin=0.5em,
+    aboveskip=0.8em,
+    belowskip=0.8em,
+    columns=fullflexible,
+    keepspaces=true,
+    showstringspaces=false,
+    breaklines=true,
+    tabsize=2
+}
+\lstset{style=hirocode}
 
 % 超链接
 \hypersetup{
@@ -226,7 +254,6 @@
 % --- 正文 ---
 \mainmatter
 
-\input{chapters/ch01}
 \input{chapters/ch02}
 \input{chapters/ch03}
 \input{chapters/ch04}
