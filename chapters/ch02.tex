@@ -629,11 +629,9 @@ Producer 在旁边把“休息”两个字写得很大。
 
 InstructGPT 论文把这个问题讲得很清楚：更大的语言模型并不天然更符合用户意图，可能不真实、有害，或者根本不帮忙\cite{ch02instructgpt2022}。他们使用人类反馈进行训练，大致分三步：
 
-\begin{enumerate}
-  \item 收集人工示范，用监督学习微调模型。
-  \item 收集人类对多个回答的排序，训练奖励模型。
-  \item 用强化学习优化模型，让它生成更受人类偏好的回答。
-\end{enumerate}
+\paperitem{1}{收集人工示范，用监督学习微调模型。}
+\paperitem{2}{收集人类对多个回答的排序，训练奖励模型。}
+\paperitem{3}{用强化学习优化模型，让它生成更受人类偏好的回答。}
 
 \begin{figure}[htbp]
 \centering

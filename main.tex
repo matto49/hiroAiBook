@@ -4,7 +4,7 @@
 
 % ==================== 宏包 ====================
 \usepackage[UTF8]{ctex}
-\usepackage[a5paper,inner=15mm,outer=12mm,top=15mm,bottom=18mm]{geometry}
+\usepackage[a5paper,inner=13.5mm,outer=10.5mm,top=13mm,bottom=15mm]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{booktabs}
@@ -14,7 +14,6 @@
 \usepackage{titlesec}
 \usepackage{titletoc}
 \usepackage{fancyhdr}
-\usepackage{enumitem}
 \usepackage{microtype}
 \usepackage{tikz}
 \setlength{\emergencystretch}{2em}
@@ -33,16 +32,25 @@
 }
 \setcounter{tocdepth}{1}
 
-% A5 小册子正文密度：book 类最小稳定选项是 10pt，这里再收紧实际正文字号。
+% A5 小册子正文密度：B 档在可读性与纸张成本之间取平衡。
 \makeatletter
 \renewcommand\normalsize{%
-  \@setfontsize\normalsize{8pt}{10.2pt}%
+  \@setfontsize\normalsize{7.5pt}{9.1pt}%
 }
 \renewcommand\small{%
-  \@setfontsize\small{7pt}{9.2pt}%
+  \@setfontsize\small{6.8pt}{8.1pt}%
 }
 \makeatother
 \AtBeginDocument{\normalsize}
+
+% 公式、图表与编号列表保留呼吸感，但避免在 A5 上留下过大的空白。
+\setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}
+\setlength{\abovedisplayshortskip}{4pt plus 1pt minus 1pt}
+\setlength{\belowdisplayshortskip}{4pt plus 1pt minus 1pt}
+\setlength{\floatsep}{7pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
+\setlength{\intextsep}{7pt plus 2pt minus 2pt}
 
 % 章节标题样式
 \renewcommand{\thesection}{\arabic{section}}
@@ -51,11 +59,13 @@
     {\normalfont\huge\bfseries\color{primary}}
     {\chaptername\ \thechapter}{20pt}{\Huge}
 \titleformat{\section}
-    {\normalfont\Large\bfseries\color{primary}}
+    {\normalfont\large\bfseries\color{primary}}
     {\thesection}{1em}{}
 \titleformat{\subsection}
-    {\normalfont\large\bfseries\color{primary}}
+    {\normalfont\fontsize{10pt}{11.5pt}\selectfont\bfseries\color{primary}}
     {\thesubsection}{1em}{}
+\titlespacing*{\section}{0pt}{1.35ex plus .4ex minus .15ex}{.65ex}
+\titlespacing*{\subsection}{0pt}{1.15ex plus .35ex minus .15ex}{.45ex}
 
 % 页眉页脚
 \pagestyle{fancy}
@@ -177,6 +187,11 @@
   \noindent{\bfseries 关键词：}#1\par\vspace{1em}%
 }
 
+% 论文式短编号：替代项目符号，适合 A5 上的简短结论与步骤。
+\newcommand{\paperitem}[2]{%
+  \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
+}
+
 % 重定义thebibliography：book类默认用\chapter*，改为\section*避免与手动标题重复
 \makeatletter
 \renewenvironment{thebibliography}[1]{%
@@ -192,6 +207,7 @@
         \let\p@enumiv\@empty
         \renewcommand\theenumiv{\@arabic\c@enumiv}}%
   \raggedright
+  \small
   \sloppy
   \clubpenalty4000
   \widowpenalty4000%

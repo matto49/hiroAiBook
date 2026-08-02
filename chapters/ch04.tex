@@ -62,8 +62,8 @@ P：这不是让人安心的形容。
 \begin{abstract}
 本章把具身智能从抽象概念落到一台真实可做的低成本“小広试作机零号”上。
 它的身体很小：差速轮底盘、摄像头、轮速计、IMU，以及一个只能推水瓶的两关节小臂。
-练习室里的三次失败会带出机器人运动的最小数学、状态估计、SLAM、导航、局部避障、末端控制和力控。
-从胶带、椅子和门把手开始，本章尝试说明一件很朴素的事：身体进入世界以后，智能会被写成坐标、误差、优化和接触。
+三次小型测试会分别落在定位建图、末端操控与最终送水验收的位置，带出机器人运动的最小数学、状态估计、SLAM、导航、局部避障、末端控制和力控。
+并以此说明现在具身智能的主流演化与挑战。
 \end{abstract}
 \keywords{具身智能、差速小车、状态估计、SLAM、导航、两关节机械臂}
 
@@ -75,13 +75,13 @@ P：这不是让人安心的形容。
 并非因为计划错了，计划甚至相当好。
 问题在于，门不会因为计划合理就自动打开，水瓶不会因为表格写得漂亮就自己移动，快滑下来的资料也不会因为模型已经“理解任务”就停在半空。
 
-P：那么今天的课题就是自动开门，移动水瓶和让资料漂浮？
+P：要想完成这些任务总得要一个真正的实体机器人呢。
 
-広：嗯。今天的课题是具身智能呢，这些都可以做到的哦。
+広：实体化一个hiroAI和前面算是截然不同的任务，甚至于说，和前面的训练内容也完全不同，工业界学术界也没有任何完美的解决方案呢。
 
-P：包括资料漂浮吗。。。
+P：原来这么困难吗，话说那句台词是怎么说的？我会给你完整的一生的。
 
-広：包括资料漂浮哦，如果要加一些高速风扇的话。
+広：嗯哼哼，好沉重，喜欢。那么具身智能小课堂开始吧。
 
 具身智能把答案压进物理闭环里。
 一句“把水拿过来”落到机器人身上，会被拆成一串连续的量：
@@ -105,10 +105,8 @@ P：小车偏半步，会撞椅子。
 为了不让“小広计划”突然变成无法收场的大工程，Producer 给试作机画了一条很窄的边界。
 零号机的活动范围被压到很小：低速、轻载、离人半米，广状态不稳时直接断电。
 它的第一阶段目标只有一个：
-
-\begin{center}
 从练习室门口出发，沿着胶带标出的区域移动到桌边，避开椅子，把水瓶推到安全胶带旁。
-\end{center}
+
 
 表 \ref{tab:zero-spec} 是零号机的最小配置。
 这些部件并不神秘，甚至有点朴素。
@@ -145,7 +143,7 @@ P：你对“清楚”的要求总是有点残酷。
 \subsection{坐标系：先把练习室铺成一张纸}
 
 零号机要在练习室里移动，先得拥有一个可以迷路的坐标系。
-我们可以把练习室地板想象成一张平面图，取门口某个胶带角作为原点。
+为了简化，我们可以把练习室地板想象成一张平面图，取门口某个胶带角作为原点。
 小车在这张图上的状态可以先写成
 \begin{equation}
 x_t =
@@ -156,7 +154,7 @@ p_x \\ p_y \\ \theta
 \right]_t,
 \end{equation}
 其中 $p_x$ 和 $p_y$ 表示它在地板上的位置，$\theta$ 表示车头朝向。
-这三个量听起来很少，但已经足够描述一台差速小车“在哪里、朝哪边”。
+这三个量听起来很少，但已经足够描述一台差速小车在一块平面地图上“在哪里、朝哪边”。
 
 如果小车以线速度 $v_t$ 前进，以角速度 $\omega_t$ 转向，在很短时间 $\Delta t$ 内，它的位置可以近似更新为
 \begin{equation}
@@ -171,9 +169,9 @@ p_{y,t+1} = p_{y,t} + v_t \sin \theta_t \Delta t,\\
 
 P：如果每一帧只更新这么一点点，终点其实是很多个小误差堆出来的？
 
-広：嗯。偶像的走位也是这样。站到终点之前，先把每一步不要弄丢。
+広：误差会累积而非互相抵消呢，摩擦力和相机抖动可不会乖乖地遵从什么高斯分布之类的随机抽卡游戏，后面我们还会谈到这个问题呢。
 
-\subsection{差速轮：左右轮速度会决定转弯}
+\subsection{差速轮：左右轮速做基础的运动控制}
 
 零号机用的是差速轮底盘。
 左轮速度记作 $v_L$，右轮速度记作 $v_R$，两轮间距记作 $b$。
@@ -214,13 +212,11 @@ z_t = h(x_t, m) + v_t,
 \end{equation}
 其中 $x_t$ 是状态，$u_t$ 是控制输入，$z_t$ 是观测，$m$ 是地图或场地信息，$w_t$ 和 $v_t$ 分别代表运动噪声和观测噪声。
 
-这两个式子翻成排练室语言大概是这种样子：
+这两个式子翻成普罗丢色能听懂的语言大概是这种样子：
 
-\begin{itemize}[leftmargin=2em]
-\item 先根据动作预测：我应该从这条胶带走到下一条胶带附近。
-\item 再根据观测修正：摄像头看见桌腿比预期更近，我可能偏了。
-\item 然后把偏差写回状态：下一步不要继续沿着错误方向走。
-\end{itemize}
+\paperitem{1}{先根据动作预测：我应该从这条胶带走到下一条胶带附近。}
+\paperitem{2}{再根据观测修正：摄像头看见桌腿比预期更近，我可能偏了。}
+\paperitem{3}{然后把偏差写回状态：下一步不要继续沿着错误方向走。}
 
 P：这和広训练时的复盘很像。
 
@@ -228,113 +224,263 @@ P：这和広训练时的复盘很像。
 
 P：你为什么说得像很开心。
 
-広：因为这就是闭环。
+\section{视觉里程计：先看见，才能知道自己走了多远}
+
+上一节里的观测量 $z_t$ 不能只是一个笼统的“摄像头说了什么”。
+人可以通过眼睛判断自己走到了哪里，但是对机器人而言图像不是运动轨迹。
+通过视频和图像来计算自己的运动轨迹这件事叫作视觉里程计（visual odometry, VO）：其从相邻画面中估计相机自身的运动，再把许多个短小的相对运动接成一条轨迹。
+它并不替代轮速计；更像另一位独立的证人。轮子会打滑，相机也会看错，但两者愿意彼此核对时，零号机就不必只相信自己的轮胎\cite{nister2006vo,scaramuzza2011vo}。
+
+広：先看见。再怀疑看见的东西。最后才允许自己移动。
+
+P：听起来不像“看路”，像在给相机做口供记录。
+
+広：嗯。因为画面很会撒谎。光会变，椅子会动，玻璃还会反光。
+
+\subsection{相机观测模型：一只桌角怎样落进像素}
+
+相机首先不是一双会理解桌子和水瓶的眼睛，而是一台把三维光线压成二维像素的测量仪器。
+设练习室里的一个固定点在世界坐标系中为 $P_W=[X,Y,Z,1]^{\mathsf T}$，它在当前相机画面中的像素为 $(u,v)$。
+最常用的针孔模型可以写成
+\begin{equation}
+s
+\left[
+\begin{array}{c}
+u\\v\\1
+\end{array}
+\right]
+=
+\underbrace{
+\left[
+\begin{array}{ccc}
+f_x & 0 & c_x\\
+0 & f_y & c_y\\
+0 & 0 & 1
+\end{array}
+\right]}_{K}
+\left[
+\begin{array}{cc}
+R & t
+\end{array}
+\right]
+P_W.
+\label{eq:vo-camera-model}
+\end{equation}
+其中 $R$ 和 $t$ 把世界坐标搬到相机坐标系，$K$ 是相机内参矩阵；$f_x,f_y$ 表示以像素计的焦距，$(c_x,c_y)$ 是主点，$s$ 与该点在相机前方的深度有关。
+式~\ref{eq:vo-camera-model} 说的是一件很朴素的事：同一只桌角离镜头越远，投到画面上就越靠近中心、变化也越小；相机转过一点，整张画面里的桌角都会一起移动。
+
+真实镜头还会有径向畸变，像素格也未必完全方正。
+因此零号机在上课前要先对着棋盘格做标定，估计内参和畸变参数；否则后面认真计算的并不是练习室，而是一只带着偏见的镜头。
+其中 Zhang 给出的平面标定方法正是这一类工程实践的经典入口\cite{zhang2000calib}。
+
+P：桌腿出现在画面左边，就能知道它在左边多远吗？
+
+広：还不能。一个像素只说“它投影在这里”。没有相机参数和深度，它不肯说自己离我们几厘米。很严谨。
+
+\subsection{跨帧对应：把两次看见连成一次运动}
+
+相机有了尺度，接下来才是“同一个东西是否又被看见”。
+零号机会在画面中挑选容易辨认的局部特征，例如胶带的交点、门框的直角、桌腿边缘的纹理；再把第 $k$ 帧的像素 $u_i^k$ 与第 $k+1$ 帧中可能对应的 $u_i^{k+1}$ 配对。
+一串可靠的对应关系
+\begin{equation}
+u_i^k \longleftrightarrow u_i^{k+1}, \qquad i\in\mathcal I,
+\end{equation}
+告诉系统的不是“画面变了”，而是“相机相对于这些固定点动了”。
+特征检测、描述、匹配，以及剔除错误匹配，是视觉里程计前端最花耐心的工作；相似的地砖、被挪动的椅子、从镜头前经过的人，都可能制造看起来很合理的假对应\cite{fraundorfer2012vo}。
+
+这里要诚实地区分几种相机。
+双目、RGB-D 或带深度线索的相机可以较快给出点的三维位置；单目相机也能从多帧几何关系恢复相对运动，但仅靠两帧通常缺少绝对尺度。
+所以零号机把视觉与轮速计、IMU 一起使用：视觉负责检查方向和相对结构，轮速计或深度线索负责把“走了一段”落到米和厘米上。
+这里就像假设每一个传感器都能对同一个世界进行观测，但视角和形式不同。
+
+在开始细算画面前，系统还可以先用轮速计和 IMU 给出一个短时间预测
+\begin{equation}
+\widehat{T}_{C_{k+1}C_k}
+=
+\exp\left(\Delta t\,\widehat{\xi}_k^\wedge\right),
+\label{eq:vo-prediction}
+\end{equation}
+其中 $\widehat{\xi}_k$ 汇集了预测的平移与角速度。
+当然对于这个测量量来说，是从IMU等传感器给出的加速度等其他信息进行预积分计算得到的。而惯性传感器的预积分学又是一个十分棘手的话题，不过对于我们编程而言，嗯，学会调用C++的库就可以了。
+而这个公式也只是告诉匹配器一个先验的知识：桌角大概会从这里移到那里，不必在整张画面里盲找。这样以便视觉运算时候更快匹配到正确的值。
+然后以此视觉估计出相对位姿 $T_{C_{k+1}C_k}$ 后，再和上一帧位姿相乘，便得到新的轨迹点
+\begin{equation}
+T_{C_{k+1}W}=T_{C_{k+1}C_k}T_{C_kW}.
+\label{eq:vo-trajectory}
+\end{equation}
+许多这样的小步接起来，就是视觉里程计的轨迹；小误差也会一起接起来，所以它仍需要后面的优化与 SLAM 校正。
+
+広：嗯。其实除了这里提到的特征点法，还有直接法、半直接法等等，图像本身的信息其实很充足，做视觉里程计的任务更像是一次解码任务，在复杂的信息里面提取并计算出我们最需要的位姿信息。
+
+\subsection{重投影误差：预测和观测到底差了几个像素}
+
+现在可以让预测接受画面检查了。
+若地图点 $P_i$ 经过当前候选位姿 $T_{CW}$ 和投影函数 $\pi(\cdot)$ 后，应该落在 $\pi(T_{CW}P_i)$；而相机实际量到的是 $u_i^{\mathrm{obs}}$，两者的差便是重投影残差
+\begin{equation}
+r_i(T_{CW})=u_i^{\mathrm{obs}}-\pi(T_{CW}P_i).
+\label{eq:vo-reprojection-residual}
+\end{equation}
+
+这就像机器对自己的一次质问，如果用小広的语气来说：你说自己转到了这个角度，那么门框角点为什么没有出现在你说的位置？
+
+我们希望所有可靠特征的质问都尽量小，于是把位姿修正写成一个带权的非线性最小二乘问题：
+\begin{equation}
+T_{CW}^{\star}=
+\mathop{\mathrm{arg\,min}}_{T_{CW}}
+\sum_{i\in\mathcal I}
+\rho\!\left(
+\left\|u_i^{\mathrm{obs}}-\pi(T_{CW}P_i)\right\|^2_{\Sigma_i^{-1}}
+\right).
+\label{eq:vo-motion-only-ba}
+\end{equation}
+$\Sigma_i$ 表示观测的不确定度，$\rho$ 是鲁棒损失：少数被遮挡、错配或移动物体造成的离群点，不该有资格把整台车带偏。
+问题之所以是非线性的，正是因为透视投影里含有“除以深度”的关系；相机稍微转动，像素误差不会沿着一条直线变化。
+
+计算时不必把练习室里所有姿态逐个试一遍。
+从当前预测 $T$ 出发，把残差在一个很小的位姿增量 $\delta\xi$ 附近近似成
+\begin{equation}
+r\!\left(\exp(\delta\xi^\wedge)T\right)
+\approx r(T)+J\delta\xi,
+\end{equation}
+其中 $J$ 是残差对小扰动的变化率，称作雅可比矩阵。
+高斯--牛顿或 Levenberg--Marquardt 方法据此求一个让残差下降的 $\delta\xi$，再更新 $T\leftarrow\exp(\delta\xi^\wedge)T$；重复几次，直到这一步已经没有值得纠正的方向。
+这里的“线性近似、走一小步、重新量一次”也正是后面图优化的基本节奏。
+
+P：这里的数学真的是我能理解的吗。
+
+広：数学运算总是复杂的，但是复杂的运算是交给计算机的呢。
+
+\subsection{Bundle Adjustment：让所有画面一起承认误差}
+
+只修正最新一帧，还不够。
+某个桌角在第 1、2、3 帧都被看见时，三个相机位姿和这个三维点应当共同解释三次像素观测；若它们各自悄悄圆谎，轨迹就会一点点弯掉。
+Bundle Adjustment（BA）把一个局部时间窗内的位姿 $\{T_{C_kW}\}$ 和地图点 $\{P_j\}$ 一起调整：
+\begin{equation}
+\min_{\{T_{C_kW}\},\{P_j\}}
+\sum_{(k,j)\in\mathcal O}
+\rho\!\left(
+\left\|u_{kj}^{\mathrm{obs}}-\pi(T_{C_kW}P_j)\right\|^2_{\Sigma_{kj}^{-1}}
+\right).
+\label{eq:vo-local-ba}
+\end{equation}
+集合 $\mathcal O$ 只包含“第 $k$ 帧确实看见了第 $j$ 个点”的观测。
+因此 BA 不是把图像粗暴叠在一起，而是让每一束从相机出发、穿过像素、指向同一特征点的视线尽量相交。
+它会同时修正“车在哪里”和“桌角实际上在哪里”；这正是它比只调当前位姿更稳的原因，也是它计算更重的原因。
+Triggs 等人对 BA 的系统梳理，至今仍是理解这类联合优化的经典入口\cite{triggs2000ba}。
+
+零号机不会把整天的画面一次性塞进电脑。
+它会保留最近几帧做局部 BA，把旧的关键帧交给后端；等它又认出门框，SLAM 再把这条久远但珍贵的观测变成回环约束，修正更长的一段轨迹。
+所以视觉里程计负责连续地走，BA 负责让近处的证词一致，SLAM 则负责在走远以后承认：原来自己回到了开始的地方。
+
+P：你把“又看见门框”说得像发现了旧考卷。
+
+広：旧考卷会告诉我，前面的答案哪里错了。门框也会。它们都很亲切。
 
 \section{SLAM 与导航：练习室里的迷你地图}
 
-\subsection{SLAM 要解决两件事}
+\subsection{视觉里程计把什么交给 SLAM}
 
-SLAM 是 simultaneous localization and mapping，也就是同时定位与建图。
-它要回答两个缠在一起的问题：
+前一节已经让零号机从相邻画面里估计运动，并用局部 BA 让最近几帧互相同意。
+但视觉里程计仍然只擅长回答一个局部问题：从上一帧到这一帧，我大概动了多少？
+只要这些小步不断相乘，残余误差就会继续累积。它能画出一条连续轨迹，却不能保证走远以后还记得练习室真正的形状。
 
-\begin{itemize}[leftmargin=2em]
-\item 我在哪里？
-\item 我周围的世界长什么样？
-\end{itemize}
+SLAM 接手的正是这部分长期一致性。
+它把视觉里程计交出的相对位姿、关键帧和局部地图点保存下来，再加入轮速、IMU、深度观测与回环约束，尝试同时回答：
+\paperitem{1}{这一整段轨迹走过了哪里？}
+\paperitem{2}{这些不同时间看见的东西，是否属于同一张地图？}
 
-如果已经有一张精确地图，定位会容易很多。
-如果已经知道自己在哪里，建图也会容易很多。
-但零号机第一次进入练习室时，两件事都不完整。
-它只能一边移动，一边把胶带、桌腿、椅子和墙角变成自己的迷你地图。
+\begin{center}
+图像与传感器
+$\rightarrow$ 视觉里程计
+$\rightarrow$ 关键帧与局部约束
+$\rightarrow$ SLAM 后端
+$\rightarrow$ 全局轨迹与地图
+\end{center}
 
-经典概率机器人学会把这个过程写成对后验分布的估计\cite{thrun2005prob}：
+在这条链路里，视觉里程计像前端：频率高、反应快，负责不断提供“刚才走了一小步”的估计；SLAM 后端可以慢一些，负责保存更长时间的关系，并在新证据出现后修改旧轨迹。
+VINS-Mono 展示了视觉与 IMU 的紧耦合状态估计\cite{qin2018vinsmono}，ORB-SLAM3 则把视觉、视觉惯性、关键帧与多地图管理组织成了完整系统\cite{campos2021orbslam3}。
+
+经典概率机器人学把 SLAM 写成对轨迹和地图后验分布的估计\cite{thrun2005prob}：
 \begin{equation}
-p(x_t, m \mid z_{1:t}, u_{1:t}).
+p(x_{0:t},m\mid z_{1:t},u_{1:t}).
 \end{equation}
-意思是：给定到目前为止的观测 $z_{1:t}$ 和控制输入 $u_{1:t}$，同时估计机器人轨迹 $x_t$ 与地图 $m$。
+这里用 $x_{0:t}$ 而不只写当前状态 $x_t$，是因为后端不只修正“我现在在哪里”，还可能重写“我刚才是怎样走到这里的”。
 
-这类问题可以用滤波、图优化、视觉特征、惯性信息等多种方法解决。
-最经典的两个算法来说，VINS-Mono 用视觉和 IMU 做状态估计\cite{qin2018vinsmono}，ORB-SLAM3 则展示了视觉、视觉惯性和多地图 SLAM 的完整系统化路线\cite{campos2021orbslam3}。
-零号机只在练习室里走二维平面，真实机器人却经常要在三维空间里估计位姿。
-这时状态会从 $(p_x,p_y,\theta)$ 扩展成一个刚体变换
+P：视觉里程计负责记住下一步。SLAM 负责怀疑前面所有步？
+
+広：嗯。走得越远，越需要这种不信任。
+
+\subsection{回环：让现在看见的门框修正过去}
+
+SLAM 会把若干关键帧组织成位姿图。
+节点是关键帧位姿
 \begin{equation}
-T =
+T_i=
 \left[
 \begin{array}{cc}
-R & p\\
+R_i & p_i\\
 0 & 1
 \end{array}
-\right] \in SE(3),
+\right]\in SE(3),
 \end{equation}
-其中 $R$ 是三维旋转，$p$ 是平移。
-旋转可以用矩阵表示，也可以用单位四元数 $q=[q_w,q_x,q_y,q_z]$ 表示，并满足
+相邻节点之间的边主要来自视觉、轮速或惯性里程计。
+如果图始终只是一条向前延伸的链，误差仍会沿着链累积；当零号机再次认出门框时，系统才有机会在两个不相邻节点之间增加一条回环边。
+
+设观测 $z_{ij}$ 表示从关键帧 $i$ 到 $j$ 的相对位姿约束，它与当前轨迹预测之间的残差可以写成
 \begin{equation}
-\|q\|^2=q_w^2+q_x^2+q_y^2+q_z^2=1.
+e_{ij}=
+\log\left(z_{ij}^{-1}T_i^{-1}T_j\right).
 \end{equation}
-
-这层数学的麻烦在于，位姿空间带着旋转约束，不能当成普通坐标纸来处理。
-SLAM 里的小修正常写在李代数里，用一个很小的增量 $\xi$ 去更新位姿：
-\begin{equation}
-T \leftarrow \exp(\xi^\wedge)T.
-\end{equation}
-这里先收住 $\exp$ 和 $\wedge$ 的细节，只留下直觉：机器人在带有旋转约束的空间里做微小校正。
-Solà 等人的 micro Lie theory 教程把这套状态估计语言讲得很系统\cite{sola2018lie}。
-
-P：这段已经不像小车了，像数学系迷路到练习室。
-
-広：嗯。它描述的是同一件事：身体在三维空间里的旋转和平移。
-比如 $SO(3)$ 管旋转，$SE(3)$ 管完整位姿。粗略写成 $SE(3) \simeq SO(3) \times \mathbf{R}^3$，就是旋转加平移。
-
-広：在 SLAM 系统里，它们各司其职。TF 链路里常用矩阵或四元数表达位姿；优化时把很小的扰动放到李代数里，数值上更方便，也更容易保持旋转约束。
-
-P：感觉很难把这些公式联想成同一个东西。
-
-広：先记住用途就好。矩阵负责搬动坐标，四元数负责稳住旋转，李代数负责小步修正。
-
-图优化 SLAM 还会把许多位姿和观测一起放进非线性最小二乘问题：
-
-\begin{equation}
-\min_{\{T_i\},m}\sum_{(i,j)}
-\left\|r_{ij}(T_i,T_j,z_{ij})\right\|_{\Omega_{ij}}^2.
-\end{equation}
-$r_{ij}$ 是预测和观测之间的残差，$\Omega_{ij}$ 是置信度权重。
-最后得到的位姿和地图点就是对上述优化问题的最优估计结果。
-回到练习室，它就像把每一次“我看见桌腿”“我转过一个角度”“我又回到门口”都写进同一本账，然后让整本账尽量自洽。
-LOAM 系列还把高频里程计和低频建图分开处理，用快层保证实时运动估计，用慢层提高地图精度\cite{zhang2014loam}。
-这类快慢分工会在后面的小脑层再次出现。
-
-\subsection{从地图到路线}
-
-SLAM 输出的地图还只是“能被定位系统相信的世界”。
-真正让零号机走起来，需要一条从地图管理到运动控制的长链路。
-如果借用 ROS 2 生态里的常见组合，可以把 RTAB-Map 看作管理地图和回环的层，把 Nav2 看作接管导航任务的层\cite{labbe2013rtabmap,nav2docs}。
-
-RTAB-Map 的核心思路是 RGB-D / 视觉里程计加图优化 SLAM，并用基于外观的 loop closure 做回环检测。
-它还有一个很实用的记忆管理结构：短期记忆保留最近看到的节点，工作记忆参与当前回环搜索，长期记忆保存暂时不活跃的旧节点\cite{labbe2013rtabmap}。
-这很适合零号机这种小场景：练习室里桌腿、门框、服装架会反复出现，系统不能每次路过都当成一个崭新世界。
-
-如果把地图写成位姿图，节点是关键帧位姿 $T_i$，边是相邻帧里程计或回环约束 $z_{ij}$。
-每条边给出一个残差
-\begin{equation}
-e_{ij} =
-\log\left(z_{ij}^{-1} T_i^{-1}T_j\right),
-\end{equation}
-图优化要做的事就是调所有 $T_i$，让这些残差整体变小：
+$\log(\cdot)$ 把一个带旋转的位姿差异变成可以优化的小增量。
+后端同时调整许多 $T_i$，让所有边尽量自洽：
 \begin{equation}
 \min_{\{T_i\}}\sum_{(i,j)}
-e_{ij}^{\mathsf{T}}\Omega_{ij}e_{ij}.
+\rho\!\left(e_{ij}^{\mathsf T}\Omega_{ij}e_{ij}\right).
 \end{equation}
-$\Omega_{ij}$ 是信息矩阵，表达这条约束的可信程度。
-在练习室语言里，门框说“你又回到这里了”，轮速计说“你刚刚只走了两米”，视觉特征说“这个桌腿角度很像刚才那个”，图优化负责让这些证词尽量不互相打架。
+$\Omega_{ij}$ 表示这条约束的可信程度，鲁棒损失 $\rho$ 则防止一次错误回环把整张地图拽坏。
+每次迭代仍沿用前一节的“小步修正”：
+\begin{equation}
+T_i\leftarrow\exp(\delta\xi_i^\wedge)T_i.
+\end{equation}
+Solà 等人的 micro Lie theory 教程系统解释了这种在旋转约束下更新状态的语言\cite{sola2018lie}。
 
-地图进入 Nav2 之后，会被拆成几个更工程化的服务器：Map Server 提供地图，Planner Server 产出全局路径，Controller Server 追踪局部轨迹，Costmap 维护障碍物和膨胀区，BT Navigator 用行为树组织任务和恢复动作\cite{nav2docs}。
+这里也能看清 BA 与位姿图优化的分工。
+前面的局部 BA 直接比较像素重投影，并一起调整最近的相机位姿与地图点；这里的位姿图把前端结果压缩成关键帧之间的相对约束，主要调整一段更长的轨迹。
+它们都在最小化残差，却不是把同一道题重复算两遍。
+
+RTAB-Map 会把视觉或 RGB-D 里程计、关键帧记忆管理和基于外观的回环检测接到这条后端链路上\cite{labbe2013rtabmap}。
+这种“快前端维持连续运动，慢后端维护全局一致”的分工也不限于相机；LOAM 同样把高频里程计和较低频建图分开处理\cite{zhang2014loam}。
+
+P：门框只是站在那里，就能让整段轨迹重写。
+
+広：嗯。没有追过来。也很严格。
+
+\subsection{从一致地图到可执行路线}
+
+经过回环修正，SLAM 已经能给出一张较一致的地图和一条较可信的全局轨迹。
+但“知道自己在哪里”还不是轮子的速度指令；真正让零号机走起来，还需要把全局修正、连续运动和导航控制接成一条不断裂的坐标链。
+
+在 ROS 2 的常见约定里，视觉里程计或多传感器融合持续提供 \texttt{odom -> base\_link}：它短时间内平滑、适合控制，却会慢慢漂移；SLAM 则提供 \texttt{map -> odom}：它允许在发现回环时修正长期误差\cite{nav2docs}。
+于是机器人在地图中的位姿由两段变换合成：
+\begin{equation}
+{}^{\mathrm{map}}T_{\mathrm{base}}
+=
+{}^{\mathrm{map}}T_{\mathrm{odom}}
+{}^{\mathrm{odom}}T_{\mathrm{base}}.
+\end{equation}
+这样，回环带来的全局改正由 \texttt{map -> odom} 吸收，局部控制使用的 \texttt{odom -> base\_link} 仍能保持连续。
+否则一认出门框，机器人坐标就突然跳一下，规划器虽然得到了更正确的历史，控制器却可能被这次“顿悟”绊倒。
+
+到这一步，可以把 RTAB-Map 看作管理视觉里程计、地图和回环的层，把 Nav2 看作接管导航任务的层\cite{labbe2013rtabmap,nav2docs}。
+RTAB-Map 还有一个实用的记忆管理结构：短期记忆保留最近看到的节点，工作记忆参与当前回环搜索，长期记忆保存暂时不活跃的旧节点\cite{labbe2013rtabmap}。
+练习室里的桌腿、门框和服装架会反复出现，系统既要认出旧地点，也不能让所有旧画面同时挤进当前计算。
+
+地图与坐标变换进入 Nav2 之后，会被拆成几个更工程化的服务器：Map Server 提供地图，Planner Server 产出全局路径，Controller Server 追踪局部轨迹，Costmap 维护障碍物和膨胀区，BT Navigator 用行为树组织任务和恢复动作\cite{nav2docs}。
 导航通常可以看成三层：
 
-\begin{itemize}[leftmargin=2em]
-\item 地图与定位：`map -> odom -> base\_link` 的坐标链要稳定。
-\item 全局规划：在静态地图和全局 costmap 上找一条可行路径。
-\item 局部控制：在局部 costmap 上不断采样速度，避开刚出现的椅子和人。
-\end{itemize}
+\paperitem{1}{地图与定位：\texttt{map -> odom -> base\_link} 的坐标链要稳定。}
+\paperitem{2}{全局规划：在静态地图和全局 costmap 上找一条可行路径。}
+\paperitem{3}{局部控制：在局部 costmap 上不断采样速度，避开刚出现的椅子和人。}
 
 Costmap 是 Nav2 里非常关键的中间层。
 静态层来自地图，障碍层来自激光 / 深度相机，膨胀层把障碍物周围也变成高成本区域。
@@ -403,6 +549,46 @@ P：哪里像？
 
 P：这个解释我收下了。
 
+\subsection{SLAM 实验：漂移、重影与一面墙}
+
+地图与导航链路接好以后，Producer 在练习室门口摆了一块覆着软泡棉的矮墙。
+它不是给零号机添戏剧效果，而是一个受控的安全边界：低速、短路线、碰撞环和电流阈值都已经接好。
+这一轮不碰水瓶，只问一件事：零号机能不能在它以为的地图里，安全地走到矮墙前方并停下。
+
+出发后的前几秒很安静。
+零号机沿蓝色胶带前进，转过门框时右轮轻微打滑。
+轮速计仍报告“转得刚好”，视觉却发现门框角点比预测更靠左，IMU 的 yaw 也在缓慢偏离。
+这就是定位漂移：短时间里每条数据都只错一点，串成轨迹后却把“我在这里”推到了另一个位置。
+
+更麻烦的是，带着错位位姿插入的深度点会把同一面墙画成两道边。
+真实墙面没有分身；是零号机先在错误位置看过一次，又在较正确的位置看过一次。
+地图上的这层重影会让可通行区被错误地挤宽或挤窄，规划器随后就在一个并不存在的走道里给出很自信的路线。
+
+P：它有地图，还是会撞墙。
+
+広：嗯。地图不是墙。只是关于墙的意见。
+
+这一次，零号机确实以很慢的速度碰到了泡棉墙角。
+碰撞环被压下，驱动电流升高，急停逻辑在下一控制周期把速度归零。
+这不是可以接受的导航结果，只是一个很清楚的实验结果：若 \texttt{map -> odom -> base\_link} 的坐标链不同意，局部控制又来不及用当前观测否决旧地图，车就会把错位后的自由空间当成真的。
+
+更细一点，里程计预测可以写成
+\begin{equation}
+\hat{x}_{t+1}=f(x_t,u_t),
+\end{equation}
+视觉与地图给出残差
+\begin{equation}
+r_t=z_t-h(\hat{x}_t,m).
+\end{equation}
+当 $r_t$ 连续变大时，系统应降低对轮速计的自信，提高视觉、深度观测或回环约束的权重。
+零号机的修正也因此很具体：放慢转弯速度，提高关键帧采样频率，把门框、桌腿、蓝色胶带角点当成稳定 landmark；检测到静态墙在两处重影时，暂停融合而不是继续把错误写进地图；局部 costmap 则必须优先服从眼前的深度障碍。
+
+P：所以这次的成绩是，撞得很有数据。
+
+広：做不到。
+
+広：嗯，很好。现在知道该从哪里修了。
+
 \section{两关节小臂：碰到世界之前，先别用力过猛}
 
 \subsection{为什么只做两关节}
@@ -424,10 +610,8 @@ y = l_1 \sin \theta_1 + l_2 \sin(\theta_1+\theta_2).
 反过来，如果我们想让末端去某个点，就要解逆运动学。
 本章不展开复杂求解，只记住两件事：
 
-\begin{itemize}[leftmargin=2em]
-\item 目标太远，超过 $l_1+l_2$，够不到。
-\item 目标在可达范围内，也可能有“手肘朝上”和“手肘朝下”两种姿态。
-\end{itemize}
+\paperitem{1}{目标太远，超过 $l_1+l_2$，够不到。}
+\paperitem{2}{目标在可达范围内，也可能有“手肘朝上”和“手肘朝下”两种姿态。}
 
 P：它的“想做”要先穿过这个可达区域。
 
@@ -459,156 +643,115 @@ Hogan 的阻抗控制把这种“像弹簧和阻尼一样接触世界”的想�
 成熟机器人系统常把高层任务、路径规划和低层伺服分开，也是因为这些层的时间尺度不同：语言和任务层可以慢一点，局部规划要跟上场地变化，关节伺服则要在毫秒级别收敛。
 前面提到的 LOAM 用快慢两层兼顾实时性和精度，机械臂控制里也有类似精神：慢层决定“去哪里”，快层保证“现在别发散”。
 
-\section{三次测试日志}
+\subsection{操控实验：能到，不代表能推}
 
-\subsection{第一次：能走，但找不到自己}
+SLAM 实验完成后，零号机先被固定在桌边。
+这一次不让底盘移动，避免把“找不到自己”和“手推歪了”混成同一种错误。
+Producer 在水瓶旁贴了一个小小的目标记号：末端要停在瓶身侧面三厘米处，再沿着桌面轻推。
 
-零号机第一次从门口出发时，路线看起来很顺利。
-它沿着蓝色胶带走了约一米，车头轻轻偏向右侧。
-Producer 以为这是小问题，直到它下一步把偏差继续放大，最后停在椅子腿前。
-
-日志里，轮速计显示它“应该”还在胶带中央。
-摄像头画面却显示胶带已经跑到画面左侧。
-IMU 的 yaw 角也出现了缓慢漂移。
-这次失败发生在 SLAM / localization 的前半段：`odom -> base\_link` 的短时里程计还算连续，`map -> odom` 的全局校正没有及时把漂移拉回来。
-
-P：它的错误有轨迹。
-
-広：嗯。它是很认真地一点点错下去。
-
-如果用 RTAB-Map 的语言看，这里至少有三个信号要被写进图里：相邻帧视觉 / 轮速里程计边、IMU 姿态先验、重新看见门框或桌腿时产生的回环边。
-回环检测通过后，会在位姿图里增加一条非相邻约束，优化结果再反过来修正整段轨迹。
-一条很小的回环边，可以让零号机意识到：它以为自己在桌边，其实又靠近了门口。
-
-更细一点，里程计预测可以写成
+第一组数据来自准度。
+逆运动学给出目标关节角，编码器也显示两个电机都转到了指定位置；然而相机里的末端仍偏了约三厘米。
+连杆长度标定、安装零位、减速齿隙和相机外参都会把很小的角度误差放大成桌面上的位置误差。
+所以操控并不只问“关节有没有到”，还要问“末端在现实里有没有到”：
 \begin{equation}
-\hat{x}_{t+1}=f(x_t,u_t),
+e_t^{\mathrm{tip}}=
+\left[
+\begin{array}{c}
+x_d-x_t\\
+y_d-y_t
+\end{array}
+\right].
 \end{equation}
-视觉观测给出残差
+这个误差可以由相机确认，也可以由更精细的末端传感器确认；只有它足够小，机械臂才有资格接近水瓶。
+
+第二组数据来自电机。
+PID 的 $u_t$ 不是魔法，而是给电机的电压、电流或力矩命令。
+电机真正能回报的通常是关节编码器读数和电流：前者告诉系统“转到了哪里”，后者提示“是不是被卡住了”。
+如果 $K_p$ 太大，末端会在瓶边来回抖；如果积分项积得太久，已经碰到瓶子仍会继续使劲；如果没有速度和电流限制，正确的目标也会被错误地执行。
+
+P：公式说它到了，电机也说它到了。
+
+広：相机不同意。
+
+広：嗯。应该听相机的。
+
+第三组数据才是力度。
+Producer 把水瓶里装了半瓶水，零号机以低速接近。
+末端第一次碰到瓶身时，电流突然上升，瓶子斜着晃了一下；控制器立刻后退，没有把“已经接触”误判成“应该继续前进”。
+接触阶段可以给末端一个很小的期望力 $F_d$，用阻抗关系约束它的推法：
 \begin{equation}
-r_t=z_t-h(\hat{x}_t,m).
+F_d-F=K(x-x_d)+B(\dot{x}-\dot{x}_d).
 \end{equation}
-如果 $r_t$ 连续变大，系统就该降低对轮速计的自信，提高视觉或回环校正的权重。
-零号机的迭代方案也随之具体起来：降低速度，提高关键帧采样频率，把门框、桌腿、蓝色胶带角点当成更稳定的视觉 landmark；同时在 map frame 里记录失败点，而不是只在 odom frame 里记录“我刚才走了多少”。
+其中 $K$ 决定接触时有多“硬”，$B$ 决定靠近或停下时有多“刹得住”。
+Mason 对顺应与力控的讨论、Hogan 的阻抗控制，以及 Khatib 的操作空间控制，都是这条线上的经典入口\cite{mason1981compliance,hogan1985impedance,khatib1987operational}。
 
-\subsection{第二次：能看，但不懂临时变化}
+広坐在旁边，看着水瓶慢慢停止晃动。
 
-第二次测试前，Producer 故意把一把椅子挪到路线附近。
-全局路径还是门口到桌边，地图上那条线没有问题。
-问题落在 Nav2 的 costmap 与局部控制。
+広：偏了三厘米。推力也大了。
 
-零号机看见椅子晚了一点，停得也晚了一点。
-它没有撞上去，但停在了一个尴尬的位置：再往前会碰椅子，往后退又会离开胶带。
+P：你怎么知道？
 
-P：它看见了，但反应太慢。
+広：你刚才记录了。
 
-広：像我发现体力不够的时候。
+広：请不要浪费数据。
 
-P：你一般发现得太晚。
+这次实验给出的不是“机械臂不行”，而是一张很具体的操控清单：用视觉复核末端准度，用编码器和 PID 稳住关节，用电流、接触信号和阻抗关系限制力。
+对零号机来说，下一轮的动作只需朴素地拆成：低速接近，确认位置，检测接触，轻推一小段，视觉确认水瓶位移，超过阈值就停止。
 
-広：嗯。Producer 急停键很有价值。
+\section{结尾验收：第三次，把水送过来}
 
-这次失败可以沿着 Nav2 的链路复现。
-第一步，Obstacle Layer 没有足够快地把椅子腿 mark 到局部 costmap。
-第二步，Inflation Layer 给出的危险边界太窄，零号机仍然把椅子旁边当成可擦边通过。
-第三步，DWB critic 的权重偏向“贴近全局路径”，压过了“远离障碍”和“平滑减速”。
+广把前两次实验的记录贴在地板上。
+蓝色胶带标出定位开始漂移的位置，灰色记号标出墙面出现重影的地方，黄色标出碰撞环压下的位置，红色则留在水瓶曾经晃动的桌边。
 
-把局部轨迹 $\tau$ 的评分写开一点，问题更清楚：
-\begin{equation}
-J(\tau)=
-\alpha_{\mathrm{path}}\phi_{\mathrm{path}}(\tau)
-+\alpha_{\mathrm{goal}}\phi_{\mathrm{goal}}(\tau)
-+\alpha_{\mathrm{obs}}\phi_{\mathrm{obs}}(\tau)
-+\alpha_{\mathrm{smooth}}\phi_{\mathrm{smooth}}(\tau).
-\end{equation}
-如果 $\alpha_{\mathrm{obs}}$ 太小，轨迹会勇敢得很难看；如果 $\alpha_{\mathrm{path}}$ 太大，机器人会像固执地踩着旧走位的练习生，明明前面多了一把椅子，还想贴回原路线。
-修正方案也很具体：缩小局部 costmap 的更新延迟，增大 inflation radius，提高 obstacle critic 权重，给控制器加速度上限和减速度上限。
-如果使用 Regulated Pure Pursuit，则把障碍物距离写进速度调节；如果用 MPPI，则通过短时间窗采样把“绕一点远路但不急停”纳入候选控制序列。
+P：你把失败点标得这么醒目，别人会以为这里发生过事故。
 
-\subsection{第三次：能碰，但角度和力气不合适}
+広：发生过。
 
-第三次，零号机终于接近桌边。
-两关节小臂抬起来，末端对准水瓶。
-从公式看，它已经把末端送到了目标附近。
-从现实看，它的角度偏了几度。
+広：很小。但是都留下来了。
 
-于是水瓶斜着晃了一下。
-瓶身晃动，Producer 立刻按下急停。
-
-広坐在旁边，看着水瓶停稳。
-她没有先评价成功或失败，只问：
-
-広：偏了多少？
-
-P：末端大概偏了三厘米。力也大了。
-
-広：嗯。很有价值。
-
-P：你先确认水没洒。
-
-広：也很有价值。
-
-第三次失败横跨 Nav2 的任务层和机械臂接触层。
-从导航角度看，BT Navigator 已经把“走到桌边”判成成功；从任务角度看，真正的目标还没有完成。
-行为树如果只写成 `NavigateToPose -> PushBottle`，一旦水瓶晃动，就只剩 Producer 的急停键。
-更合理的树应该在动作之间插入条件节点：
-
+第三次不再测一个孤立模块。
+零号机从门口出发，先用门框与蓝色胶带确认自己在地图中的位置；局部 costmap 看见临时障碍便减速绕开；到桌边后，行为树才允许小臂接手：
 \begin{center}
-NavigateToPose $\rightarrow$ CheckBottle $\rightarrow$ ServoApproach $\rightarrow$ ContactGuard $\rightarrow$ PushSmallStep.
+{\small
+\texttt{NavigateToPose} $\rightarrow$ \texttt{CheckBottle} $\rightarrow$ \texttt{ServoApproach}\\
+$\rightarrow$ \texttt{ContactGuard} $\rightarrow$ \texttt{PushSmallStep} $\rightarrow$ \texttt{VerifyDelivery}}
 \end{center}
+每个节点都可以返回 success、failure 或 running。
+\texttt{ContactGuard} 发现水瓶位移过快或末端电流突增时，就让系统后退、重新定位、缩短下一次推的距离；没有通过验证，就不把“到达桌边”冒充成“送水完成”。
 
-每个节点返回 success、failure 或 running。
-`ContactGuard` 一旦发现水瓶位移过快或末端电流突增，就把状态返回 failure，行为树进入 recovery：后退、重新定位、缩短下一次推的距离。
-这部分虽然已经靠近 manipulation，但它和 Nav2 的恢复行为思想一致：失败不是一条死路，而是一个可执行的分支。
+这一次，零号机在水瓶前停稳。
+小臂把末端校到瓶身侧面，轻轻推了一步，等待画面确认水瓶真的向安全接水区移动；再推一步。
+水瓶越过胶带，停在 Producer 伸手就能拿到的位置。
 
-机械臂的接触问题也在这里暴露得很清楚。
-末端位置、姿态、接触方向和速度都在同一瞬间生效；“到达目标点”只是开始，真正难的是到达以后怎么施力。
-工业机械臂会使用力/力矩传感器、关节力矩估计或触觉阵列做力控；小车预算有限时，也可以退一步，用舵机电流突增、关节误差突增、水瓶在画面里的位移作为粗糙接触信号。
-实现上可以给末端一个很小的期望力 $F_d$，用阻抗关系约束接触：
-\begin{equation}
-F_d-F = K(x-x_d)+B(\dot{x}-\dot{x}_d).
-\end{equation}
-其中 $K$ 决定“硬不硬”，$B$ 决定“刹得多快”。
-Mason 对顺应与力控的讨论、Hogan 的阻抗控制，以及后来的操作空间控制，都是这条线上的经典入口\cite{mason1981compliance,hogan1985impedance,khatib1987operational}。
-对零号机来说，下一轮迭代可以很朴素：低速接近，检测接触，轻推一小段，视觉确认水瓶位移，晃动超过阈值就停。
+P：送到了。
 
+広：嗯。
 
-\section{失败地图}
+P：它成功了。
 
-练习结束后，広在练习室地板上贴了三段不同颜色的胶带。
-蓝色是偏航开始变明显的位置。
-黄色是局部避障停得太晚的位置。
-红色是水瓶晃动的位置。
+広：很普通的成功。
 
-P：你把失败点标得这么醒目，别人会以为这里发生过什么事故。
+広：所以，很难得。
 
-広：发生过。很小的事故。
-
-P：你说得太平静了。
-
-広：因为这是地图。
-
-这张失败地图的用法很朴素：下一次训练从胶带旁边开始。
-零号机现在还不聪明。
-它会偏，会犹豫，会把水瓶推得很难看。
-但是它已经越过平板里的计划。
-它开始把轮子、摄像头、角度和急停一起带进现实。
+这就是零号机目前完成的、最小的机器人小脑：传感器给出观测，状态估计决定“我在哪里”，规划决定“下一步怎么走”，关节伺服决定“怎么动”，接触保护决定“什么时候停”。
+它还不会真正理解“水”对人意味着什么，也不会自己发明更好的送水办法；但它已经能把一串低层闭环接成一次没有洒出来的行动。
 
 这也是具身智能最朴素的地方。
 身体会改写题目。
 只要进入现实，世界就会把所有“差不多”改成具体的误差：几厘米，几度，几毫秒，几次失败。
 
-今天的内容仍然是底层骨架：运动学、状态估计、地图、规划、控制。
-当前具身智能的前沿正在把这副骨架继续往上接：语义地图把“椅子”从几何障碍扩展成可坐、可搬、会挡路的对象；开放词汇导航让机器人能把自然语言目标放进地图；学习控制和扩散策略开始接管难以手写的接触技能；世界模型和 VLA 则试图让机器人先预演，再把视觉、语言和动作接起来。
-零号机还很小，但它已经站在这条路线的入口处。
+接下来的问题才会变得更难：零号机怎样把“把水拿过来”理解成可执行的目标？怎样从椅子、门框和水瓶中读出语义、用途与风险？怎样在没见过的场地预演后果，再把视觉、语言和动作接起来？
+语义地图、世界模型与 VLA，正是在给这些问题继续补上更聪明的部分。
 
 P：接下来呢？
 
-広：让它先在一个小小的世界里多失败几次。
+広：先让它学会想得更远一点。
 
 P：仿真？
 
-広：嗯。再让它听懂一点人的话。
+広：嗯。
+
+広：再让它听懂一点人的话。
 
 P：世界模型和 VLA？
 
@@ -616,13 +759,18 @@ P：世界模型和 VLA？
 
 \begin{thebibliography}{99}
 \bibitem{thrun2005prob} S. Thrun, W. Burgard, and D. Fox, \emph{Probabilistic Robotics}. Cambridge, MA, USA: MIT Press, 2005.
+\bibitem{nister2006vo} D. Nist\'er, O. Naroditsky, and J. R. Bergen, ``Visual Odometry for Ground Vehicle Applications,'' \emph{Journal of Field Robotics}, vol. 23, no. 1, pp. 3--20, 2006. doi: 10.1002/rob.20103.
+\bibitem{scaramuzza2011vo} D. Scaramuzza and F. Fraundorfer, ``Visual Odometry: Part I: The First 30 Years and Fundamentals,'' \emph{IEEE Robotics \& Automation Magazine}, vol. 18, no. 4, pp. 80--92, 2011. doi: 10.1109/MRA.2011.943233.
+\bibitem{fraundorfer2012vo} F. Fraundorfer and D. Scaramuzza, ``Visual Odometry: Part II: Matching, Robustness, Optimization, and Applications,'' \emph{IEEE Robotics \& Automation Magazine}, vol. 19, no. 2, pp. 78--90, 2012. doi: 10.1109/MRA.2012.2182810.
+\bibitem{zhang2000calib} Z. Zhang, ``A Flexible New Technique for Camera Calibration,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 22, no. 11, pp. 1330--1334, 2000. doi: 10.1109/34.888718.
+\bibitem{triggs2000ba} B. Triggs, P. F. McLauchlan, R. I. Hartley, and A. W. Fitzgibbon, ``Bundle Adjustment---A Modern Synthesis,'' in \emph{Vision Algorithms: Theory and Practice}, LNCS 1883, pp. 298--372, 2000. doi: 10.1007/3-540-44480-7\_21.
 \bibitem{labbe2013rtabmap} M. Labbe and F. Michaud, ``Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation,'' \emph{IEEE Transactions on Robotics}, vol. 29, no. 3, pp. 734--745, 2013.
 \bibitem{qin2018vinsmono} T. Qin, P. Li, and S. Shen, ``VINS-Mono: A Robust and Versatile Monocular Visual-Inertial State Estimator,'' \emph{IEEE Transactions on Robotics}, vol. 34, no. 4, pp. 1004--1020, 2018.
 \bibitem{campos2021orbslam3} C. Campos, R. Elvira, J. J. Gomez Rodriguez, J. M. M. Montiel, and J. D. Tardos, ``ORB-SLAM3: An Accurate Open-Source Library for Visual, Visual-Inertial and Multi-Map SLAM,'' \emph{IEEE Transactions on Robotics}, vol. 37, no. 6, pp. 1874--1890, 2021.
 \bibitem{sola2018lie} J. Sola, J. Deray, and D. Atchuthan, ``A micro Lie theory for state estimation in robotics,'' arXiv:1812.01537, 2018.
 \bibitem{zhang2014loam} J. Zhang and S. Singh, ``LOAM: Lidar Odometry and Mapping in Real-time,'' in \emph{Robotics: Science and Systems}, 2014.
 \bibitem{fox1997dwa} D. Fox, W. Burgard, and S. Thrun, ``The Dynamic Window Approach to Collision Avoidance,'' \emph{IEEE Robotics \& Automation Magazine}, vol. 4, no. 1, pp. 23--33, 1997.
-\bibitem{nav2docs} Open Navigation, ``Nav2 Documentation,'' accessed May 28, 2026. [Online]. Available: \href{https://docs.nav2.org/}{official docs}
+\bibitem{nav2docs} Open Navigation, ``Navigation Concepts,'' accessed July 21, 2026. [Online]. Available: \href{https://docs.nav2.org/concepts/index.html}{official docs}
 \bibitem{nav2smac} Open Navigation, ``Smac Planner,'' accessed May 28, 2026. [Online]. Available: \href{https://docs.nav2.org/configuration/packages/configuring-smac-planner.html}{official docs}
 \bibitem{nav2dwb} Open Navigation, ``DWB Controller,'' accessed May 28, 2026. [Online]. Available: \href{https://docs.nav2.org/configuration/packages/configuring-dwb-controller.html}{official docs}
 \bibitem{nav2rpp} Open Navigation, ``Regulated Pure Pursuit Controller,'' accessed May 28, 2026. [Online]. Available: \href{https://docs.nav2.org/configuration/packages/configuring-regulated-pp.html}{official docs}
