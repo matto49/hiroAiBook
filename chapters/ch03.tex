@@ -1,101 +1,498 @@
-% ==================== 章节3：如何像资本家一样压榨 AI agent ====================
+% ==================== 章节3：如何像资本家一样压榨智能体 ====================
 
-% --- 章节标题页（竖排） ---
-\hirochapter{如何像资本家一样压榨 AI agent}
+\hirochapter{如何像资本家一样压榨智能体}
 
-% --- 小剧场对话 ---
+% Compact diagrams for the A5 page.
+\tikzset{
+  agentflow/.style={->,thick,draw=primary},
+  agentdash/.style={->,thick,dashed,draw=accent},
+  agentbox/.style={draw=primary,thick,rounded corners=2pt,align=center,
+    minimum height=0.62cm,font=\scriptsize},
+  agentnote/.style={font=\tiny,text=primary,align=center},
+  agenttitle/.style={font=\scriptsize\bfseries,text=primary}
+}
+
 \section*{小剧场}
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
 \skitillustration{figures/skits/ch03-auto-summary.png}
 
-活动室的桌上放着一台笔记本电脑。
+放学后的活动室里，Producer 把笔记本电脑转向广。
 
-Producer 本来只是想测试一个很轻松的小工具：把训练记录丢进去，让 AI 自动总结重点。
+训练记录系统的登录模块从下午开始报错。问题不只在一个文件里：后端的权限判断需要检查，前端调用可能要跟着改，旧测试还没有覆盖越权访问。明天早上，这套系统又要继续使用。
 
-P：看，今天先做文本工作。安全、简单、不会撞到椅子。
-
-広：嗯。听起来像很温柔的训练菜单。
-
-P：你这句话让我有点不安。
-
-第一次输出很正常。
+Producer 在 Claude Code 里输入：
 
 \begin{quote}
-今日训练重点：节拍稳定性、转身后的重心恢复、休息间隔控制。
+检查训练记录系统的登录模块，修复权限漏洞，更新相关调用，并补齐测试。不要破坏现有接口。
 \end{quote}
 
-P：不错。
+终端没有立刻给出答案。它先读取项目规则，搜索认证入口，打开几个文件，然后运行测试。测试失败后，它又回到代码里。
 
-広：很端正。没有灵魂。
+P：它还没有开始修吗？
 
-P：自动摘要不需要灵魂。
+广：已经开始了。
 
-第二次，系统开始把 Producer 的批注也总结进去。
+P：可是文件还没有变化。
 
-\begin{quote}
-负责人倾向于先降低风险，再提出下一轮要求。语气较严厉，但实际控制了训练强度。
-\end{quote}
+广：它在确认，要改的是哪里。还有，哪里不能改。
 
-P：等一下。
+几轮工具调用以后，终端里多出一条失败日志。后端权限判断、前端调用和回归测试，像三条岔路一样同时露了出来。
 
-広凑近屏幕，读得很慢。
+P：那就开三个智能体，一人一条？
 
-広：很准确。
+广看着屏幕，停了一会儿。
 
-P：它是来总结训练记录的，不是来总结我的。
+广：先别急。
 
-広：但是负责人也是系统的一部分。
+P：不能并行？
 
-P：不要把我放进系统。
+广：可以。只是三个人同时改一个接口，也会更快地坏掉。
 
-第三次，摘要变成了更完整的人格侧写。
+她把 Producer 的笔记本拉近一点。
 
-\begin{quote}
-Producer 对筱澤広的训练策略表现为“理解后的严厉”：避免无意义消耗，同时保留足够困难，使训练对象持续面对不适合自己的任务。
-\end{quote}
+广：先看清楚，问题是怎样分叉的。然后再决定，哪些路可以交出去。
 
-Producer 伸手想合上电脑。
+\hiropapertitle{Claude Code 如何解决复杂问题}{広，Producer}{初星学园放学后 AI 小课堂}
 
-広按住了屏幕边缘。
+\begin{abstract}
+一条“修复权限漏洞”的请求进入 Claude Code 后，会先获得项目规则与工具，再经过反复的读取、执行和观察。当前循环装不下所有旁支时，模型还可以调用 Agent 工具，启动新的执行循环。本文跟着同一个认证故障走完环境加载、Prompt 组装、问题分解、工具循环、智能体选择、并行协调和结果验证，观察一次模型生成怎样被接成一段可以接受现实反馈的工程过程。
+\end{abstract}
 
-広：先保存。
+\keywords{Claude Code，Agent Harness，Agent Loop，Subagent，Fork，Agent Teams，Worktree}
 
-P：为什么？
+\section*{引言：一个复杂任务，七个阶段}
+\phantomsection
+\addcontentsline{toc}{section}{引言：一个复杂任务，七个阶段}
 
-広：它已经开始观察负责人了。嗯。方向没错，只是有点失礼。
+用户看到的输入只有一句话：
 
-P：下一章是不是要讲怎么压榨它？
+\begin{lstlisting}[caption={贯穿全文的复杂任务}]
+检查训练记录系统的登录模块，修复权限漏洞，
+更新相关调用，并补齐测试。不要破坏现有接口。
+\end{lstlisting}
 
-広：说法可以更温柔一点。
+终端最先出现的却不是补丁，而是几项很平常的动作：
 
-P：比如？
+\begin{lstlisting}[caption={请求进入后最初留下的执行轨迹}]
+Read   CLAUDE.md
+Grep   "authorize|canAccess"  src/ tests/
+Bash   pnpm test auth
+       -> 1 failed, 18 passed
+\end{lstlisting}
 
-広：如何让它工作到边界清楚为止。
+第一条规则告诉系统怎样验证改动；搜索把“登录模块”落到具体文件；失败测试则推翻了“现有行为大体正确”的默认假设。模型每次只判断下一步，读取文件、运行命令、记录结果和约束副作用的工作由外围 Harness 完成。新的观察回到下一轮，许多次模型调用才连成一段工程过程。\cite{ch03e2e,ch03dive}
 
-P：这不是更温柔。
+把这次请求一直追到结束，可以看到七个阶段：
 
-広：但比较准确。
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agentbox,fill=blue!12,minimum width=2.55cm] (s1) at (-4.65,1.65) {1 环境加载\\规则、目录、权限};
+  \node[agentbox,fill=green!13,minimum width=2.55cm] (s2) at (-1.55,1.65) {2 Prompt 组装\\本轮可见信息};
+  \node[agentbox,fill=yellow!22,minimum width=2.55cm] (s3) at (1.55,1.65) {3 问题分解\\下一项可验证动作};
+  \node[agentbox,fill=orange!18,minimum width=2.55cm] (s4) at (4.65,1.65) {4 工具循环\\动作与新观察};
+  \node[agentbox,fill=red!10,minimum width=2.55cm] (s5) at (4.65,0.10) {5 智能体选择\\继续 / Fork / Fresh};
+  \node[agentbox,fill=purple!12,minimum width=2.55cm] (s6) at (1.55,0.10) {6 并行协调\\隔离、所有权、通信};
+  \node[agentbox,fill=cyan!13,minimum width=2.55cm] (s7) at (-1.55,0.10) {7 证据门\\合并、测试、未决项};
+  \node[agentbox,fill=codebg,minimum width=2.55cm] (done) at (-4.65,0.10) {交付结果\\改动与可复查证据};
+  \draw[agentflow] (s1) -- (s2);
+  \draw[agentflow] (s2) -- (s3);
+  \draw[agentflow] (s3) -- (s4);
+  \draw[agentflow] (s4) -- (s5);
+  \draw[agentflow] (s5) -- (s6);
+  \draw[agentflow] (s6) -- (s7);
+  \draw[agentflow] (s7) -- node[agentnote,above] {通过} (done);
+  \draw[agentdash,rounded corners=5pt] (s4.north) -- ++(0,0.38) -|
+    node[agentnote,above,pos=0.25] {Agent Loop：tool\_result} (s3.north);
+  \draw[agentdash,rounded corners=5pt] (s7.west) -- ++(-0.28,0) |-
+    node[agentnote,above,pos=0.78] {验收失败：带证据重排计划}
+    ($(s3.north)+(0,0.72)$) -- (s3.north);
+\end{tikzpicture}
+\caption{同一请求在 Harness 中留下的七阶段路径。实线传递任务与产物，虚线把工具观察或验收失败送回问题分解。}
+\label{fig:ch03-seven-stages}
+\end{figure}
+
+这张图同时画出了时间和职责。模型主要出现在第 3、4 阶段，判断下一步并提出工具请求；环境、权限、文件执行、转录和会话状态由 Harness 围在调用之外。到了第 5 阶段，复制的也不是一个聊天框，而是另一套“上下文--模型--工具--观察”循环。七阶段是本文合并三篇图解材料后的讲解路径，不是 Claude Code 的官方分层。\cite{ch03arch,ch03e2e,ch03multi}
+
+\FloatBarrier
+
+\section{阶段一：任务进入 Claude Code}
+
+回车之后，Claude Code 先做启动检查。这次会话留下了一份很小、但会约束后文的环境快照：\cite{ch03e2e,ch03agents}
+
+\begin{lstlisting}[caption={认证任务的会话边界示意}]
+cwd          /repo/training-log
+project rule keep public auth API compatible
+test command pnpm test auth
+permissions  read/search: allow; edit/bash: check
+\end{lstlisting}
+
+于是，“登录模块”不再只是一句自然语言。搜索从当前仓库开始，修复必须保留公共接口，验收要使用项目自己的测试命令；模型若提出编辑或执行命令，Harness 还要按权限模式决定放行、询问或拒绝。换一个目录或一份 \texttt{CLAUDE.md}，同一句任务就会从不同位置开始。
+
+这些边界此刻仍在程序状态里。要让模型据此判断下一步，Harness 还得把它们装进本轮输入。
+
+\section{阶段二：组装模型的工作环境}
+
+第一次调用模型时，Prompt 已经比用户的那句话长得多。前面是较稳定的系统行为、项目规则与工具 schema；后面是这次任务以及刚刚发生的观察。运行继续以后，前半部分大多不变，后半部分会被搜索结果、Diff 和测试日志不断拉长。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agentbox,fill=blue!10,minimum width=10.60cm,minimum height=0.52cm] (system) at (0,2.20) {系统行为：工具如何调用，权限如何处理，何时结束};
+  \node[agentbox,fill=green!12,minimum width=10.60cm,minimum height=0.52cm] (project) at (0,1.52) {项目知识：\texttt{CLAUDE.md}、目录规则、Skills};
+  \node[agentbox,fill=purple!10,minimum width=10.60cm,minimum height=0.52cm] (tools) at (0,0.84) {工具 schema：Read / Grep / Edit / Bash / Agent / MCP};
+  \node[draw=primary!65,dashed,rounded corners=3pt,fit=(system)(tools),inner sep=4pt,
+        label={[agentnote]left:稳定前缀\\可复用缓存}] (stable) {};
+  \node[agentbox,fill=yellow!18,minimum width=10.60cm,minimum height=0.52cm] (request) at (0,-0.10) {用户请求：修权限漏洞，保持公共接口兼容};
+  \node[agentbox,fill=orange!15,minimum width=10.60cm,minimum height=0.72cm] (history) at (0,-0.88) {动态尾部：Read 结果、搜索命中、Diff、失败测试\\每轮只保留或压缩仍会影响决策的证据};
+  \node[draw=accent!70,dashed,rounded corners=3pt,fit=(request)(history),inner sep=4pt,
+        label={[agentnote]left:增长尾部\\占用上下文}] (dynamic) {};
+  \node[agentbox,fill=codebg,minimum width=4.05cm] (prompt) at (0,-2.05) {本轮 Prompt $\longrightarrow$ 模型调用};
+  \draw[agentflow] (stable) -- (prompt);
+  \draw[agentflow] (dynamic) -- (prompt);
+\end{tikzpicture}
+\caption{Prompt 的稳定前缀与动态尾部。缓存可以复用稳定前缀的计算，真正挤占上下文的是持续增长的任务轨迹。}
+\label{fig:ch03-prompt-assembly}
+\end{figure}
+
+认证仓库的一次宽泛搜索可能返回几百条调用，测试也可能吐出整段堆栈。全留下，模型下一轮要在噪声里重新找入口；只留“测试失败”，又会丢掉具体断言。于是搜索需要逐步收窄，过长结果需要截断或压缩，中间调查有时值得放进独立上下文。Prompt cache 只降低稳定前缀的重复计算成本，不会让无关日志变得有用。\cite{ch03dive,ch03cache}
+
+到这里，模型拥有了工作环境，却仍不知道漏洞在哪里。它只能先提出一个能被仓库验证的动作。
+
+\FloatBarrier
+
+\section{阶段三：把复杂目标分解成行动}
+
+模型第一次面对完整任务时，最稳妥的起点不是猜一行补丁，而是先造出一个会失败的越权用例。只有“本应返回 403，却得到 200”出现以后，权限漏洞才从用户描述变成可检查的事实。
+
+接下来的计划带着明确依赖：先找到请求经过的入口和权限判断，再确认公共接口的兼容约束；后端修复与调用方搜索可以分开推进，最后仍要在同一组测试里汇合。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agentbox,fill=red!10,minimum width=2.40cm] (repro) at (-4.65,1.25) {复现越权\\期望 403，得到 200};
+  \node[agentbox,fill=blue!12,minimum width=2.40cm] (path) at (-1.55,1.25) {追踪请求路径\\路由 $\rightarrow$ 权限判断};
+  \node[agentbox,fill=yellow!20,minimum width=2.40cm] (contract) at (1.55,1.25) {锁定约束\\公共接口保持兼容};
+  \node[agentbox,fill=orange!16,minimum width=2.40cm] (backend) at (4.65,1.85) {后端分支\\收紧资源所有权校验};
+  \node[agentbox,fill=green!13,minimum width=2.40cm] (callers) at (4.65,0.55) {调用方分支\\搜索旧参数与旧假设};
+  \node[agentbox,fill=cyan!13,minimum width=3.15cm] (verify) at (1.55,-0.55) {汇合：攻击测试 + 兼容测试 + 全量测试};
+  \draw[agentflow] (repro) -- node[agentnote,above] {失败证据} (path);
+  \draw[agentflow] (path) -- node[agentnote,above] {真实调用链} (contract);
+  \draw[agentflow] (contract) -- (backend);
+  \draw[agentflow] (contract) -- (callers);
+  \draw[agentflow] (backend) -- (verify);
+  \draw[agentflow] (callers) -- (verify);
+\end{tikzpicture}
+\caption{认证任务的依赖图。计划先规定“下一项证据是什么”，执行结果仍可能改写后面的路径。}
+\label{fig:ch03-task-graph}
+\end{figure}
+
+图里的“权限判断路径”仍只是假设。如果搜索发现所有入口都经过统一 middleware，修复点会收窄；如果越权来自调用方漏传资源标识，后端分支就要重画。计划的作用是安排下一次观察，不是提前宣布答案。
+
+\FloatBarrier
+
+\section{阶段四：用工具循环逼近答案}
+
+第一次执行很快把计划改了两次。新增的攻击测试先证明漏洞存在；后端补上资源所属校验以后，攻击测试转绿，旧的前端兼容测试却开始失败：调用方一直依赖后端接受缺失的资源标识。
+
+\begin{lstlisting}[caption={两次失败怎样改变问题}]
+authz.spec.ts    expected 403, received 200
+                 -> 漏洞得到复现
+
+session.spec.ts  expected legacy request to succeed
+                 -> 后端修复暴露调用方旧假设
+\end{lstlisting}
+
+每次测试都只回答眼前的一小部分。模型据此提出下一项工具请求；Harness 检查权限、执行动作，再把内容、Diff、退出状态或错误送回下一轮 Prompt。这条回路才是单个 Agent 的工作节拍：
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.50cm and 0.62cm]
+  \node[agentbox,fill=blue!12,minimum width=2.50cm] (reason) {模型判断\\下一项缺失的证据};
+  \node[agentbox,fill=yellow!22,minimum width=2.50cm,right=of reason] (call) {tool\_use\\Read / Grep / Edit / Bash};
+  \node[agentbox,fill=red!10,minimum width=2.50cm,below=of call] (gate) {权限判断\\允许 / 询问 / 拒绝};
+  \node[agentbox,fill=orange!18,minimum width=2.50cm,left=of gate] (execute) {工具执行\\仓库、终端、外部服务};
+  \node[agentbox,fill=green!13,minimum width=2.50cm,left=of execute] (observe) {tool\_result\\内容、Diff、退出状态};
+  \node[agentbox,fill=codebg,minimum width=1.65cm,right=0.70cm of gate] (user) {用户确认\\或拒绝原因};
+  \draw[agentflow] (reason) -- node[agentnote,above] {意图} (call);
+  \draw[agentflow] (call) -- (gate);
+  \draw[agentflow] (gate) -- node[agentnote,above] {允许} (execute);
+  \draw[agentflow] (execute) -- (observe);
+  \draw[agentflow,rounded corners=5pt] (observe.north) |- node[agentnote,left] {新观察} (reason.west);
+  \draw[<->,thick,dashed,draw=accent] (gate) -- node[agentnote,above] {询问 / 决定} (user);
+\end{tikzpicture}
+\caption{Agent Loop 中，模型给出动作意图，Harness 执行并返回证据；用户的权限决定同样会改变下一轮。}
+\label{fig:ch03-agent-loop}
+\end{figure}
+
+模型说“我会运行测试”仍只是一段文本。测试命令、退出状态和失败断言返回以后，这项动作才成为证据。权限闸门也位于意图与副作用之间：一次被拒绝的命令不会偷偷变成“已经执行”。\cite{ch03e2e,ch03dive}
+
+\subsection{大模型如何解决复杂问题}
+
+到第三轮，困难已经不再抽象。攻击测试必须先失败，补丁才有目标；宽泛搜索和长日志开始挤占上下文；调用方扫描与攻击测试可以独立推进；后端与前端又共享同一份接口约束。给这些现场问题命名，会得到四种不同的复杂性：
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{L{0.42\textwidth}L{0.17\textwidth}L{0.31\textwidth}}
+\toprule
+认证任务里已经发生的事 & 复杂性 & 系统怎样接住它 \\
+\midrule
+攻击测试先失败，补丁才有可验证目标 & 步骤 & Agent Loop 按观察重排计划 \\
+搜索命中与测试日志持续进入历史 & 信息 & 收窄检索、压缩或隔离上下文 \\
+扫描调用方与补攻击用例可以同时进行 & 分支 & 通过 Agent 工具委派旁支 \\
+后端、前端共享接口，测试还可能共享环境 & 协调 & 所有权、通信与证据门 \\
+\bottomrule
+\end{tabular}
+\caption{四种复杂性来自同一条故障链，后两种才真正提出多智能体问题。}
+\label{tab:ch03-complexity}
+\end{table}
+
+大模型在这里没有靠一次更长的思考越过复杂性。它先把目标压成下一项可检查的动作，再让工具结果纠正自己；只有旁支已经能用独立任务说明和独立证据交付时，复制循环才开始划算。
+
+P：现在可以开三个了吗？
+
+广：两个。
+
+P：少的那个呢？
+
+广：接口约束留在这里。不能一起丢出去。
+
+\FloatBarrier
+
+\section{阶段五：从单智能体进入多智能体}
+
+在父 Agent Loop 的工具菜单里，\texttt{Agent} 与 Read、Grep、Bash 一样，首先是一项可调用能力。父模型提出 Agent tool call 后，Harness 才会启动另一套上下文、模型与工具循环；子循环结束时，报告或完成通知再作为新观察回到父循环。多智能体因此没有跳出图 \ref{fig:ch03-agent-loop}，它只是让其中一次工具调用打开了另一个 Loop。\cite{ch03multi,ch03dive,ch03subagents}
+
+是否调用它，要先判断旁支与当前上下文的关系：
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agentbox,fill=yellow!22,minimum width=4.45cm] (q1) at (0,2.20) {下一项工作必须紧接当前推理吗？};
+  \node[agentbox,fill=blue!12,minimum width=3.35cm] (single) at (-4.05,0.75) {是：父循环继续\\解释刚失败的前端测试};
+  \node[agentbox,fill=yellow!15,minimum width=4.05cm] (q2) at (1.65,0.75) {否：是否需要父会话\\已经积累的大量背景？};
+  \node[agentbox,fill=orange!18,minimum width=3.35cm] (fork) at (-0.45,-0.75) {是：Fork\\继承对话前缀与工具池\\尝试另一种诊断};
+  \node[agentbox,fill=green!13,minimum width=3.35cm] (fresh) at (3.65,-0.75) {否：Fresh Agent\\只接收独立任务说明\\扫描所有调用方};
+  \node[agentbox,fill=purple!12,minimum width=5.55cm] (return) at (0,-2.25) {下一项观察回到父循环\\子循环交回发现 / Diff / 命令与退出状态};
+  \draw[agentflow] (q1) -- node[agentnote,above left] {是} (single);
+  \draw[agentflow] (q1) -- node[agentnote,above right] {否} (q2);
+  \draw[agentflow] (q2) -- node[agentnote,left] {是} (fork);
+  \draw[agentflow] (q2) -- node[agentnote,right] {否} (fresh);
+  \draw[agentflow] (single) -- (return);
+  \draw[agentflow] (fork) -- (return);
+  \draw[agentflow] (fresh) -- (return);
+\end{tikzpicture}
+\caption{继续、Fork 与 Fresh 选择的是上下文起点。每条路都必须说明最终带回父循环的证据。}
+\label{fig:ch03-agent-choice}
+\end{figure}
+
+\FloatBarrier
+
+\subsection{先选上下文起点，再选角色}
+
+Fork 与 Fresh 只回答“从哪里开始”。Fork 继承父会话累积的对话前缀，少一次背景重述，也把旧噪声一并带走；Fresh Agent 从独立任务说明开始，上下文干净，遗漏的约束却不会自动补回来。Prompt cache 会让共享稳定前缀更便宜一些，但子智能体生成内容、工具调用和最终综合仍然付费。\cite{ch03multi,ch03cache}
+
+选定 Fresh 后，还要决定它需要怎样的角色与工具。Explore、Plan、通用 Subagent、项目自定义 Agent 与 Teammate 属于这一轴；Worktree 则是后面单独选择的文件隔离方式。把几条轴分开，才不会把“继承上下文”“能否写文件”和“能否持续通信”误认为同一等级。
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{L{0.14\textwidth}L{0.20\textwidth}L{0.30\textwidth}L{0.26\textwidth}}
+\toprule
+Fresh 后的角色 & 起点与工具 & 认证任务中的派工 & 要带回什么 \\
+\midrule
+Explore & 独立、只读 & 扫描认证调用方 & 文件、调用链、未验证项 \\
+Plan & 独立、只读 & 排出后端与前端实施依赖 & 顺序、边界、回滚点 \\
+Subagent & 独立、完整工具 & 在清楚边界内补攻击测试 & Diff、命令、退出状态 \\
+Custom & 项目定义工具与规则 & 按安全审查模板检查补丁 & 规定格式的发现与证据 \\
+Teammate & 独立持久会话、可通信 & 必要时持续协商接口 & 任务状态、消息与交付物 \\
+\bottomrule
+\end{tabular}
+\caption{角色决定工具与协作方式，不决定是否继承父会话。具体名称和默认能力按产品版本理解。}
+\label{tab:ch03-agent-types}
+\end{table}
+
+这次父循环实际只派出两份任务书：Explore 搜索前端所有认证调用，只报告请求形状和未验证项；测试 Subagent 只负责补充边界用例，返回 Diff 与测试命令。公共接口仍由父循环掌握，没有第三位实现者同时设计它。
+
+两个报告回来以后，调用方清单与攻击测试已经能够并行处理。但下一步需要两个执行者同时写代码。上下文分开了，文件和运行环境还没有。
 
 \clearpage
 
-% --- 论文正文（IEEE风格，单栏） ---
-\hiropapertitle{如何像资本家一样压榨 AI agent}{広}{初星学园}
+\section{阶段六：隔离、协调与并行执行}
 
-\begin{abstract}
-摘要内容。
-\end{abstract}
+测试 Subagent 与父循环现在拥有各自的对话，搜索噪声不会直接混在一起。若它们仍指向同一个 checkout，父循环修改 \texttt{authorize.ts} 的同时，子循环写入测试文件，双方看到的却是同一份未提交状态。上下文隔离已经成立，源码隔离还没有。
 
-\section{引言}
+\subsection{上下文隔离不等于文件隔离}
 
-\section{什么是 AI agent}
+Git worktree 把两个写入分支放进不同工作副本。父循环在 \texttt{fix/authz} 收紧后端校验，子循环在 \texttt{test/callers} 更新调用方和测试。两边共享 Git 对象与历史，未提交文件互不覆盖，最后再经过同一个合并门。\cite{ch03multi,ch03worktrees,ch03dive}
 
-\section{工作流与自动化}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agentbox,fill=codebg,minimum width=4.00cm] (git) at (0,2.25) {共享 \texttt{.git} 对象与提交历史};
+  \node[agentbox,fill=blue!12,minimum width=3.75cm] (wa) at (-3.40,0.95) {Worktree A · \texttt{fix/authz}\\\texttt{authorize.ts} + 后端测试};
+  \node[agentbox,fill=green!13,minimum width=3.75cm] (wb) at (3.40,0.95) {Worktree B · \texttt{test/callers}\\前端调用 + 兼容测试};
+  \node[agentbox,fill=orange!18,minimum width=4.00cm] (merge) at (0,-0.20) {合并门\\接口审查 $\rightarrow$ 攻击测试 $\rightarrow$ 全量测试};
+  \node[agentbox,draw=red!65,fill=red!6,minimum width=7.40cm] (runtime) at (0,-1.50) {Worktree 不会自动隔离：测试数据库 / 端口 / 缓存 / 外部服务};
+  \draw[agentdash] (git) -- node[agentnote,left] {共享对象} (wa);
+  \draw[agentdash] (git) -- node[agentnote,right] {共享对象} (wb);
+  \draw[agentflow] (wa) -- (merge);
+  \draw[agentflow] (wb) -- (merge);
+  \draw[->,thick,dashed,draw=red!65] (runtime) -- (wa);
+  \draw[->,thick,dashed,draw=red!65] (runtime) -- (wb);
+\end{tikzpicture}
+\caption{Worktree 隔离源码写入，却不自动复制运行环境；接口冲突与共享测试状态仍要在合并门处理。}
+\label{fig:ch03-worktree}
+\end{figure}
 
-\section{实战技巧}
+如果两个测试同时重置同一个测试用户，或争用同一端口，源码没有互相覆盖，结果仍可能随机失败。真实团队的经验也提醒了这一点：Worktree 解决 working copy，数据库与开发服务要另外命名、复制或串行使用。\cite{ch03trigger}
 
-\begin{thebibliography}{9}
-\bibitem{ch03ref1} 参考文献1。
-\bibitem{ch03ref2} 参考文献2。
+放回认证任务，四条边界各自负责一件事：Explore 只需要独立上下文；写测试的 Subagent 需要独立工作副本；并行测试需要不同数据库命名空间；公共认证接口则只能有一个明确所有者。少掉最后一条，即使两个 worktree 完全干净，也可能各自提交一套不兼容设计。
+
+\FloatBarrier
+
+\subsection{Coordinator 与 Teammate}
+
+刚才两份派工只需各自向父循环交卷：父节点发出范围与验收条件，worker 带着证据回来，worker 之间没有消息可说。这种父子汇总已经足够。
+
+如果前端在扫描时发现“资源标识”无法从旧接口取得，后端又必须据此调整契约，双方才值得直接交换消息、更新共享任务状态并解除依赖。此时可以升级为 Agent Teams 的持续协作；代价是消息、任务状态和成员生命周期也变成需要维护的系统状态。\cite{ch03multi,ch03teams}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[agenttitle] at (-3.30,2.35) {父子汇总};
+  \node[agentbox,fill=orange!18,minimum width=2.40cm] (coord) at (-3.30,1.55) {父 Agent Loop};
+  \node[agentbox,fill=blue!12,minimum width=2.20cm] (a) at (-4.65,-0.05) {Explore\\调用方清单};
+  \node[agentbox,fill=green!13,minimum width=2.20cm] (b) at (-1.95,-0.05) {Subagent\\攻击测试};
+  \draw[agentflow] (coord) -- (a);
+  \draw[agentflow] (coord) -- (b);
+  \draw[agentdash,bend left=12] (a) to (coord);
+  \draw[agentdash,bend right=12] (b) to (coord);
+  \node[agentnote] at (-3.30,0.72) {实线派工 · 虚线回传证据};
+  \node[agentnote,text=red!70!black] at (-3.30,-0.88) {worker 之间无消息};
+
+  \node[agenttitle] at (3.35,2.35) {共享任务协作};
+  \node[agentbox,fill=orange!16,minimum width=3.05cm] (board) at (3.35,1.55) {Shared Task List\\认领、依赖、完成状态};
+  \node[agentbox,fill=blue!12,minimum width=2.05cm] (back) at (1.75,0.05) {Backend\\接口所有者};
+  \node[agentbox,fill=green!13,minimum width=2.05cm] (front) at (4.95,0.05) {Frontend\\调用方};
+  \node[agentbox,fill=yellow!22,minimum width=2.05cm] (test) at (3.35,-1.30) {Verifier\\反向破坏};
+  \draw[agentdash] (board) -- (back);
+  \draw[agentdash] (board) -- (front);
+  \draw[<->,thick,draw=primary] (back) -- (front);
+  \draw[agentflow] (back) -- (test);
+  \draw[agentflow] (front) -- (test);
+  \draw[agentdash] (test) -- (board);
+\end{tikzpicture}
+\caption{独立旁支只需父子汇总；成员必须直接协商接口时，共享任务状态与点对点消息才抵得过额外成本。}
+\label{fig:ch03-topologies}
+\end{figure}
+
+\FloatBarrier
+
+\subsection{只共享下一步需要的状态}
+
+Explore 的几百行搜索过程可以留在自己的转录里；“前端必须补充资源标识”会改变后端下一步，就应该进入报告、共享任务或消息。这样，私有上下文保存推理细节，共享状态只承载契约、依赖、完成条件与可复查证据。
+
+成员完成后，父循环还要接收报告，检查有改动的 worktree，保留要合并的分支并清理空工作区。若任务跨过关机或会话结束，运行中的成员不能被当作持久记忆；角色、承诺、进度和未决消息需要写入可恢复的外部状态。\cite{ch03atwz}
+
+多开智能体也不会自动产生独立证据。相同任务说明、相同工具路径和相同验证方法，很可能让它们重复同一种错误。
+
+P：三个智能体都说自己完成了。
+
+广：嗯。
+
+P：这次总可以相信了吧？
+
+广：三个人说了同一句话。不是三份证据。
+
+\FloatBarrier
+
+\section{阶段七：重新汇合为一个可信结果}
+
+两份完成通知回到父循环时，原任务仍有四个动词：检查、修复、更新、证明。Explore 找到调用方，测试 Subagent 交回攻击用例，都只覆盖其中一部分。父循环必须在合并后的工作树里重新检查接口约束，再让 verifier 用越权输入和旧调用方式各攻击一次。
+
+智能体报告“测试通过”只是下一轮的输入。命令、作用目录、退出状态与关键日志能够被重新检查，才算证据。实现者沿设计路径证明补丁可用，verifier 则从资源不属于当前用户、标识缺失和旧客户端请求等边界重新尝试破坏它。\cite{ch03dive,ch03atwz}
+
+\subsection{一次完整追踪}
+
+现在按实际事件把活动室里的任务重新走一遍：
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{L{0.25\textwidth}L{0.39\textwidth}L{0.26\textwidth}}
+\toprule
+谁做了什么 & 新观察或证据 & 下一项决定 \\
+\midrule
+Harness 读取规则与权限 & 保持公共接口；测试命令为 \texttt{pnpm test auth} & 建立本轮 Prompt \\
+父循环补攻击测试 & 期望 403，实际得到 200 & 漏洞成立，追踪权限路径 \\
+父循环修改后端 & 攻击测试通过；旧前端测试失败 & 保留接口约束，拆出两条旁支 \\
+Explore 扫描调用方 & 找到 \texttt{web/api/session.ts} 与批处理入口 & 返回文件、请求形状与未决项 \\
+测试 Subagent 写入分支 & 新增缺失标识、他人资源两个边界用例 & 交回 Diff、命令与退出状态 \\
+父循环审查并合并 & 两个分支采用同一接口约束，无重叠写入 & 在合并后的工作树验收 \\
+Verifier 重新攻击 & 认证测试 22 项、全量测试 418 项通过；lint 退出 0 & 报告仓库外客户端尚未验证 \\
+\bottomrule
+\end{tabular}
+\caption{七个阶段落成一条因果链：每个观察都必须改变或确认下一项动作。命令与数字为贯穿案例的示意。}
+\label{tab:ch03-full-trace}
+\end{table}
+
+\FloatBarrier
+
+\section{结论：把证据送回最初的问题}
+
+从最初的规则文件到最后一次全量测试，每个阶段都留下了下一阶段能使用的东西：边界进入 Prompt，失败变成新计划，独立旁支变成 Agent 任务，子结果变成父循环的观察，合并后的命令结果再回答最初的验收条件。旁支只有在输入、所有权和返回证据都说得清时才值得交出去；回来以后，它仍要接受同一扇证据门。
+
+\begin{samepage}
+活动室里，全量测试终于结束。Producer 看着终端里绿色的退出状态，松了一口气。
+
+P：这次是真的完成了？
+
+广：认证测试通过了。调用方通过了。旧接口也还在。
+
+P：所以是。
+
+广：所以，在这个仓库里，是。仓库外的客户端，还没有证据。
+
+P：你一定要加最后一句吗？
+
+广：嗯。边界清楚，比较安心。
+
+她合上笔记本，动作很慢。
+
+广：而且，下次可以把任务再难一点。
+\end{samepage}
+
+\section*{资料与版本边界}
+
+七阶段与图中分区，是三篇图解材料和两篇论文综合出的讲解模型，不是官方架构。产品入口、内置角色、工具集合、嵌套限制与 Agent Teams 状态会随版本变化，本文只按引用材料的版本快照理解。\cite{ch03arch,ch03e2e,ch03multi,ch03dive,ch03atwz}
+
+\begin{thebibliography}{99}
+\bibitem{ch03arch} Avi Chawla. \textit{Claude Code's Architecture, Explained Visually!}. Daily Dose of Data Science, 2026. \url{https://blog.dailydoseofds.com/p/claude-codes-architecture-explained}
+
+\bibitem{ch03e2e} Zhuoran Yang. \textit{End-to-End Workflow}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/01-end-to-end-workflow.html}
+
+\bibitem{ch03multi} Zhuoran Yang. \textit{Multi-Agent Orchestration}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/07-multi-agent-orchestration.html}
+
+\bibitem{ch03dive} Ziyu Xiong et al. \textit{Dive into Claude Code: The Design Space of Today's and Future AI Agent Systems}. arXiv:2604.14228, 2026.
+
+\bibitem{ch03atwz} Edgar A. Duéñez-Guzmán et al. \textit{Agent Team Work Zone: Automated Persistent Workspaces for Long-Lived Claude Code Agent Teams}. arXiv:2607.22917, 2026.
+
+\bibitem{ch03agents} Anthropic. \textit{Run agents in parallel}. Claude Code Documentation. \url{https://code.claude.com/docs/en/agents}
+
+\bibitem{ch03subagents} Anthropic. \textit{Create custom subagents}. Claude Code Documentation. \url{https://code.claude.com/docs/en/sub-agents}
+
+\bibitem{ch03teams} Anthropic. \textit{Orchestrate teams of Claude Code sessions}. Claude Code Documentation. \url{https://code.claude.com/docs/en/agent-teams}
+
+\bibitem{ch03worktrees} Anthropic. \textit{Run parallel sessions with Git worktrees}. Claude Code Documentation. \url{https://code.claude.com/docs/en/worktrees}
+
+\bibitem{ch03cache} Anthropic. \textit{How Claude Code uses prompt caching}. Claude Code Documentation. \url{https://code.claude.com/docs/en/prompt-caching}
+
+\bibitem{ch03trigger} Eric Allam. \textit{We ditched worktrees for Claude Code. Here's what we use instead}. Trigger.dev, 2026. \url{https://trigger.dev/blog/parallel-agents-gitbutler}
 \end{thebibliography}

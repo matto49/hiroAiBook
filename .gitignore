@@ -20,6 +20,9 @@
 *.xdv
 *.pdf
 
+# 临时渲染与检查产物
+tmp/
+
 # 编辑器/IDE
 .vscode/
 *.swp

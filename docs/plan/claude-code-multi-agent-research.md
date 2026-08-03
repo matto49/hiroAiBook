@@ -40,6 +40,25 @@ Claude Code 的多代理功能迭代很快。在线文档已经包含晚于本�
 
 但它不适合作为唯一事实源：文章引用的内部文件名、环境变量和工具名称属于高漂移实现细节，而且当前官方文档已经明确记录了与文章不同的行为。
 
+### 正文确定采用的三篇图解主材料
+
+正文不再以一篇源码解析或两篇论文的章节顺序组织，而采用三篇图解文章形成连续缩放：
+
+1. [Claude Code's Architecture, Explained Visually](https://blog.dailydoseofds.com/p/claude-codes-architecture-explained)
+   - 用途：开场六层 Harness 总览。
+   - 借鉴：一张图先放置输入、知识、执行、集成、多代理和可观测性。
+   - 校准：六层是作者的分析模型；文中“subagent 不能嵌套”“teammate 自动使用 worktree”等说法不能直接沿用。
+2. [End-to-End Workflow](https://y-agent.github.io/inside-claude-code/01-end-to-end-workflow.html)
+   - 用途：沿一次请求解释上下文组装、Agent Loop、Tool Execution 和 Permission Gate。
+   - 借鉴：由总路径逐层放大关键循环。
+   - 校准：固定 prompt 大小、工具数量、权限层数等数据只属于 v2.1.88 快照。
+3. [Multi-Agent Orchestration](https://y-agent.github.io/inside-claude-code/07-multi-agent-orchestration.html)
+   - 用途：正文主体，解释 Agent 类型、Prompt 组装、Worktree、Coordinator 拓扑和 Fork cache。
+   - 借鉴：用并排结构图而非功能列表讲隔离、协调与成本。
+   - 校准：需要补画当前 Agent Teams 的 peer-to-peer 通信；worktree 是独立隔离轴；缓存收益不写成固定百分比。
+
+三篇图解材料负责“怎样让读者看懂”，《Dive》和《ATWZ》负责“怎样防止视觉简化变成错误事实”，官方文档负责“当前版本实际怎样表现”。
+
 ---
 
 ## 二、现在应区分的多代理形态
