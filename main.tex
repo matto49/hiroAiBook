@@ -238,27 +238,35 @@
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
 }
 
-% CSP「4コマ左タイトルあり」风格：左侧竖标题，右侧四个等高分镜框。
+% CSP「4コマ左タイトルあり」风格：左侧标题框与四格纵排，右侧一幅竖向大格。
 \newcommand{\fourkomatitle}[1]{%
   \fcolorbox{primary!45}{white}{%
-    \begin{minipage}[t][18.15cm][c]{0.105\textwidth}%
+    \begin{minipage}[t][1.05cm][c]{0.41\textwidth}%
       \centering
-      \rotatebox{90}{\scriptsize AI AGENT}\par
-      \vspace{1.2em}%
-      {\Large\bfseries\verticaltext{#1}}%
-      \vspace{1.2em}%
-      {\scriptsize 筱泽广小课堂}%
+      {\small\bfseries #1}\par
+      {\scriptsize 筱泽广小课堂 / AI AGENT}%
     \end{minipage}%
   }%
 }
 
 \newcommand{\fourkomapanel}[3]{%
   \fcolorbox{primary!45}{white}{%
-    \begin{minipage}[t][4.05cm][t]{0.70\textwidth}%
+    \begin{minipage}[t][3.82cm][t]{0.41\textwidth}%
       \vspace{0pt}
       {\color{primary}\bfseries 第 #1 格\quad #2\par}%
-      \vspace{0.45em}%
-      \small\raggedright #3%
+      \vspace{0.3em}%
+      \scriptsize\raggedright #3%
+    \end{minipage}%
+  }%
+}
+
+\newcommand{\fourkomaopening}[2]{%
+  \fcolorbox{primary!45}{white}{%
+    \begin{minipage}[t][17.97cm][t]{0.41\textwidth}%
+      \vspace{0pt}
+      {\color{primary}\bfseries #1\par}%
+      \vspace{0.5em}%
+      \small\raggedright #2%
     \end{minipage}%
   }%
 }

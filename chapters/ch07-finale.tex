@@ -2,49 +2,83 @@
 
 \hirochapter{后日谈：调用 Producer}
 
-% 版式对应 CSP 默认「4コマ左タイトルあり」：左侧竖标题，右侧四格纵排。
+% 版式对应 CSP 默认「4コマ左タイトルあり」：左侧标题框与四格纵排，右侧一幅竖向大格。
 \section*{四格漫画分镜}
 \phantomsection
 \addcontentsline{toc}{section}{四格漫画分镜：调用 Producer}
 \markright{四格漫画分镜：调用 Producer}
 
+\noindent\textbf{阅读顺序：}右侧大格 $\rightarrow$ 左侧第 1 至第 4 格（自上而下）。
+
 \begin{center}
 \setlength{\tabcolsep}{0pt}
-\begin{tabular}{@{}c@{\hspace{0.9em}}c@{}}
-\fourkomatitle{调用制作人}
-&
-\begin{minipage}[t]{0.72\textwidth}
-\fourkomapanel{1}{今天的工具调用}{%
-\textbf{画面：}活动室里的 AI 小课堂。广在白板上画出“观察 $\rightarrow$ 规划 $\rightarrow$ 调用工具 $\rightarrow$ 根据结果继续”，Producer 坐在带轮子的椅子上记笔记。\par\medskip
-广：「Agent 不只生成回答。它会选择工具，执行任务。」\par
-Producer：「今天调用什么工具？」%
+\begin{tabular}{@{}c@{\hspace{0.75em}}c@{}}
+\begin{minipage}[t]{0.43\textwidth}
+\vspace{0pt}
+\fourkomatitle{调用 Producer}
+
+\vspace{0.55em}
+
+\fourkomapanel{1}{候选工具}{%
+\textbf{画面：}第二个任务：“让讲师更有精神。”候选工具为水、音乐、小机器人和 Producer；光标选中最后一项。\par\smallskip
+Producer：「为什么我也在工具列表里？」\par
+广：「刚刚注册的。」%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{2}{现场演示}{%
-\textbf{画面：}广在电脑里输入“把 Producer 移到最合适的位置”。Agent 选择小机器人作为工具。桌下的小机器人悄悄伸出挂钩，扣住 Producer 的椅脚。\par\medskip
-\textbf{屏幕：}\texttt{tool: move\_chair(target=Producer)}\par
-Producer：「……等一下。」%
+\fourkomapanel{2}{开始调用}{%
+\textbf{画面：}小机器人从桌下伸出挂钩，扣住椅脚，连人带椅拖向广。\par\smallskip
+\textbf{屏幕：}\texttt{call\_producer}\par
+\texttt{distance: 18 cm}\par
+Producer：「它为什么不去拿水？」\par
+广：「评估后，这个回报更高。」%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{3}{参数由谁定义}{%
-\textbf{画面：}小机器人拖着椅子横穿活动室。Producer 抓住桌沿失败；广已经把自己旁边的空位清了出来，平静地拍了拍椅面。\par\medskip
-Producer：「最合适的位置，是谁定义的？」\par
-广：「任务发起者。」%
+\fourkomapanel{3}{检查依据}{%
+\textbf{画面：}椅子停在广身边，两人的肩膀只差一点。小机器人显示：\texttt{SUCCESS / 18 cm}。\par\smallskip
+Producer：「这个结论，有训练数据？」\par
+广：「有。」\par
+Producer：「样本量？」\par
+广：「一。」%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{4}{任务成功}{%
-\textbf{画面：}椅子停在广身边，两人的肩膀只差一点。小机器人举起屏幕：\texttt{SUCCESS / distance: 18 cm}。广露出很浅的笑。\par\medskip
-Producer：「所以，这是工具调用？」\par
-广：「不。」\par
-广：「是调用 Producer。」%
+\fourkomapanel{4}{提交反馈}{%
+\textbf{画面：}Agent 询问“这次调用有效吗？”。广把反馈滑块拉到最高，露出很浅的笑。\par\smallskip
+Producer：「这不是过拟合了吗？」\par
+广：「嗯。」\par
+广：「只对我有效。正好。」%
 }
 \end{minipage}
+&
+\fourkomaopening{右侧大格（先读）\quad AI 小课堂}{%
+\textbf{画面：}活动室里的 AI 小课堂全景。广站在白板前，Producer 坐在带轮子的椅子上记笔记。桌边的小机器人亮着待机灯，但挂钩藏在桌下，只露出一点。\par\medskip
+
+\textbf{白板：}\par
+观察 $\rightarrow$ 规划 $\rightarrow$ 选择工具 $\rightarrow$ 执行 $\rightarrow$ 根据结果继续\par\medskip
+
+广：「Agent 不只生成回答。」\par
+
+广：「它会为了目标，自己选择工具。」\par\medskip
+
+Producer：「比如搜索、计算器，还有这个小机器人？」\par\medskip
+
+\textbf{画面下方：}广看了一眼 Producer，又看向电脑上的“开始演示”按钮。\par\medskip
+
+广：「嗯。」\par
+
+广：「先做一次正常的。」\par\medskip
+
+\textbf{屏幕：}\texttt{task: bring\_teaching\_notes}\par
+\texttt{tool: robot}\par
+\texttt{status: success}\par\medskip
+
+\textbf{转格提示：}小机器人把讲义送到广手边；屏幕随即弹出“是否继续演示”。广选择“是”。%
+}
 \end{tabular}
 \end{center}
 
