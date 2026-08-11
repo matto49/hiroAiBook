@@ -4,9 +4,21 @@
 
 % ==================== 宏包 ====================
 \usepackage[UTF8,fontset=none]{ctex}
-\setCJKmainfont[AutoFakeSlant=0.18]{Songti SC}
-\setCJKsansfont{Heiti SC}
-\setCJKmonofont{Heiti SC}
+\IfFontExistsTF{Songti SC}{%
+  \setCJKmainfont[AutoFakeSlant=0.18]{Songti SC}%
+}{%
+  \setCJKmainfont[AutoFakeSlant=0.18]{FandolSong}%
+}
+\IfFontExistsTF{Heiti SC}{%
+  \setCJKsansfont{Heiti SC}%
+}{%
+  \setCJKsansfont{FandolHei}%
+}
+\IfFontExistsTF{Heiti SC}{%
+  \setCJKmonofont{Heiti SC}%
+}{%
+  \setCJKmonofont{FandolHei}%
+}
 % JIS B5 同人志成品尺寸：182 mm × 257 mm。
 % `b5paper` 在标准 book 类中是 ISO B5（176 mm × 250 mm），
 % 因此这里使用 geometry 的 `b5j` 明确指定 JIS B5。
@@ -141,7 +153,7 @@
 
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
-% 目录页 Logo 与章节小剧场插图
+% 目录页 Logo
 \makeatletter
 \newcommand{\hiroclasslogo}{%
   \begin{tikzpicture}
@@ -172,26 +184,19 @@
 }
 \makeatother
 
-\newcommand{\skitillustration}[2][0.86]{%
-  \begin{center}%
-    \includegraphics[width=#1\textwidth]{#2}%
-  \end{center}%
-  \vspace{0.4em}%
-}
-
-% 筱澤広小课堂章节标题页：栏目名竖排，长标题横排，兼容中英混排。
+% 筱泽广小课堂章节标题页：栏目名竖排，长标题横排，兼容中英混排。
 % 用法: \hirochapter{副标题，如“大语言模型的前世今生”}
 \newcommand{\hirochapter}[1]{%
   \clearpage%
   \refstepcounter{chapter}%
   \thispagestyle{empty}%
-  \markboth{筱澤広小课堂——#1}{}%
-  \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}筱澤広小课堂——#1}%
+  \markboth{筱泽广小课堂——#1}{}%
+  \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}筱泽广小课堂——#1}%
   \vspace*{\fill}%
   \begin{center}%
     \begin{minipage}[c]{0.16\textwidth}%
       \centering
-      {\large\verticaltext{筱澤広小课堂}}%
+      {\large\verticaltext{筱泽广小课堂}}%
     \end{minipage}%
     \hspace{1.8em}%
     \begin{minipage}[c]{0.58\textwidth}%
@@ -205,7 +210,7 @@
 
 % 论文标题块（IEEE风格，单栏）
 % 用法: \hiropapertitle{论文标题}{作者行}{单位}
-%   作者行示例: 広\textsuperscript{1}，Producer\textsuperscript{通讯}
+%   作者行示例: 广\textsuperscript{1}，Producer\textsuperscript{通讯}
 \newcommand{\hiropapertitle}[3]{%
   \begin{center}%
     {\LARGE\bfseries #1}\\[1em]%
@@ -231,6 +236,22 @@
 % 论文式短编号：替代项目符号，适合 B5 上的简短结论与步骤。
 \newcommand{\paperitem}[2]{%
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
+}
+
+% 序章与正文之间的统一过渡带：留出明确分区，但不额外增加说明文字。
+\newcommand{\prologuedivider}{%
+  \par\addvspace{1.2em}%
+  \noindent\colorbox{codebg}{%
+    \parbox{\dimexpr\linewidth-2\fboxsep\relax}{%
+      \centering
+      \begin{tikzpicture}[baseline=-0.6ex]
+        \draw[primary!45,line width=0.45pt] (-4.2,0) -- (-0.34,0);
+        \draw[primary!45,line width=0.45pt] (0.34,0) -- (4.2,0);
+        \fill[accent!80] (0,0.09) -- (0.09,0) -- (0,-0.09) -- (-0.09,0) -- cycle;
+      \end{tikzpicture}%
+    }%
+  }%
+  \par\addvspace{1.1em}%
 }
 
 % 重定义thebibliography：book类默认用\chapter*，改为\section*避免与手动标题重复
@@ -289,10 +310,7 @@
 \input{chapters/ch03}
 \input{chapters/ch04}
 \input{chapters/ch05}
-\input{chapters/ch06}
-\input{chapters/ch07}
-
-% --- 附录 & 结语 ---
-\input{chapters/backmatter}
+\input{chapters/ch06-shor}
+\input{chapters/ch07-finale}
 
 \end{document}
