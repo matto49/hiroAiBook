@@ -1,13 +1,16 @@
 % !TeX program = xelatex
 % !TeX encoding = UTF-8
-\documentclass[a5paper,10pt,twoside]{book}
+\documentclass[10pt,twoside]{book}
 
 % ==================== 宏包 ====================
 \usepackage[UTF8,fontset=none]{ctex}
 \setCJKmainfont[AutoFakeSlant=0.18]{Songti SC}
 \setCJKsansfont{Heiti SC}
 \setCJKmonofont{Heiti SC}
-\usepackage[a5paper,inner=13.5mm,outer=10.5mm,top=13mm,bottom=15mm]{geometry}
+% JIS B5 同人志成品尺寸：182 mm × 257 mm。
+% `b5paper` 在标准 book 类中是 ISO B5（176 mm × 250 mm），
+% 因此这里使用 geometry 的 `b5j` 明确指定 JIS B5。
+\usepackage[b5j,inner=18mm,outer=15mm,top=17mm,bottom=20mm]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{booktabs}
@@ -33,7 +36,7 @@
 \definecolor{codebg}{HTML}{F6F8FA}
 \definecolor{codecomment}{HTML}{6A737D}
 
-% A5 页面上的短代码片段：优先保证可读与自动换行。
+% B5 页面上的短代码片段：优先保证可读与自动换行。
 \lstdefinestyle{hirocode}{
     basicstyle=\ttfamily\scriptsize,
     keywordstyle=\color{accent}\bfseries,
@@ -64,18 +67,18 @@
 }
 \setcounter{tocdepth}{1}
 
-% A5 小册子正文密度：B 档在可读性与纸张成本之间取平衡。
+% JIS B5 技术同人志正文：控制每行字数，并给公式、图表和代码留出空间。
 \makeatletter
 \renewcommand\normalsize{%
-  \@setfontsize\normalsize{7.5pt}{9.1pt}%
+  \@setfontsize\normalsize{9pt}{13pt}%
 }
 \renewcommand\small{%
-  \@setfontsize\small{6.8pt}{8.1pt}%
+  \@setfontsize\small{8pt}{11.2pt}%
 }
 \makeatother
 \AtBeginDocument{\normalsize}
 
-% 公式、图表与编号列表保留呼吸感，但避免在 A5 上留下过大的空白。
+% 公式、图表与编号列表保留呼吸感，但避免在 B5 上留下过大的空白。
 \setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}
 \setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}
 \setlength{\abovedisplayshortskip}{4pt plus 1pt minus 1pt}
@@ -169,14 +172,14 @@
 }
 \makeatother
 
-\newcommand{\skitillustration}[1]{%
+\newcommand{\skitillustration}[2][0.86]{%
   \begin{center}%
-    \includegraphics[width=0.86\textwidth]{#1}%
+    \includegraphics[width=#1\textwidth]{#2}%
   \end{center}%
   \vspace{0.4em}%
 }
 
-% 筱澤広小课堂章节标题页（竖排居中，单独占一整页）
+% 筱澤広小课堂章节标题页：栏目名竖排，长标题横排，兼容中英混排。
 % 用法: \hirochapter{副标题，如“大语言模型的前世今生”}
 \newcommand{\hirochapter}[1]{%
   \clearpage%
@@ -186,9 +189,15 @@
   \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}筱澤広小课堂——#1}%
   \vspace*{\fill}%
   \begin{center}%
-    {\small\verticaltext{筱澤広小课堂}}%
-    \vspace{2em}%
-    {\small\verticaltext{#1}}%
+    \begin{minipage}[c]{0.16\textwidth}%
+      \centering
+      {\large\verticaltext{筱澤広小课堂}}%
+    \end{minipage}%
+    \hspace{1.8em}%
+    \begin{minipage}[c]{0.58\textwidth}%
+      \raggedright
+      {\color{primary}\Large\bfseries #1\par}%
+    \end{minipage}%
   \end{center}%
   \vspace*{\fill}%
   \clearpage%
@@ -219,7 +228,7 @@
   \noindent{\bfseries 关键词：}#1\par\vspace{1em}%
 }
 
-% 论文式短编号：替代项目符号，适合 A5 上的简短结论与步骤。
+% 论文式短编号：替代项目符号，适合 B5 上的简短结论与步骤。
 \newcommand{\paperitem}[2]{%
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
 }
@@ -259,6 +268,7 @@
 \begin{document}
 
 % --- 封面（图片，全页铺满） ---
+\hypersetup{pageanchor=false}% 封面不参与正文页码锚点，避免页码重置后重复。
 {\thispagestyle{empty}%
 \begin{tikzpicture}[remember picture,overlay]
   \node[inner sep=0pt] at (current page.center)
@@ -268,6 +278,7 @@
 
 % --- 前言 ---
 \frontmatter
+\hypersetup{pageanchor=true}%
 \hirotoc
 \input{chapters/frontmatter}
 
