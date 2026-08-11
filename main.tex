@@ -238,6 +238,18 @@
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
 }
 
+% 六格漫画的文字分镜框：用于终章画师交接稿，也保留可打印的草稿版式。
+\newcommand{\comicpanel}[3]{%
+  \fcolorbox{primary!45}{white}{%
+    \begin{minipage}[t][5.15cm][t]{0.40\textwidth}%
+      \vspace{0pt}%
+      {\color{primary}\bfseries 第 #1 格\quad #2\par}%
+      \vspace{0.45em}%
+      \footnotesize\raggedright #3%
+    \end{minipage}%
+  }%
+}
+
 % 序章与正文之间的统一过渡带：留出明确分区，但不额外增加说明文字。
 \newcommand{\prologuedivider}{%
   \par\addvspace{1.2em}%
