@@ -50,35 +50,37 @@
 
 “我正在和佑芽同学商量周末去哪里玩。”
 
-“可是我刚刚才过来啊？”佑芽飞快地读完聊天记录，“……跑去游乐园，听起来很不错！”
+“可是我刚刚才过来啊？”佑芽也凑过来，读起了聊天记录，“……跑去游乐园玩，是一个好主意！”
 
-然后，她终于看见窗口上方的说明：\textit{请扮演花海佑芽，与仓本千奈聊天。}
-
-佑芽又从头读了一遍。这次比刚才慢。
+紧接着她又看见了窗口上方的说明：\textit{请扮演花海佑芽，开始聊天，佑芽是一个......}
 
 “是 AI 酱在扮演我？”
 
 “嗯。”广回答。
 
-“AI 酱刚入学的时候，明明还会把美铃同学和毛球弄混，还说‘毛球是孤高的狼，从不贪嘴’……”佑芽抬起头，“怎么现在已经这么聪明了？”
+“还记得刚入学的时候也有体验过和 AI 酱聊天，那时候的 AI 酱笨笨的，当时让它扮演姐姐大人表扬一下我，结果说出来的话一点不像…”佑芽抬起头，“为什么现在能学的这么像了？”
 
-“是训练 AI 酱的电脑变快了吗？”佑芽问。
+“是因为运行 AI 酱的电脑变快了吗？”千奈问。
 
-千奈还看着那句“毛球从不贪嘴”。
+“不对，我觉得是 AI 酱和我们一样做了各种各样的练习，变得更厉害了”
 
-“可是，只让电脑变快，也会知道毛球其实很贪吃吗？”
+“呼呼，答案都不正确。”广打开两个新的github仓库，“语料库、训练方法、agent架构……都有很大的进步，我们今天来就最重要的模型架构来讲起吧”
 
-“不会。”广打开两个新的页面，“资料、训练方法、模型本身……都有关系。今天先拆模型。”
+屏幕左右各放着一份结构说明：2019 年的 GPT-2，以及 2026 年的 Kimi K3。
 
-屏幕左右各放着一份结构说明：2019 年的 GPT-2，以及 2026 年公开权重的 Kimi K3。
+广把 GPT-2 的页面移到中央。
 
-“从 GPT-2 开始。”
+“从这里开始。”
 
 \section{GPT-2}
 
-GPT-2 是一张容易摊开的底图：decoder-only Transformer 的主干已经成形，结构又没有复杂到遮住它。等走到 Kimi K3，再看哪些东西留了下来，哪些被换掉。\cite{waterloo-worklog,gpt2}
+对话框中的 AI 佑芽，看起来像是一口气相应了一整句话，但是模型内部却没有“一口气”这回事。它每次只往前走一小步：读取已经出现的文字，给接下来可能出现的文字片段打分，选出权重最高的那个接到末尾，然后再重复执行下一步。一句完整的回答，就是这样一点点续出来的。
 
-先跟着一串 token 往前走。词嵌入把 token 变成向量，位置嵌入标出它们在序列中的位置；两者相加后，依次进入多层 Transformer block。最后，LayerNorm 整理隐藏状态，语言模型头把它投影回词表，为每个候选 token 给出一个分数，也就是 logits。下面几行代码，就是这条主干的完整路径。
+ 这种只根据前文一步步续写的方式，叫作自回归生成。GPT-2 是 OpenAI 在 2019 年发布的语言模型，也是 GPT 系列的第二代。它采用纯解码器 Transformer：输入只有已经出现的文字，模型不能偷看后文，只能沿着前文继续预测。GPT-2 虽然是7年前的老模型，但它的结构已经具备本章后面还会反复看到的基本轮廓，公开实现也相对简洁，所以适合作为这次的起点。\cite{waterloo-worklog,gpt2}
+
+再处理用户发起的请求时，模型会先将输入内容切成 token，它代表着模型实际读写的片段。一个 token 可能是一个字、一个词的一部分，也可能是标点；具体怎样切，由分词器决定。我们在聊天时的提示词、聊天记录和已经生成的回答，都会先被处理成这样一串 token，在推测下一个字符应该是什么的过程中，gpt-2会给清单中的候选 token 各打一个分。这些尚未归一化的分数叫作 logits，生成程序会按照解码规则选出一个最优选的 token，把它接回前文，模型再根据变长后的前文给同一张词表重新打分。
+
+从 token 到 logits，中间要经过下面这条主干。词嵌入先回答“这是什么 token”，位置嵌入补上“它出现在第几个位置”；两者相加后进入一层层 Transformer block。最后，词表投影再把内部向量翻译成每个候选 token 的分数。
 
 \begin{lstlisting}[language=Python,caption={GPT-2 主干前向传播}]
 tok_emb = self.transformer.wte(idx)       # (B, T, C)
@@ -91,7 +93,9 @@ logits = self.lm_head(x)
 return logits
 \end{lstlisting}
 
-循环里的工作都发生在 block 中。每个 block 只反复做两件事：先用因果自注意力交换位置之间的信息，再用 MLP 逐位置变换。两次计算前都先做 LayerNorm，结果则通过残差连接加回原表示。
+我们暂时不关心批量计算，先忽略注释里的 $B$。$T$ 表示这次读入多少个 token，$C$ 表示每个 token 用多长的向量来表示。词嵌入的形状是 $(B,T,C)$；位置嵌入没有批量维，会复用到同一批的每条序列上。后面的 block 始终接收并返回类型不变的 \texttt{x}。
+
+被反复加工内容的是 \texttt{x = block(x)}。一个 block 里，因果自注意力毁让较后的 token 利用已经出现的前文，MLP 再逐个位置处理汇集后的特征。计算结果通过残差连接加回原表示，所以每一层做的更像是在已有理解上补一笔，而不是把整句话推倒重算。
 
 \begin{lstlisting}[language=Python,caption={带注意力与 MLP 的 Transformer block}]
 class Block(nn.Module):
@@ -130,6 +134,8 @@ class Block(nn.Module):
 \node[main,fill=blue!20] (mlp) at (0,-1.50) {MLP};
 \node[circle,draw=primary,thick,inner sep=1.3pt] (add2) at (0,-2.25) {$+$};
 \node[main,fill=green!20] (vocab) at (0,-3.05) {LayerNorm $\rightarrow$ 词表投影};
+\node[draw=primary!45,dashed,rounded corners=3pt,
+  fit=(ln1)(add2),inner sep=5pt] (repeatblock) {};
 
 \draw[flow] (input) -- (ln1);
 \draw[flow] (ln1) -- (mha);
@@ -138,38 +144,48 @@ class Block(nn.Module):
 \draw[flow] (ln2) -- (mlp);
 \draw[flow] (mlp) -- (add2);
 \draw[flow] (add2) -- (vocab);
-\draw[flow,rounded corners=4pt] (input.west) -- ++(-0.34,0) |- (add1.west);
-\draw[flow,rounded corners=4pt] (add1.west) -- ++(-0.52,0) |- (add2.west);
-\node[note,anchor=west] at (1.82,-1.08) {$\times 12$};
+% Two residual branches use separate lanes outside the main boxes.
+\draw[flow,rounded corners=4pt] (input.west) -- ++(-0.55,0) |- (add1.west);
+\draw[flow,rounded corners=4pt] (add1.west) -- ++(-1.70,0) |- (add2.west);
+\node[note,anchor=south east] at
+  ([xshift=-0.08cm,yshift=0.08cm]repeatblock.south east) {$\times 12$};
 
 % One attention module, separated from the tall backbone.
 \node[note] (righttitle) at (5.05,3.15) {一次多头注意力};
-\node[head,fill=codebg] (q) at (3.45,2.30) {$Q$ 投影};
-\node[head,fill=codebg] (k) at (5.05,2.30) {$K$ 投影};
-\node[head,fill=codebg] (v) at (6.65,2.30) {$V$ 投影};
-\node[box,fill=red!10,minimum width=4.80cm,minimum height=0.78cm]
-  (attn) at (5.05,1.15) {缩放点积注意力\\因果掩码 $+$ Softmax};
-\node[box,fill=orange!18,minimum width=3.70cm]
-  (heads) at (5.05,0.05) {并行计算多个 head};
+\node[box,fill=codebg,minimum width=2.10cm] (attnin) at (5.05,2.55)
+  {输入表示 $x$};
+\node[head,fill=codebg] (q) at (3.45,1.70) {$Q$ 投影};
+\node[head,fill=codebg] (k) at (5.05,1.70) {$K$ 投影};
+\node[head,fill=codebg] (v) at (6.65,1.70) {$V$ 投影};
+\node[box,fill=orange!18,minimum width=4.80cm]
+  (heads) at (5.05,0.78) {拆分为多个 head：$Q_h, K_h, V_h$};
+\node[box,fill=red!10,minimum width=4.80cm,minimum height=0.86cm]
+  (attn) at (5.05,-0.28)
+  {各 head 并行计算\\缩放点积 $\rightarrow$ 因果掩码 $\rightarrow$ Softmax $\rightarrow$ 对 $V_h$ 加权};
 \node[box,fill=codebg,minimum width=3.70cm]
-  (concat) at (5.05,-1.00) {拼接所有 head};
+  (concat) at (5.05,-1.42) {拼接所有 head};
 \node[box,fill=green!18,minimum width=3.70cm]
-  (oproj) at (5.05,-2.05) {输出投影 $W_O$};
+  (oproj) at (5.05,-2.42) {输出投影 $W_O$};
 
-\draw[flow] (q) -- (attn);
-\draw[flow] (k) -- (attn);
-\draw[flow] (v) -- (attn);
-\draw[flow] (attn) -- (heads);
-\draw[flow] (heads) -- (concat);
+\draw[flow] (attnin) -- (q);
+\draw[flow] (attnin) -- (k);
+\draw[flow] (attnin) -- (v);
+\draw[flow] (q) -- (heads);
+\draw[flow] (k) -- (heads);
+\draw[flow] (v) -- (heads);
+\draw[flow] (heads) -- (attn);
+\draw[flow] (attn) -- (concat);
 \draw[flow] (concat) -- (oproj);
-\draw[->,thick,dashed,draw=accent]
-  (mha.east) to[out=5,in=180] (q.west);
+\draw[thick,dashed,draw=accent]
+  (mha.east) to[out=5,in=180]
+  node[pos=0.52,above,sloped,font=\tiny,text=accent] {内部展开}
+  (attnin.west);
 \end{tikzpicture}
 \caption{GPT-2 主干与多头注意力展开。}
 \label{fig:ch02-gpt2-backbone}
 \end{figure}
 
-把注意力再展开一层，输入会被投影成 Query、Key 和 Value。当前位置的 Query 与前文的 Key 逐一比较；匹配越高，对应的 Value 就越多地进入输出。因果掩码挡住尚未生成的未来，Softmax 再把这些匹配分数归一化。
+一次注意力计算从 Query、Key 和 Value 三组投影开始。对第 $i$ 个 token 来说，它的 Query 要和当前位置以及前面各个位置的 Key 比较，再从对应的 Value 中取回信息。这个过程可以写成：
 
 \[
 \operatorname{Attn}(Q,K,V)
@@ -180,13 +196,17 @@ class Block(nn.Module):
 \right)V
 \]
 
-把这条路径放回刚才的聊天窗口，屏幕上的回答不会一次写完。提示词、人物说明和已经生成的回复先变成 token；模型给下一步的所有候选项打分，选出一个，再把它接回输入。那句“下车以后再跑”，也是这样一个 token、一个 token 长出来的。
+式中的 $d$ 是一个 head 的维度。除以 $\sqrt d$ 是为了缩放点积分数；$M_{\mathrm{causal}}$ 则把未来位置挡住，使第 $i$ 个 token 只能看到它自己和此前的内容。Softmax 随后把剩余分数变成权重，加权汇总对应的 Value。
 
-假设模型正在生成“跑”附近的内容，新的 Query 可能与前文中“游乐园”“坐电车”等位置的 Key 得到较高匹配，相应的 Value 便更多地进入当前表示。这只是注意力可能走过的一条路径；模型里没有一条人工规则写着“佑芽必须选择跑步”。人物说明和前文词语会在一层层运算中改变候选 token 的概率，最后才落到屏幕上的选择。
+Key 决定“从哪里取”，Value 决定“取回什么”，两者分工不同。多个 head 使用各自的投影并行计算，所得结果拼接以后，再通过输出投影回到隐藏维度。这个新表示会继续经过后面的层，并最终影响词表中的候选分数。
 
-这里要把一次生成拆成两个时期。整段提示词第一次进入模型时，会有许多 token 一起计算，这叫 \textit{prefill}；随后进入 \textit{decode}，每一步只新增一个 token，却仍要读取此前的历史。Prefill 关心的是怎样并行处理已经到齐的输入，decode 则要避免每一步都重算过去。
+上面的公式只描述了一次注意力计算。一条完整回复还要反复运行模型：每得到一个 token，就把它接到已有序列末尾，再计算下一个。“下车以后再跑”看起来是一句话，模型实际完成的是若干次这样的续写。
 
-Decode 真正拿去采样的，只有最后一个位置的 logits。如果每走一步都把整段前文重算一遍，早期 token 的 Key 和 Value 就会反复投影。KV Cache 省下这部分工作：已经算过的 Key、Value 留在缓存中，下一步只计算新 token 的一份，再接到后面。
+第一次运行时，提示词、人物说明和聊天记录都已经存在。模型会一次处理这段输入，并算出各层、各个位置的 Key 和 Value；这一阶段叫作 \textit{prefill}。
+
+此后进入 \textit{decode}。每一轮只多出一个 token：它经过模型各层，与此前内容计算注意力，最后一个位置的 logits 再交给解码程序选出后续 token。新结果接回序列，下一轮继续。
+
+如果每轮都从头计算，提示词和已经生成的回复会被反复投影成同样的 Key 和 Value。KV Cache 把各层已经算出的 Key 和 Value 留下来。decode 时只需计算新 token 的投影，让它的 Query 读取缓存中的历史，再把新得到的 Key、Value 追加到末尾。
 
 \begin{lstlisting}[language=Python,caption={带 KV Cache 的 Softmax 注意力核心}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -205,20 +225,20 @@ out = attn @ v
 return self.o_proj(merge_heads(out)), (k, v)
 \end{lstlisting}
 
-重复计算少了，缓存却没有变小。前文每增加一个 token，其中就多出一对 Key、Value；上下文越长，这份历史也越长。GPT-2 留下的问题因此很具体：能不能不再逐 token 保存整段历史？
+KV Cache 省下的是重算，并没有省掉历史本身。序列每增加一个 token，缓存仍要增加一组 Key 和 Value；上下文越长，decode 时需要保存和读取的内容也越多。接下来要问的是：能不能不再逐个保存这些 K、V，却仍让后面的 token 用到前文？
 
-\section{线性记忆}
+\section{线性注意力与固定状态}
 
-这篇 2020 年论文对复杂度的描述，放到今天很容易和 KV Cache、FlashAttention 混在一起。三者解决的并不是同一件事：KV Cache 避免重复投影，但缓存和每步读取的历史仍随序列增长；FlashAttention 改善精确注意力的显存读写与中间存储，却没有消除二次算术量。线性注意力要做得更彻底——连历史的保存形式和乘法顺序一起改变。\cite{linear-transformer}
+线性注意力给出的办法，是不再为每个早期 token 保留独立的 Key 和 Value，而是把它们逐步合并到一个固定大小的状态中。缓存不再随序列长度增长，代价是注意力的计算方式也必须改变。\cite{linear-transformer}
 
-Softmax 注意力要先计算每一对 Query 与 Key 的分数，再施加指数和归一化。非线性卡在两个乘法之间，运算不能重新结合。线性注意力先分别映射 Query 和 Key：
+标准注意力先计算 $QK^{\mathsf T}$，再做 Softmax。由于 Softmax 位于两次矩阵乘法之间，不能简单地把计算改写成 $Q(K^{\mathsf T}V)$。线性注意力改为分别映射 Query 和 Key，例如：
 
 \[
 \phi(q)=\operatorname{ELU}(q)+1,\qquad
 \phi(k)=\operatorname{ELU}(k)+1.
 \]
 
-这样，历史就能先合并进固定大小的状态
+映射后的结果为正，后续归一化也可以拆开计算。此前的 Key 和 Value 便能先合并为两个状态：
 
 \[
 S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
@@ -226,7 +246,7 @@ S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
 z_t=\sum_{i=1}^{t}\phi(k_i),
 \]
 
-当前 Query 再从中读取：
+第 $t$ 个 Query 再从中计算输出：
 
 \[
 o_t=
@@ -234,9 +254,11 @@ o_t=
      {\phi(q_t)z_t}.
 \]
 
-空间是在乘法次序改变以后省下来的。Softmax 注意力先列出当前位置与所有历史位置之间的分数；这里则先计算 $\phi(k_i)^{\mathsf T}v_i$，把过去折叠进矩阵，再用 $\phi(q_t)$ 读取。只要 head 维度不变，$S_t$ 与 $z_t$ 的尺寸就固定。前文从一百个 token 增加到一万个，decode 携带的仍是同样大小的状态。
+这里的 $S_t$ 累积 Key 与 Value 的外积，$z_t$ 累积映射后的 Key，用于分母中的归一化。只要 head 维度不变，两者的形状就不会随序列长度改变。decode 不再携带全部 K、V，只需携带当前的 $S_t$ 和 $z_t$。
 
-$\operatorname{ELU}+1$ 并不等同于 Softmax。它选择的是一种可以拆开计算的非负特征映射，仍然经过非负化、归一化和 Value 加权平均，但表达能力与原来的 Softmax kernel 不同。
+$S_t$ 记录的是“各个 Key 方向累计写入了哪些 Value”，$z_t$ 则记录这些方向一共积累了多少权重。Query 乘上 $S_t$ 得到加权后的 Value 总量，再除以 Query 乘上 $z_t$ 得到的权重总量。少了 $z_t$，序列越长，状态中累积的数值通常也会越大，输出就不再对应归一化的加权平均。
+
+$\operatorname{ELU}+1$ 只是一种可拆分计算的非负特征映射，并不等同于 Softmax。两种方法都会归一化分数并对 Value 求加权和，但它们产生权重的方式不同，不能把线性注意力理解成对标准注意力的等价改写。
 
 \begin{lstlisting}[language=Python,caption={把历史 K、V 折叠进固定状态}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -271,7 +293,8 @@ return self.o_proj(merge_heads(out)), (S, z)
 \draw[chflow] (qkv) -- (vc);
 \draw[chflow] (kc) -- (soft);
 \draw[chflow] (vc) -- (soft);
-\draw[chdash] (qkv.north) to[out=75,in=155] (soft.north);
+\draw[chflow] (qkv.north) to[out=75,in=155]
+  node[chnote,above,sloped] {Query $Q_t$} (soft.north);
 \draw[chflow] (soft) -- (okv);
 \node[chnote] at (4.75,-0.05) {缓存形状随序列长度 $t$ 增长};
 
@@ -282,14 +305,18 @@ return self.o_proj(merge_heads(out)), (S, z)
   {$S_t=S_{t-1}+\phi(k_t)^{\mathsf T}v_t$};
 \node[chbox,fill=blue!14,minimum width=2.20cm] (zstate) at (4.35,-2.50)
   {$z_t=z_{t-1}+\phi(k_t)$};
-\node[chbox,fill=green!15,minimum width=2.15cm] (readstate) at (7.30,-2.05)
-  {$o_t=\dfrac{\phi(q_t)S_t}{\phi(q_t)z_t}$};
+\node[chbox,fill=green!15,minimum width=2.40cm] (readstate) at (7.30,-2.05)
+  {归一化读取\\$\displaystyle\frac{\phi(q_t)S_t}{\phi(q_t)z_t}$};
 \node[chbox,fill=codebg,minimum width=1.20cm] (ols) at (9.65,-2.05) {$o_t$};
 \draw[chflow] (xt2) -- (qkv2);
 \draw[chflow] (qkv2) -- (state);
 \draw[chflow] (qkv2) -- (zstate);
 \draw[chflow] (state) -- (readstate);
 \draw[chflow] (zstate) -- (readstate);
+\draw[chflow,draw=accent,rounded corners=4pt]
+  (qkv2.south) -- ++(0,-1.30) -|
+  node[chnote,below,pos=0.52,fill=white,inner sep=1pt] {Query $q_t$ 直接读取}
+  (readstate.south);
 \draw[chflow] (readstate) -- (ols);
 \node[chnote] at (4.35,-3.12) {状态尺寸固定};
 \end{tikzpicture}
@@ -297,11 +324,13 @@ return self.o_proj(merge_heads(out)), (S, z)
 \label{fig:ch02-cache-vs-state}
 \end{figure}
 
-固定状态没有凭空消除历史的体积，而是把许多位置压进了同一个矩阵。KV Cache 仍为每个早期 token 留着独立的 Key 和 Value；$S_t$ 只有有限的槽位。写入越来越多时，早期信息不再彼此分开，也就可能相互干扰。代价很明确：省下随序列增长的空间，交出逐 token 保存历史的保真度。
+固定状态节省空间的方式，是把不同位置的信息写入同一个矩阵。它无法像 KV Cache 那样，始终为每个 token 保留一份相互分离的 Key 和 Value。写入次数超过状态可以清楚区分的范围后，不同关联就会互相干扰。
 
-刚才“毛球”的错误可以暂时缩成一个低维例子：旧材料沿某个 Key 方向写入“孤高、不贪嘴”，新材料又沿相近方向写入“其实很贪吃”。纯加法只会把两个 Value 叠在一起。Query 再指向这里时，读到的可能是混合物，而不是后来的修正。
+这种干扰可以从更新式直接看出来。若两个 Key 的方向接近，它们的外积会写入 $S_t$ 的相近部分；纯加法只会把新的 Value 继续叠上去，不能先移除旧关联。之后沿这个方向查询时，输出便可能同时包含新旧两次写入的成分。
 
-真实模型里没有一个写着“毛球”的格子。Key、Value 和通道都是训练得到的连续向量；这个例子只保留了冲突的部分——方向越接近，写入越容易彼此影响。一旦放弃逐 token 的独立槽位，怎样改掉旧关联就成了下一个问题。
+因此，固定状态带来了新的问题：在不恢复逐 token 缓存的前提下，怎样修改已经写入的关联？
+
+\subsection{Delta Rule}
 
 固定状态的纯加法可以写成：
 
@@ -309,7 +338,7 @@ return self.o_proj(merge_heads(out)), (S, z)
 S_t=S_{t-1}+k_t^{\mathsf T}v_t,
 \]
 
-Delta Rule 改的正是这个写入动作：它先用当前 Key 读取旧值，再只写回旧值与目标之间的差。\cite{fast-weight}
+Delta Rule 修改了写入动作。它先用当前 Key 从状态中读出旧值，再计算目标 Value 与旧值的差，只把这部分差写回状态。\cite{fast-weight}
 
 \begin{lstlisting}[language=Python,caption={带逐 token 写入强度的 Delta 更新}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -326,7 +355,7 @@ out = q @ S
 return self.o_proj(merge_heads(out)), S
 \end{lstlisting}
 
-这里的 $\beta$ 控制写入强度。Key 归一化后，用同一个 Key 从 $k^{\mathsf T}v$ 中读取，得到的就是 $v$。因此，$v-v_{\mathrm{old}}$ 不是又一份完整内容，而是旧值距离目标还差的部分。
+这里的 $\beta$ 控制本次更新的强度。Key 经过归一化后，如果状态中只有关联 $k^{\mathsf T}v$，再用同一个 $k$ 读取，就会得到 $v$。因此，$v-v_{\mathrm{old}}$ 表示当前读出与目标值之间的误差。
 
 从同一个 Key 方向把更新式再读一次，效果会更清楚。记 $v_{\mathrm{old}}=k_tS_{t-1}$，并令 $\lVert k_t\rVert=1$，则
 
@@ -334,7 +363,7 @@ return self.o_proj(merge_heads(out)), S
 k_tS_t=(1-\beta_t)v_{\mathrm{old}}+\beta_t v_t.
 \]
 
-$\beta_t=0$ 时，原关联不动；$\beta_t=1$ 时，当前 Key 方向的读出被推向新 Value；取中间值时，两者平滑过渡。这个结论来自单位 Key 的简化推导，相近方向的其他关联仍可能受到影响。纯加法总在问“再加多少”，Delta Rule 先问“旧值离目标还有多远”。
+$\beta_t=0$ 时状态不变；$\beta_t=1$ 时，当前 Key 方向的读出更新为目标 Value；中间值则在两者之间插值。这个结论依赖单位 Key 的简化条件，相近方向上的其他关联仍可能受到更新影响。
 
 \begin{figure}[htbp]
 \centering
@@ -349,21 +378,38 @@ $\beta_t=0$ 时，原关联不动；$\beta_t=1$ 时，当前 Key 方向的读出
 \draw[chflow] (plus1) -- (new1);
 \node[chnote] at (2.20,0.05) {直接叠加};
 
-\node[chlabel] at (8.00,2.05) {Delta Rule};
-\node[chbox,fill=codebg,minimum width=1.45cm] (s2) at (6.15,0.75) {$S_{t-1}$};
-\node[chbox,fill=yellow!22,minimum width=1.70cm] (read) at (7.80,1.35) {读取 $k_tS_{t-1}$};
-\node[chbox,fill=red!12,minimum width=1.55cm] (error) at (9.70,1.35) {差值 $v_t-v_{old}$};
-\node[chbox,fill=green!16,minimum width=1.55cm] (new2) at (9.70,0.25) {写回 $S_t$};
+\node[chlabel] at (8.15,2.25) {Delta Rule};
+\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (5.30,1.45) {$S_{t-1}$};
+\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (7.10,1.45) {Key $k_t$};
+\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (9.35,1.45) {目标 $v_t$};
+\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (7.10,0.55)
+  {读出 $v_{\mathrm{old}}=k_tS_{t-1}$};
+\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (9.35,0.55)
+  {误差 $v_t-v_{\mathrm{old}}$};
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (6.80,-0.35)
+  {强度 $\beta_t$};
+\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (8.65,-0.35)
+  {按 Key 方向写回\\$\beta_t(v_t-v_{\mathrm{old}})$};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (plus2) at (10.25,-0.35) {$+$};
+\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (11.15,-0.35) {$S_t$};
 \draw[chflow] (s2) -- (read);
+\draw[chflow] (key2) -- (read);
 \draw[chflow] (read) -- (error);
-\draw[chflow] (error) -- (new2);
-\draw[chflow,rounded corners=3pt] (s2.south) |- (new2.west);
+\draw[chflow] (value2) -- (error);
+\draw[chflow] (error) -- (write2);
+\draw[chflow] (beta2) -- (write2);
+\draw[chflow] (write2) -- (plus2);
+\draw[chflow] (plus2) -- (new2);
+\draw[chflow,rounded corners=3pt] (s2.south) -- ++(0,-2.25) -|
+  (plus2.south);
 \end{tikzpicture}
 \caption{纯加法写入与 Delta Rule。}
 \label{fig:ch02-delta}
 \end{figure}
 
-固定状态现在不只会累加，也能修正已经找到的关联。不过，更新仍依赖前一步状态。按 token 顺序写出来很简单：
+\subsection{分块并行}
+
+Delta Rule 可以修改已有的关联，但第 $i$ 个 token 的更新仍然依赖第 $i-1$ 步留下的状态。按 token 顺序实现时，代码很直接：
 
 \begin{lstlisting}[language=Python,caption={顺序执行的 Delta 更新}]
 S = torch.zeros(B, H, D, D) if cache is None else cache
@@ -379,9 +425,11 @@ for i in range(T):
 out = torch.cat(outs, dim=2)
 \end{lstlisting}
 
-顺序循环在 decode 中没有额外制造等待——下一个 token 本来就要等上一个生成。训练和 prefill 不同：整段输入已经摆在面前，若第 $i+1$ 个位置仍必须等第 $i$ 个位置写完状态，矩阵硬件就只能跟着逐步排队。
+这种顺序依赖在 decode 阶段不是主要问题，因为下一个 token 本来就要等上一个 token 生成。训练和 prefill 则不同：整段输入已经给出，如果每个位置仍要等待前一个位置更新完状态，就无法充分并行计算。
 
-解决办法是把序列切成 chunk。块内位置已经全部可见，可以用因果掩码一起计算；块与块之间只传递压缩后的最终状态。因此，一个块的输出有两个来源：进入该块以前积累的状态，以及本块中更早位置刚写下的内容。
+一种实现办法是把序列切成若干 chunk。块与块之间继续顺序传递状态，块内则把递归更新重新参数化成矩阵运算。于是，一个块的输出由两部分组成：从前一个块继承的状态，以及当前块内较早位置产生的更新。
+
+难点在于，块内第二个位置的修正已经受第一个位置影响，不能把所有 Delta 当成彼此独立的外积一次相加。下面的 \texttt{Tmat} 正是用来整理这种块内依赖：它把较早 Key 对较晚更新的影响吸收到 $W$ 和 $U$ 中。外层仍按块推进，块内才有机会改写成适合矩阵乘法的计算。
 
 \begin{lstlisting}[language=Python,caption={重参数化后的 chunk Delta 核心}]
 Q, K, V = map(lambda x: x.reshape(-1, C, D), (Q, K, V))
@@ -408,22 +456,31 @@ for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (3.52,2.20) {prefill};
-\foreach \x/\n in {0/1,2.35/2,4.70/3,7.05/4} {
-  \node[chbox,fill=blue!12,minimum width=1.85cm,minimum height=1.05cm]
-    (c\n) at (\x,1.35) {chunk \n\\$t_1\;t_2\;t_3\;t_4$};
-}
-\draw[chflow] (c1) -- (c2);
-\draw[chflow] (c2) -- (c3);
-\draw[chflow] (c3) -- (c4);
-\foreach \n in {1,2,3,4} {
-  \draw[chdash] ([xshift=-0.55cm]c\n.south) -- ([xshift=0.55cm]c\n.south);
-}
-\node[chbox,fill=codebg,minimum width=6.60cm] at (3.52,0.05)
-  {$O_i=Q_iS_{i-1}+\operatorname{causal}(Q_iK_i^{\mathsf T})U_i$};
+\node[chlabel] at (5.25,2.35) {prefill：块内并行，块间递归};
+\node[chbox,fill=codebg,minimum width=0.85cm] (s0) at (0,1.30) {$S_0$};
+\node[chbox,fill=blue!12,minimum width=1.75cm,minimum height=0.95cm]
+  (c1) at (1.55,1.30) {chunk 1\\$t_1\ldots t_C$};
+\node[chbox,fill=codebg,minimum width=0.85cm] (cs1) at (3.05,1.30) {$S_1$};
+\node[chbox,fill=blue!12,minimum width=1.90cm,minimum height=0.95cm]
+  (c2) at (4.75,1.30) {chunk 2\\$t_{C+1}\ldots t_{2C}$};
+\node[chbox,fill=codebg,minimum width=0.85cm] (cs2) at (6.40,1.30) {$S_2$};
+\node[fill=white,inner xsep=4pt] (chunkdots) at (7.35,1.30) {$\cdots$};
+\node[chbox,fill=blue!12,minimum width=1.75cm,minimum height=0.95cm]
+  (cm) at (8.70,1.30) {chunk $m$\\$C$ 个 token};
+\node[chbox,fill=codebg,minimum width=0.90cm] (csm) at (10.25,1.30) {$S_m$};
+\draw[chflow] (s0) -- (c1);
+\draw[chflow] (c1) -- (cs1);
+\draw[chflow] (cs1) -- (c2);
+\draw[chflow] (c2) -- (cs2);
+\draw[thick,draw=primary] (cs2) -- (chunkdots.west);
+\draw[chflow] (chunkdots.east) -- (cm);
+\draw[chflow] (cm) -- (csm);
+\node[chbox,fill=codebg,minimum width=7.00cm] at (5.25,0.05)
+  {每个 chunk 内：$O_i=Q_iS_{i-1}+\operatorname{causal}(Q_iK_i^{\mathsf T})U_i$};
 
 \node[chlabel] at (3.55,-0.70) {decode};
-\node[chbox,fill=orange!16,minimum width=1.55cm] (cache) at (0.70,-1.15) {缓存状态 $S$};
+\node[chbox,fill=orange!16,minimum width=1.90cm] (cache) at (0.70,-1.15)
+  {prefill 输出\\缓存状态 $S_m$};
 \node[chbox,fill=green!16,minimum width=1.55cm] (token) at (0.70,-1.95) {新 token};
 \node[chbox,fill=yellow!20,minimum width=2.05cm] (update) at (3.45,-1.55) {更新状态};
 \node[chbox,fill=codebg,minimum width=1.55cm] (out) at (6.25,-1.55) {输出 / 新状态};
@@ -435,19 +492,21 @@ for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
 \label{fig:ch02-chunk}
 \end{figure}
 
-chunk 覆盖整个序列时，所有交互都落入块内，计算形态重新变成二次复杂度；但 Delta 修正仍然存在，并不等同于标准 Softmax 注意力。chunk 缩到一个 token 时，则回到完全递归。中间取值是在块内并行和块间递归之间选择落点。
+若一个 chunk 覆盖整段序列，块内交互会回到二次计算量，但其中执行的仍是 Delta 更新，并不等同于标准 Softmax 注意力。若 chunk 只含一个 token，算法就退化为完全递归的实现。chunk 大小由此决定块内并行与块间顺序更新的比例。
 
-图中的两项对应代码的两个输出：$\texttt{out\_inter}=Q_iS_{i-1}$ 读取块前状态，$\texttt{out\_intra}$ 则用带因果掩码的 $Q_iK_i^{\mathsf T}$ 读取块内较早位置。它们相加，才得到当前块的输出。
+图中的两项对应代码里的两个输出：$\texttt{out\_inter}=Q_iS_{i-1}$ 读取进入当前块以前的状态，$\texttt{out\_intra}$ 用带因果掩码的 $Q_iK_i^{\mathsf T}$ 汇总块内较早位置的更新。两部分相加得到当前块的输出。
 
-chunk 表示计算粒度，不是记忆窗口。块结束后，信息仍会写进状态并交给下一块；改变的只是每次能并行展开多少更新，以及多少块边界必须顺序经过。
+chunk 规定的是计算粒度，不是上下文窗口。一个块结束后，最终状态仍会交给下一个块，因此较早信息不会仅因跨过块边界而被丢弃。
 
-Delta Rule 的麻烦在于，每次修正都要先知道“写入前读到了什么”。论文借助广义 Householder 转移矩阵重新参数化，把块内连续的修正量整理成可以一并计算的矩阵。结果是，状态继续在块间递归，块内计算却可以交给矩阵运算。
+Delta 更新之所以难以直接并行，是因为每次修正都要先知道更新前的读出。论文使用广义 Householder 转移矩阵重新参数化块内的连续更新，把它们整理成可以批量计算的矩阵。状态仍在块间递归，块内计算则可以使用矩阵运算并行完成。
 
-\section{门控}
+\section{门控与 KDA}
 
-Delta Rule 能修正某个 Key 指向的关联，前提是新内容正好来到了这个位置。话题整体切换时，许多旧关联未必都有对应的新值，却仍占着有限状态。此时需要的不是逐条改写，而是让过去自行淡出。
+\subsection{Gated DeltaNet}
 
-门控为旧状态乘上保留比例 $\alpha_t$。\cite{gated-delta}
+Delta Rule 只会在新的 Key 到来时修正相关方向。如果上下文已经切换，一些旧关联可能再也等不到对应的新值，却仍保留在固定状态中。要释放这部分容量，还需要让旧状态随时间衰减。
+
+Gated DeltaNet 为旧状态增加了保留系数 $\alpha_t$。\cite{gated-delta}
 
 \[
 S_t=
@@ -464,7 +523,7 @@ u = beta * (v - v_old)
 S = alpha * S_old + k.transpose(-1, -2) @ u
 \end{lstlisting}
 
-式子里，$\beta_t$ 只管当前 Key 指向的关联，要把它朝新 Value 修正多少；$\alpha_t$ 则先作用于整个旧状态，决定过去还留下多少。前者修改一个位置，后者释放整片容量。两种动作发生在同一次更新中。
+式中，$\alpha_t$ 先缩放整个旧状态，$\beta_t$ 再控制当前 Key 方向上的 Delta 更新强度。前者决定旧状态整体保留多少，后者决定本次误差修正多少。两项计算共同得到新的 $S_t$。
 
 \begin{figure}[htbp]
 \centering
@@ -477,6 +536,8 @@ S = alpha * S_old + k.transpose(-1, -2) @ u
 \node[chbox,fill=yellow!22,minimum width=1.55cm] (rn2) at (1.65,-1.05) {RMSNorm};
 \node[chbox,fill=blue!16,minimum width=1.55cm] (swiglu) at (1.65,-1.85) {SwiGLU};
 \node[circle,draw=primary,thick,inner sep=1.3pt] (ra2) at (1.65,-2.60) {$+$};
+\node[draw=primary!45,dashed,rounded corners=3pt,
+  fit=(rn1)(ra2),inner sep=5pt] (gdnblock) {};
 \draw[chflow] (xin) -- (rn1);
 \draw[chflow] (rn1) -- (gdn);
 \draw[chflow] (gdn) -- (ra1);
@@ -484,46 +545,63 @@ S = alpha * S_old + k.transpose(-1, -2) @ u
 \draw[chflow] (rn2) -- (swiglu);
 \draw[chflow] (swiglu) -- (ra2);
 \draw[chflow,rounded corners=3pt] (xin.west) -- ++(-0.35,0) |- (ra1.west);
-\draw[chflow,rounded corners=3pt] (ra1.west) -- ++(-0.55,0) |- (ra2.west);
-\node[chnote] at (2.65,-2.60) {$\times N$};
+\draw[chflow,rounded corners=3pt] (ra1.west) -- ++(-1.35,0) |- (ra2.west);
+\node[chnote,anchor=south east] at
+  ([xshift=-0.08cm,yshift=0.08cm]gdnblock.south east) {$\times N$};
 
-\node[chlabel] at (7.15,2.55) {Gated DeltaNet 内部};
-\node[chbox,fill=codebg,minimum width=1.15cm] (h) at (3.65,1.65) {$h_t$};
-\node[chbox,fill=green!13,minimum width=1.20cm] (qp) at (5.05,1.65) {$Q$ proj};
-\node[chbox,fill=green!13,minimum width=1.20cm] (kp) at (6.45,1.65) {$K$ proj};
-\node[chbox,fill=green!13,minimum width=1.20cm] (vp) at (7.85,1.65) {$V$ proj};
-\node[chbox,fill=green!13,minimum width=1.45cm] (ab) at (9.50,1.65) {$\alpha,\beta$ proj};
-\node[chbox,fill=green!13,minimum width=1.20cm] (gp) at (10.95,1.65) {gate};
-\node[chbox,fill=red!10,minimum width=1.20cm] (qc) at (5.05,0.65) {Conv};
-\node[chbox,fill=red!10,minimum width=1.20cm] (kc2) at (6.45,0.65) {Conv};
-\node[chbox,fill=red!10,minimum width=1.20cm] (vc2) at (7.85,0.65) {Conv};
-\node[chbox,fill=yellow!18,minimum width=1.20cm] (qn) at (5.05,-0.25) {L2 Norm};
-\node[chbox,fill=yellow!18,minimum width=1.20cm] (kn) at (6.45,-0.25) {L2 Norm};
-\node[chbox,fill=blue!14,minimum width=4.55cm,minimum height=0.72cm]
-  (rule) at (7.25,-1.20) {$S_t=\alpha_tS_{t-1}+k_t^{\mathsf T}\beta_t(v_t-k_tS_{t-1})$};
-\node[chbox,fill=yellow!18,minimum width=1.25cm] (on) at (7.25,-2.10) {Norm};
-\node[chbox,fill=green!15,minimum width=1.25cm] (op) at (9.05,-2.10) {$O$ proj};
-\node[chbox,fill=codebg,minimum width=1.15cm] (hout) at (10.80,-2.10) {输出};
-\foreach \src/\dst in {h/qp,h/kp,h/vp,h/ab,h/gp,qp/qc,kp/kc2,vp/vc2,qc/qn,kc2/kn,qn/rule,kn/rule,vc2/rule,ab/rule,rule/on,on/op,op/hout} {
-  \draw[chflow] (\src) -- (\dst);
+\node[chlabel] at (7.50,2.65) {模块展开：Gated DeltaNet 内部};
+\node[chbox,fill=codebg,minimum width=1.05cm] (h) at (3.45,1.75) {$h_t$};
+\node[chbox,fill=green!13,minimum width=6.40cm] (projall) at (7.50,1.75)
+  {并行投影：$Q,\ K,\ V,\ \alpha,\ \beta,\ g$};
+\draw[chflow] (h) -- (projall);
+
+\node[chbox,fill=red!10,minimum width=1.30cm] (qprep) at (4.15,0.70)
+  {$Q$\\Conv + L2};
+\node[chbox,fill=red!10,minimum width=1.30cm] (kprep) at (5.75,0.70)
+  {$K$\\Conv + L2};
+\node[chbox,fill=red!10,minimum width=1.20cm] (vprep) at (7.25,0.70)
+  {$V$\\Conv};
+\node[chbox,fill=yellow!18,minimum width=1.30cm] (abprep) at (8.80,0.70)
+  {$\alpha_t,\beta_t$};
+\node[chbox,fill=yellow!18,minimum width=1.30cm] (gprep) at (10.25,0.70)
+  {输出门 $g_t$};
+\foreach \x/\dst in {-3.35/qprep,-1.75/kprep,-0.25/vprep,1.30/abprep,2.75/gprep} {
+  \draw[chflow] ([xshift=\x cm]projall.south) -- (\dst.north);
 }
-\draw[chdash] (gp) |- (op);
+
+\node[chbox,fill=blue!14,minimum width=5.55cm,minimum height=0.72cm]
+  (rule) at (6.65,-0.40)
+  {$S_t=\alpha_tS_{t-1}+k_t^{\mathsf T}\beta_t(v_t-k_tS_{t-1})$};
+\draw[chflow] (qprep) -- ($(rule.north west)!0.14!(rule.north east)$);
+\draw[chflow] (kprep) -- ($(rule.north west)!0.36!(rule.north east)$);
+\draw[chflow] (vprep) -- ($(rule.north west)!0.62!(rule.north east)$);
+\draw[chflow] (abprep) -- ($(rule.north west)!0.86!(rule.north east)$);
+
+\node[chbox,fill=yellow!18,minimum width=1.15cm] (on) at (6.65,-1.55) {Norm};
+\node[chbox,fill=green!15,minimum width=1.20cm] (op) at (8.15,-1.55) {$O$ proj};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (gmul) at (9.55,-1.55) {$\times$};
+\node[chbox,fill=codebg,minimum width=1.10cm] (hout) at (10.75,-1.55) {输出};
+\draw[chflow] (rule) -- (on);
+\draw[chflow] (on) -- (op);
+\draw[chflow] (op) -- (gmul);
+\draw[chflow] (gprep) -- (gmul);
+\draw[chflow] (gmul) -- (hout);
 \end{tikzpicture}
 \caption{Gated DeltaNet 的 block 与内部投影。}
 \label{fig:ch02-gated-delta}
 \end{figure}
 
-$\alpha_t=1$ 时，旧状态完整保留；它越接近零，过去衰减得越快。一项信息从写入到再次被读取，中间会连续乘过所有门值。单步变化看起来很轻，许多步以后却决定了它还能留下多少。
-
-若某项信息在第 $r$ 步写入，到第 $t$ 步仍保留的比例近似为
+$\alpha_t=1$ 时，旧状态在这一步不发生衰减；$\alpha_t$ 越接近零，旧状态保留得越少。一项信息从第 $r$ 步保留到第 $t$ 步，要连续经过中间每一步的门控，因此累计保留比例近似为：
 
 \[
 \prod_{i=r+1}^{t}\alpha_i.
 \]
 
-连续一百步都取 $\alpha=0.99$，保留量约为 $0.366$；若取 $0.999$，则仍约为 $0.905$。门值因此不是“记住”与“忘掉”之间的一次选择，而是在给状态安排不同的寿命。
+连续一百步都取 $\alpha=0.99$，累计保留比例约为 $0.366$；若取 $0.999$，则约为 $0.905$。即使单步门值都接近 1，长序列上的累计差异也会很明显。
 
-Gated DeltaNet 既能定点改写，也能整体衰减。不过，它在每个 token、每个 head 上的 $\alpha_t$ 仍是一个标量：同一时间步里，该 head 的所有状态通道按同一比例变淡。Kimi Delta Attention（KDA）继续拆开这只门，让各通道拥有自己的衰减速度。\cite{kimi-linear}
+\subsection{Kimi Delta Attention}
+
+Gated DeltaNet 同时具备误差修正和状态衰减，但每个 token、每个 head 的 $\alpha_t$ 仍是一个标量。在同一个时间步内，该 head 的所有状态通道都按相同比例缩放。Kimi Delta Attention（KDA）把标量门改成向量门，让不同通道使用不同的保留系数。\cite{kimi-linear}
 
 \[
 \boldsymbol{\alpha}_t
@@ -534,6 +612,8 @@ S_t=
 +\Delta S_t.
 \]
 
+对角矩阵的写法表示，$S_{t-1}$ 的不同行可以乘上不同的系数。于是，同一个 head 在同一步里也能让一部分通道缓慢遗忘，让另一部分通道迅速让位给新内容。Delta 项仍负责修正当前 Key 指向的关联；KDA 改变的是旧状态被保留的粒度。
+
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
@@ -542,7 +622,7 @@ S_t=
   (d) at (1.55,0.55) {$S_t=S_{t-1}+\Delta S_t$};
 \node[chnote] at (1.55,-0.18) {无衰减};
 
-\node[chlabel] at (5.05,1.60) {Gated Delta};
+\node[chlabel] at (5.05,1.60) {Gated DeltaNet};
 \node[chbox,fill=orange!14,minimum width=3.00cm,minimum height=0.88cm]
   (g) at (5.05,0.55) {$S_t=\alpha_tS_{t-1}+\Delta S_t$};
 \node[chnote] at (5.05,-0.18) {标量衰减};
@@ -554,7 +634,7 @@ S_t=
 \draw[chdash] (d) -- (g);
 \draw[chdash] (g) -- (kda);
 \end{tikzpicture}
-\caption{Delta Rule、Gated Delta 与 KDA 的门控粒度。}
+\caption{Delta Rule、Gated DeltaNet 与 KDA 的门控粒度。}
 \label{fig:ch02-kda-evolution}
 \end{figure}
 
@@ -564,47 +644,57 @@ S = alpha[..., None, None] * S + delta  # scalar gate
 S = alpha[..., :, None] * S + delta     # channel gate
 \end{lstlisting}
 
-从标量到向量，代码只多了一层维度，容量的分配却变细了。某些通道可以很快腾出空间，追踪最近几个 token；另一些通道则衰减得慢，跨过更长的片段。固定状态的总容量没有增加，但它不必再用同一个时间尺度对待所有方向。
+向量门没有增加状态矩阵的大小，改变的是各通道的衰减粒度。训练后，一些通道可以保留较大的门值，让信息经过更多 token；另一些通道可以更快衰减，减少较早内容对当前状态的影响。至于各通道最终承担什么功能，并没有预先规定。
 
-这些通道并没有预先贴上“人名”“语气”或“事实”的标签。哪一部分该短暂、哪一部分该久留，仍要由训练学出来。KDA 只是状态单元；Kimi Linear 还要把它接回完整的模型。
+到这里，固定状态已经可以累积信息、按误差修正关联，并以逐通道门控衰减旧内容。不过，状态大小仍然固定，被合并的位置细节不会因为门控更精细而重新出现。这正是 Kimi Linear 仍然保留 Softmax 注意力的原因。
 
 \section{Kimi Linear 与 Kimi K3}
 
 \subsection{KDA 与 Kimi Linear}
 
-逐通道门控仍改变不了固定状态的一个限制：被压缩掉的位置细节，不能只靠更精细的衰减重新找回来。因此 Kimi Linear 没有让所有层都使用 KDA，而是把它与 Multi-head Latent Attention（MLA）交错排列。多数层继续读写固定状态，周期性的 MLA 则回到 token 上下文，执行一次 Softmax 检索。
+Kimi Linear 将 KDA 与 Multi-head Latent Attention（MLA）交错排列。多数层使用 KDA，在固定状态上完成读写；每隔三层插入一层 MLA，对 token 序列执行一次 Softmax 注意力。前者控制大部分层的缓存大小，后者保留按位置检索上下文的能力。
 
-Kimi Linear 论文还报告，在受控对比中，这种混合结构的质量优于其实验中的全注意力基线，解码吞吐量最高提升 6 倍。这里的数字属于论文给定模型与硬件条件下的结果，不是所有任务上的普遍保证。\cite{kimi-linear}
+Kimi Linear 论文报告，在其受控实验中，这种混合结构的质量超过对应的全注意力基线，解码吞吐量最高提升 6 倍。该结果依赖论文给定的模型、任务与硬件条件，不能直接外推到所有部署。\cite{kimi-linear}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.30,2.75) {四层周期};
-\foreach \x/\id/\name/\fill in {1.55/a/KDA/blue!14,3.55/b/KDA/blue!14,5.55/c/KDA/blue!14,7.75/d/MLA/orange!18} {
-  \node[chbox,fill=\fill,minimum width=1.55cm] (\id) at (\x,1.95) {\name};
-  \node[chbox,fill=green!14,minimum width=1.55cm] (m\id) at (\x,1.05) {MoE};
-  \draw[chflow] (\id) -- (m\id);
-}
-\draw[chflow] (a) -- (b);
-\draw[chflow] (b) -- (c);
-\draw[chflow] (c) -- (d);
-\node[chnote] at (9.40,1.50) {周期重复};
+\node[chlabel] at (5.15,2.85) {四层周期（每个框是一层）};
+\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
+  (la) at (1.30,1.85) {KDA\\$\downarrow$\\MoE};
+\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
+  (lb) at (3.90,1.85) {KDA\\$\downarrow$\\MoE};
+\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
+  (lc) at (6.50,1.85) {KDA\\$\downarrow$\\MoE};
+\node[chbox,fill=orange!16,minimum width=2.15cm,minimum height=1.12cm]
+  (ld) at (9.10,1.85) {MLA\\$\downarrow$\\MoE};
+\draw[chflow] (la) -- (lb);
+\draw[chflow] (lb) -- (lc);
+\draw[chflow] (lc) -- (ld);
+\node[chnote,anchor=west] at (10.35,1.85) {继续下一周期};
 
-\node[chlabel] at (5.30,0.05) {KDA 内部};
-\foreach \x/\id/\name in {0.35/qk/Q,1.70/kk/K,3.05/vk/V,4.40/bk/$\beta$,5.75/ak/$\boldsymbol\alpha$,7.10/gk/gate} {
-  \node[chbox,fill=green!13,minimum width=1.05cm] (\id) at (\x,-0.75) {\name};
-}
-\node[chbox,fill=red!10,minimum width=1.05cm] (qconv) at (0.35,-1.65) {Conv};
-\node[chbox,fill=red!10,minimum width=1.05cm] (kconv) at (1.70,-1.65) {Conv};
-\node[chbox,fill=red!10,minimum width=1.05cm] (vconv) at (3.05,-1.65) {Conv};
-\node[chbox,fill=blue!14,minimum width=5.30cm] (kdacore) at (4.15,-2.65)
-  {逐通道衰减 $+$ Delta 更新};
-\node[chbox,fill=yellow!18,minimum width=1.15cm] (kdanorm) at (7.45,-2.65) {Norm};
-\node[chbox,fill=green!15,minimum width=1.15cm] (kdao) at (9.10,-2.65) {$O$ proj};
-\foreach \src/\dst in {qk/qconv,kk/kconv,vk/vconv,qconv/kdacore,kconv/kdacore,vconv/kdacore,bk/kdacore,ak/kdacore,kdacore/kdanorm,kdanorm/kdao} {
-  \draw[chflow] (\src) -- (\dst);
-}
-\draw[chdash] (gk) |- (kdao);
+\node[chlabel] at (5.15,0.55) {KDA 内部};
+\node[chbox,fill=codebg,minimum width=1.00cm] (kin) at (0,-0.35) {$h_t$};
+\node[chbox,fill=green!13,minimum width=3.35cm] (kproj) at (2.55,-0.35)
+  {并行投影 $Q,K,V,\beta,\boldsymbol\alpha,g$};
+\node[chbox,fill=yellow!18,minimum width=1.30cm] (kgate) at (8.90,-0.35)
+  {输出门 $g_t$};
+\draw[chflow] (kin) -- (kproj);
+\draw[chflow,rounded corners=3pt] (kproj.north) -- ++(0,0.35) -| (kgate.north);
+
+\node[chbox,fill=blue!14,minimum width=4.50cm,minimum height=0.78cm]
+  (kdacore) at (3.90,-1.55)
+  {$Q,K,V$ 预处理\\逐通道衰减 $+$ Delta 更新};
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (kdanorm) at (6.80,-1.55) {Norm};
+\node[chbox,fill=green!15,minimum width=1.15cm] (kdao) at (8.20,-1.55) {$O$ proj};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (kgmul) at (9.55,-1.55) {$\times$};
+\node[chbox,fill=codebg,minimum width=1.05cm] (kout) at (10.65,-1.55) {输出};
+\draw[chflow] (kproj) -- (kdacore);
+\draw[chflow] (kdacore) -- (kdanorm);
+\draw[chflow] (kdanorm) -- (kdao);
+\draw[chflow] (kdao) -- (kgmul);
+\draw[chflow] (kgate) -- (kgmul);
+\draw[chflow] (kgmul) -- (kout);
 \end{tikzpicture}
 \caption{Kimi Linear 的层级周期与 KDA 内部。}
 \label{fig:ch02-kimi-linear}
@@ -612,55 +702,55 @@ Kimi Linear 论文还报告，在受控对比中，这种混合结构的质量�
 
 \subsection{Kimi K3}
 
-Kimi K3 把这种混合节奏扩展成整条主干。前 92 层组成 23 个四层周期，每个周期依次经过三层 KDA 和一层 Gated MLA；第 93 层再补上一层 Gated MLA。因此，官方配置合计 69 个 KDA 层和 24 个 Gated MLA 层。\cite{kimi-k3}
+Kimi K3 沿用了 Kimi Linear 的混合方式。前 92 层由 23 个四层周期组成，每个周期依次包含三层 KDA 和一层 Gated MLA；第 93 层再使用一层 Gated MLA。整条主干因此共有 69 个 KDA 层和 24 个 Gated MLA 层。\cite{kimi-k3}
 
-一个 token 走过这样的四层周期时，前三层从固定状态读取，同时把当前内容写回；第四层重新检查 token 上下文，并用输出门决定检索结果有多少进入残差流。KDA 让大多数层不必携带不断增长的 K、V 历史，MLA 则定期补回准确的位置检索。
+在每个周期中，前三层通过 KDA 读取并更新固定状态；第四层通过 MLA 访问按位置保存的 token 上下文。MLA 的输出还要经过门控，模型可以调节这次检索结果写入残差流的比例。两种注意力分别保留固定状态的空间优势和 Softmax 注意力的位置检索能力。
 
-注意力之后还有前馈计算。第 1 层使用稠密网络，其余层主要使用 LatentMoE：其中有 896 个路由专家，另有 2 个共享专家。共享专家始终参与，路由器则为每个 token 从 896 个候选中选择 16 个。因此，Kimi K3 虽有 2.8 万亿总参数，每个 token 只激活约 1040 亿参数；总容量由全部专家共同贡献，单步计算只经过其中一部分。
+每层注意力之后还有前馈网络。第 1 层使用稠密前馈网络，其余层使用 LatentMoE。LatentMoE 包含 896 个路由专家和 2 个共享专家：共享专家始终参与，路由器再为每个 token 选择 16 个路由专家。Kimi K3 的总参数量为 2.8 万亿，但每个 token 只激活约 1040 亿参数。MoE 由此把模型的总参数容量与单个 token 实际经过的计算量分开。\cite{kimi-k3}
 
-MLA 本身也有两处改动。Query LoRA，也就是 Query 的低秩投影，减少这一分支的参数与计算；检索结果在进入残差流前还要乘上输出门。前者压缩 Query 路径，后者决定这次完整检索究竟应该写回多少。
+这里的两个参数量不能互相替代。2.8 万亿描述模型拥有的全部专家权重，部署时仍要容纳这些权重；约 1040 亿描述一个 token 经过路由以后实际调用的部分。MoE 节省的是每次前向传播都遍历全部参数的计算，并不是把整个模型缩成了 1040 亿参数。
+
+Gated MLA 还使用 Query LoRA 压缩 Query 投影，并在输出进入残差流以前增加门控。Query LoRA 减少这一分支的参数与计算，输出门则调节注意力结果的写入强度。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chbox,fill=codebg,minimum width=1.10cm] (inputk3) at (0,0.20) {输入};
-\node[draw=primary,thick,rounded corners=3pt,minimum width=6.00cm,
-  minimum height=3.55cm,fill=blue!4] (macro) at (4.15,0.20) {};
-\node[chlabel] at (4.15,1.60) {四层周期 $\times23$（第 1--92 层）};
-\node[chbox,fill=blue!14,minimum width=1.15cm] (mk1) at (1.85,0.70) {KDA};
-\node[chbox,fill=blue!14,minimum width=1.15cm] (mk2) at (3.35,0.70) {KDA};
-\node[chbox,fill=blue!14,minimum width=1.15cm] (mk3) at (4.85,0.70) {KDA};
-\node[chbox,fill=orange!18,minimum width=1.65cm] (mgmla) at (6.55,0.70) {Gated MLA};
-\node[chbox,fill=green!13,minimum width=1.15cm] (mf1) at (1.85,-0.35) {Dense FFN};
-\node[chbox,fill=green!13,minimum width=1.15cm] (mf2) at (3.35,-0.35) {LatentMoE};
-\node[chbox,fill=green!13,minimum width=1.15cm] (mf3) at (4.85,-0.35) {LatentMoE};
-\node[chbox,fill=green!13,minimum width=1.65cm] (mf4) at (6.55,-0.35) {LatentMoE};
-\draw[chflow] (mk1) -- (mf1);
-\draw[chflow] (mf1) -- (mk2);
-\draw[chflow] (mk2) -- (mf2);
-\draw[chflow] (mf2) -- (mk3);
-\draw[chflow] (mk3) -- (mf3);
-\draw[chflow] (mf3) -- (mgmla);
-\draw[chflow] (mgmla) -- (mf4);
-\node[chnote] at (4.15,-1.15) {每 12 层保存一个 AttnRes block};
+\node[chlabel] at (5.10,2.35) {Kimi K3：93 层主干};
+\node[chbox,fill=codebg,minimum width=0.80cm] (inputk3) at (-0.15,0.85) {输入};
+\node[chbox,font=\scriptsize,fill=blue!12,text width=1.25cm,
+  minimum width=1.55cm,minimum height=2.05cm]
+  (layer1) at (1.25,0.85) {第 1 层\\KDA\\稠密 FFN};
+\node[chbox,font=\scriptsize,fill=blue!8,text width=2.45cm,
+  minimum width=2.75cm,minimum height=2.05cm]
+  (layers24) at (3.65,0.85)
+  {第 2--4 层\\KDA $\times2$\\Gated MLA $\times1$\\\mbox{Stable LatentMoE}\\共 3 层};
+\node[chbox,font=\scriptsize,fill=blue!8,text width=2.80cm,
+  minimum width=3.10cm,minimum height=2.05cm]
+  (cycles) at (6.90,0.85)
+  {第 5--92 层\\四层周期 $\times22$\\KDA $\times66$\\Gated MLA $\times22$\\\mbox{Stable LatentMoE}\\共 88 层};
+\node[chbox,font=\scriptsize,fill=orange!16,text width=2.10cm,
+  minimum width=2.40cm,minimum height=2.05cm]
+  (layer93) at (9.85,0.85) {第 93 层\\Gated MLA\\Stable\\LatentMoE};
+\draw[chflow] (inputk3) -- (layer1);
+\draw[chflow] (layer1) -- (layers24);
+\draw[chflow] (layers24) -- (cycles);
+\draw[chflow] (cycles) -- (layer93);
 
-\node[chbox,fill=orange!18,minimum width=1.65cm] (lastattn) at (8.35,0.70) {第 93 层\\Gated MLA};
-\node[chbox,fill=green!13,minimum width=1.65cm] (lastmoe) at (8.35,-0.35) {LatentMoE};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (finaln) at (10.35,0.85) {Norm};
-\node[chbox,fill=green!15,minimum width=1.10cm] (linear) at (10.35,-0.05) {Linear};
-\node[chbox,fill=codebg,minimum width=1.10cm] (outputk3) at (10.35,-0.95) {输出};
-\draw[chflow] (inputk3) -- (mk1);
-\draw[chflow] (mf4) -- (lastattn);
-\draw[chflow] (lastattn) -- (lastmoe);
-\draw[chflow] (lastmoe) -- (finaln);
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (finaln) at (9.85,-0.65) {Norm};
+\node[chbox,fill=green!15,minimum width=1.10cm] (linear) at (9.85,-1.45) {Linear};
+\node[chbox,fill=codebg,minimum width=1.10cm] (outputk3) at (9.85,-2.25) {输出};
+\draw[chflow] (layer93) -- (finaln);
 \draw[chflow] (finaln) -- (linear);
 \draw[chflow] (linear) -- (outputk3);
+\node[font=\scriptsize\bfseries,text=primary,align=center] (summaryk3) at (4.35,-1.45)
+  {注意力层合计：69 个 KDA + 24 个 Gated MLA};
+\node[chnote] at (4.35,-2.25) {Block AttnRes 沿深度方向另行汇总块级表示};
 \end{tikzpicture}
-\caption{Kimi K3 的四层周期、第 93 层与输出路径；图中每列是一层。}
+\caption{Kimi K3 的层组、四层周期与输出路径；四个主框依次表示第 1 层、第 2--4 层、第 5--92 层和第 93 层。}
 \label{fig:ch02-k3-cycle}
 \end{figure}
 
-注意力决定从历史的哪里取信息；接着，这个 token 会进入路由器选中的专家。Kimi K3 在专家内部还换用了 SiTU 激活：输入沿最后一维分成 gate 与 up 两半，由可学习参数控制双曲正切的截断范围。
+注意力更新完成后，token 表示进入前馈网络。Kimi K3 的专家使用 SiTU 激活函数：输入沿最后一维分成 gate 与 up 两部分，两条分支都可以用可学习参数控制双曲正切的饱和范围。
 
 \begin{lstlisting}[language=Python,caption={SiTU 激活函数}]
 d = x.shape[-1] // 2
@@ -677,18 +767,18 @@ if self.linear_beta is not None:
 return (situ_a * up).to(x.dtype)
 \end{lstlisting}
 
-式中的 $\beta\tanh(x/\beta)$ 在零附近近似线性，输入绝对值很大时则饱和在 $\pm\beta$。常用范围里的细小变化可以继续通过，极端激活却不会无限放大。Gate 分支还要乘 sigmoid，up 分支也可以拥有独立的可学习截断。路由器决定 token 去哪几个专家，SiTU 管的是它进入专家以后怎样通过非线性。
+式中的 $\beta\tanh(x/\beta)$ 在零附近近似 $x$，输入的绝对值增大后则趋近 $\pm\beta$。Gate 分支还要乘以 sigmoid，up 分支可以使用另一组参数完成同样的限制。路由器负责选择专家，SiTU 负责专家内部的非线性变换，两者处在不同层次。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.15,3.00) {专家路由};
-\node[chbox,fill=codebg,minimum width=1.10cm] (mx) at (0,2.00) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.30cm] (mr) at (1.65,2.00) {Router};
-\node[chbox,fill=blue!15,minimum width=2.10cm] (shared) at (4.05,2.55) {共享专家 $\times2$};
-\node[chbox,fill=purple!12,minimum width=2.10cm] (routed) at (4.05,1.45) {路由专家 $16/896$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (msum) at (6.35,2.00) {$\Sigma$};
-\node[chbox,fill=green!15,minimum width=1.15cm] (my) at (7.80,2.00) {输出};
+\node[chlabel] at (5.15,3.15) {专家路由};
+\node[chbox,fill=codebg,minimum width=1.10cm] (mx) at (0,2.15) {$x_t$};
+\node[chbox,fill=yellow!20,minimum width=1.30cm] (mr) at (1.65,2.15) {Router};
+\node[chbox,fill=blue!15,minimum width=2.10cm] (shared) at (4.05,2.70) {共享专家 $\times2$};
+\node[chbox,fill=purple!12,minimum width=2.10cm] (routed) at (4.05,1.60) {路由专家 $16/896$};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (msum) at (6.35,2.15) {$\Sigma$};
+\node[chbox,fill=green!15,minimum width=1.15cm] (my) at (7.80,2.15) {输出};
 \draw[chflow] (mx) -- (mr);
 \draw[chflow] (mx) to[out=45,in=180] (shared);
 \draw[chflow] (mr) -- (routed);
@@ -696,29 +786,34 @@ return (situ_a * up).to(x.dtype)
 \draw[chflow] (routed) -- (msum);
 \draw[chflow] (msum) -- (my);
 
-\node[chlabel] at (2.55,0.45) {Kimi Linear 专家};
-\node[chbox,fill=codebg,minimum width=1.00cm] (linx) at (0,-0.65) {输入};
-\node[chbox,fill=orange!14,minimum width=1.05cm] (lw3) at (1.45,-0.10) {$W_3$ gate};
-\node[chbox,fill=orange!14,minimum width=1.05cm] (lw1) at (1.45,-1.20) {$W_1$ up};
-\node[chbox,fill=yellow!18,minimum width=1.05cm] (lsilu) at (3.00,-1.20) {SiLU};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (lmul) at (4.15,-0.65) {$\times$};
-\node[chbox,fill=green!14,minimum width=1.10cm] (lw2) at (5.55,-0.65) {$W_2$ down};
+\node[chlabel] at (5.15,0.95) {Kimi Linear 专家};
+\node[chbox,fill=codebg,minimum width=1.00cm] (linx) at (0,0.05) {输入};
+\node[chbox,fill=orange!14,minimum width=1.15cm] (lw3) at (1.55,0.40) {$W_3$ gate};
+\node[chbox,fill=orange!14,minimum width=1.15cm] (lw1) at (1.55,-0.30) {$W_1$ up};
+\node[chbox,fill=yellow!18,minimum width=1.05cm] (lsilu) at (3.10,-0.30) {SiLU};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (lmul) at (4.30,0.05) {$\times$};
+\node[chbox,fill=green!14,minimum width=1.20cm] (lw2) at (5.75,0.05) {$W_2$ down};
+\node[chbox,fill=codebg,minimum width=1.00cm] (linout) at (7.25,0.05) {输出};
 \draw[chflow] (linx) -- (lw3);
 \draw[chflow] (linx) -- (lw1);
 \draw[chflow] (lw3) -- (lmul);
 \draw[chflow] (lw1) -- (lsilu);
 \draw[chflow] (lsilu) -- (lmul);
 \draw[chflow] (lmul) -- (lw2);
+\draw[chflow] (lw2) -- (linout);
 
-\node[chlabel] at (8.40,0.45) {Kimi K3 专家};
-\node[chbox,fill=blue!14,minimum width=1.20cm] (down) at (6.55,-1.85) {down proj};
-\node[chbox,fill=orange!14,minimum width=1.05cm] (kw3) at (8.15,-0.10) {$W_3$ gate};
-\node[chbox,fill=orange!14,minimum width=1.05cm] (kw1) at (8.15,-1.20) {$W_1$ up};
-\node[chbox,fill=yellow!18,minimum width=1.15cm] (ksitu) at (9.80,-0.10) {$\sigma\times\tanh$};
-\node[chbox,fill=yellow!18,minimum width=1.05cm] (ktanh) at (9.80,-1.20) {$\tanh$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (kmul) at (11.10,-0.65) {$\times$};
-\node[chbox,fill=green!14,minimum width=1.10cm] (kw2) at (11.10,-1.85) {$W_2$ down};
-\node[chbox,fill=blue!14,minimum width=1.20cm] (up) at (9.30,-2.65) {up proj};
+\node[chlabel] at (5.15,-1.00) {Kimi K3 专家};
+\node[chbox,fill=codebg,minimum width=1.00cm] (kx) at (0,-2.00) {输入};
+\node[chbox,fill=blue!14,minimum width=1.25cm] (down) at (1.45,-2.00) {down proj};
+\node[chbox,fill=orange!14,minimum width=1.10cm] (kw3) at (3.05,-1.65) {$W_3$ gate};
+\node[chbox,fill=orange!14,minimum width=1.10cm] (kw1) at (3.05,-2.35) {$W_1$ up};
+\node[chbox,fill=yellow!18,minimum width=1.25cm] (ksitu) at (4.70,-1.65) {$\sigma\times\tanh$};
+\node[chbox,fill=yellow!18,minimum width=1.05cm] (ktanh) at (4.70,-2.35) {$\tanh$};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (kmul) at (6.05,-2.00) {$\times$};
+\node[chbox,fill=green!14,minimum width=1.15cm] (kw2) at (7.35,-2.00) {$W_2$ down};
+\node[chbox,fill=blue!14,minimum width=1.20cm] (up) at (8.80,-2.00) {up proj};
+\node[chbox,fill=codebg,minimum width=1.00cm] (kout2) at (10.20,-2.00) {输出};
+\draw[chflow] (kx) -- (down);
 \draw[chflow] (down) -- (kw3);
 \draw[chflow] (down) -- (kw1);
 \draw[chflow] (kw3) -- (ksitu);
@@ -727,16 +822,19 @@ return (situ_a * up).to(x.dtype)
 \draw[chflow] (ktanh) -- (kmul);
 \draw[chflow] (kmul) -- (kw2);
 \draw[chflow] (kw2) -- (up);
+\draw[chflow] (up) -- (kout2);
 \end{tikzpicture}
 \caption{Kimi K3 的专家路由与 SiTU 专家。}
 \label{fig:ch02-latent-moe}
 \end{figure}
 
-图中的 down projection 与 up projection 把专家计算放进较低维的潜空间。路由器先选“由谁处理”，投影再决定“以多宽的表示处理”。一个减少实际参与的专家数，另一个压缩每个专家内部的计算宽度。
+图中的 down projection 先把输入压到较低维的潜空间，专家完成计算后，up projection 再把结果映射回模型维度。专家路由减少每个 token 实际调用的专家数量，潜空间投影则减少每个专家内部的计算宽度。
 
 \subsection{AttnRes}
 
-固定状态与 MLA 处理的是序列轴上的历史。Kimi K3 还要照顾另一条轴：一个表示穿过九十多层以后，浅层留下的东西怎样送到深处。
+KDA 与 MLA 处理的是 token 序列上的信息传递。Kimi K3 有 93 层，表示在网络深度上的传递也需要处理：后面的层怎样使用较早层产生的表示？
+
+这是另一条轴。KDA 和 MLA 讨论同一层里，当前 token 怎样取得前面 token 的信息；接下来的 AttnRes 讨论同一个 token 穿过许多层以后，深层计算怎样重新取用浅层表示。两种机制都使用“注意力”，检索的对象却不同。
 
 普通残差网络不断累加此前各层的输出。用简化写法表示，第 $l$ 层看到的是
 
@@ -744,7 +842,7 @@ return (situ_a * up).to(x.dtype)
 h_l=h_1+\sum_{i=1}^{l-1}f_i(h_i).
 \]
 
-词形、局部位置等浅层表示，与后面形成的任务相关表示，都挤进同一条残差流。简单求和不区分当前计算更需要哪一层；网络越深，后面的层越只能从混合结果里间接恢复早期信息。
+其中，$f_i(h_i)$ 表示第 $i$ 个子层的输出。普通残差连接以相同系数累加这些结果，第 $l$ 层无法直接调节某个早期子层所占的比例。网络越深，需要合并的历史层输出也越多。
 
 Attention Residual（AttnRes）把固定求和改为带权混合：
 
@@ -758,7 +856,7 @@ h_l=
 \sum_i\alpha_i=1.
 \]
 
-每个子层都有一个学习得到的 pseudo-query，较早的残差表示同时充当 Key 和 Value。匹配分数沿网络深度归一化，再把早期表示按权重重新组合。于是，一个 token 可以偏向浅层留下的词法信息，另一个位置也可以更多读取中段已经整理过的特征；它们不必接受完全相同的历史层总和。
+AttnRes 为每个子层学习一个 pseudo-query，较早的残差表示同时作为 Key 和 Value。pseudo-query 与这些 Key 计算分数，Softmax 沿网络深度归一化，随后按权重合并对应的 Value。这样，第 $l$ 层接收的不再是固定的历史层总和，而是由模型学习各个早期表示的权重。
 
 \begin{lstlisting}[language=Python,caption={blockwise AttnRes 的核心操作}]
 V = torch.stack(blocks + [partial_block])  # [N+1,B,T,D]
@@ -770,20 +868,26 @@ h = torch.einsum(
 return h
 \end{lstlisting}
 
+代码把保存的 block 放在最前面的 $N$ 维。第一次 \texttt{einsum} 为每个 block、每个 token 算一个分数，Softmax 也沿这条深度维归一化；第二次再按权重合并表示。输出仍是 $(B,T,D)$，因此后续层收到的张量形状没有变化，只是其中混入浅层表示的比例不再固定。
+
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.10,2.15) {普通残差};
-\foreach \y/\id in {1.35/r1,0.25/r2,-0.85/r3} {
-  \node[chbox,fill=blue!12,minimum width=2.25cm] (\id) at (2.10,\y) {Transformer block};
-}
-\draw[chflow] (r1) -- (r2);
-\draw[chflow] (r2) -- (r3);
-\draw[chflow,rounded corners=3pt] (r1.west) -- ++(-0.50,0) |- (r2.west);
-\draw[chflow,rounded corners=3pt] (r2.west) -- ++(-0.70,0) |- (r3.west);
-\node[chnote] at (2.10,-1.60) {$h_l=h_1+\sum_i f_i(h_i)$};
+\node[chlabel] at (1.70,2.15) {普通残差};
+\node[chbox,fill=codebg,minimum width=0.90cm] (rin) at (-0.30,0.45) {$h_l$};
+\node[chbox,fill=blue!12,minimum width=2.25cm] (rblock) at (1.35,0.45)
+  {Transformer block};
+\node[circle,draw=primary,thick,inner sep=1.4pt] (rplus) at (2.95,0.45) {$+$};
+\node[chbox,fill=green!14,minimum width=0.95cm] (rout) at (3.75,0.45) {$h_{l+1}$};
+\draw[chflow] (rin) -- (rblock);
+\draw[chflow] (rblock) -- (rplus);
+\draw[chflow] (rplus) -- (rout);
+\draw[chflow,rounded corners=4pt] (rin.north) -- ++(0,0.72) -|
+  node[chnote,above,pos=0.58] {残差旁路} (rplus.north);
+\node[chnote] at (1.75,-0.52) {$h_{l+1}=h_l+f_l(h_l)$；逐层重复};
 
-\node[chlabel] at (8.05,2.15) {blockwise AttnRes};
+\node[chlabel] at (8.05,2.15) {Block AttnRes};
+\node[chnote] at (5.20,1.82) {保存的块表示};
 \foreach \y/\id/\name in {1.25/b1/$B_0$,0.45/b2/$B_1$,-0.35/b3/$B_7$} {
   \node[chbox,fill=green!12,minimum width=1.25cm] (\id) at (5.20,\y) {\name};
 }
@@ -800,16 +904,17 @@ return h
 \draw[chflow] (keys) -- (scores);
 \draw[chflow] (query) -- (scores);
 \draw[chflow] (scores) -- (mix);
-\draw[chdash,rounded corners=3pt] (stack.south) |- (mix.west);
-\node[chnote] at (7.75,-1.60) {每 12 层保存一次，共 8 个 block};
+\draw[chflow,draw=accent,rounded corners=3pt] (stack.south) |-
+  node[chnote,below,pos=0.62] {Value 路径} (mix.west);
+\node[chnote] at (7.75,-1.60) {每 12 层保存一次，共 8 个深度块};
 \end{tikzpicture}
-\caption{普通残差与 blockwise AttnRes。}
+\caption{普通残差与 Block AttnRes。}
 \label{fig:ch02-attnres}
 \end{figure}
 
-若每一层都保存并检索全部早期状态，成本会再次增长。Kimi K3 每 12 层才保存一次块级表示，后面的边界从这些 block 中选择。这样得到两条方向不同的回看路径：MLA 沿序列轴寻找较早的 token，AttnRes 沿深度轴寻找较早的 block。前者补回固定状态压掉的位置细节，后者补回深层残差冲淡的中间表示。
+保存并检索每一层的表示会带来较高开销，因此 Kimi K3 采用 blockwise AttnRes，每 12 层保存一次块级表示，共形成 8 个 block。后续边界只在这些块级表示之间计算权重。MLA 沿序列维度检索较早的 token，AttnRes 沿深度维度选择较早的 block；二者处理的是不同方向上的信息传递。
 
-GPT-2 留下的是 decoder-only 的骨架；Kimi K3 重做的，是历史在这副骨架里怎样被保存和取回。固定状态负责压缩，MLA 与 AttnRes 分别从序列和深度补回细节，MoE 则把参数容量按 token 分配。
+回看整条主干，GPT-2 中的 decoder-only 结构、注意力、前馈网络和残差连接仍然存在。Kimi K3 改变了这些部件的具体组织方式：KDA 用固定状态处理大部分序列信息，MLA 定期执行 Softmax 检索，AttnRes 在网络深度上选择早期表示，MoE 则让每个 token 只调用一部分专家参数。
 
 \bigskip
 
