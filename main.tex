@@ -238,14 +238,27 @@
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
 }
 
-% 六格漫画的文字分镜框：用于终章画师交接稿，也保留可打印的草稿版式。
-\newcommand{\comicpanel}[3]{%
+% CSP「4コマ左タイトルあり」风格：左侧竖标题，右侧四个等高分镜框。
+\newcommand{\fourkomatitle}[1]{%
   \fcolorbox{primary!45}{white}{%
-    \begin{minipage}[t][5.15cm][t]{0.40\textwidth}%
-      \vspace{0pt}%
+    \begin{minipage}[t][18.15cm][c]{0.105\textwidth}%
+      \centering
+      \rotatebox{90}{\scriptsize AI AGENT}\par
+      \vspace{1.2em}%
+      {\Large\bfseries\verticaltext{#1}}%
+      \vspace{1.2em}%
+      {\scriptsize 筱泽广小课堂}%
+    \end{minipage}%
+  }%
+}
+
+\newcommand{\fourkomapanel}[3]{%
+  \fcolorbox{primary!45}{white}{%
+    \begin{minipage}[t][4.05cm][t]{0.70\textwidth}%
+      \vspace{0pt}
       {\color{primary}\bfseries 第 #1 格\quad #2\par}%
       \vspace{0.45em}%
-      \footnotesize\raggedright #3%
+      \small\raggedright #3%
     \end{minipage}%
   }%
 }

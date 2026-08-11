@@ -1,108 +1,113 @@
-% ==================== 终章：六格漫画与后日谈 ====================
+% ==================== 终章：四格漫画与后日谈 ====================
 
-\hirochapter{后日谈：休息五分钟的最优解}
+\hirochapter{后日谈：调用 Producer}
 
-\section*{六格漫画分镜：休息五分钟的最优解}
+% 版式对应 CSP 默认「4コマ左タイトルあり」：左侧竖标题，右侧四格纵排。
+\section*{四格漫画分镜}
 \phantomsection
-\addcontentsline{toc}{section}{六格漫画分镜：休息五分钟的最优解}
-\markright{六格漫画分镜：休息五分钟的最优解}
+\addcontentsline{toc}{section}{四格漫画分镜：调用 Producer}
+\markright{四格漫画分镜：调用 Producer}
 
 \begin{center}
 \setlength{\tabcolsep}{0pt}
-\renewcommand{\arraystretch}{1}
-\begin{tabular}{@{}c@{\hspace{0.8em}}c@{}}
-\comicpanel{1}{偷偷求助}{%
-\textbf{画面：}活动室傍晚。Producer 背对广，缩在笔记本前输入提示词；远处镜子里，广还在反复看训练录像，脸色已经很白。\par\medskip
-\textbf{屏幕：}\texttt{怎样让不肯休息的偶像休息五分钟？}\par\medskip
-屏幕右下角显示：\texttt{生成中……}%
-}
+\begin{tabular}{@{}c@{\hspace{0.9em}}c@{}}
+\fourkomatitle{调用制作人}
 &
-\comicpanel{2}{当场抓包}{%
-\textbf{画面：}广不知何时出现在屏幕旁边，平静地读完提示词。Producer 下意识用手挡住屏幕，只挡住了问号。\par\medskip
-广：「谁不肯休息？」\par
-Producer：「模型的假设。」\par
-\textbf{屏幕：}\texttt{检测到相关用户。}%
+\begin{minipage}[t]{0.72\textwidth}
+\fourkomapanel{1}{今天的工具调用}{%
+\textbf{画面：}活动室里的 AI 小课堂。广在白板上画出“观察 $\rightarrow$ 规划 $\rightarrow$ 调用工具 $\rightarrow$ 根据结果继续”，Producer 坐在带轮子的椅子上记笔记。\par\medskip
+广：「Agent 不只生成回答。它会选择工具，执行任务。」\par
+Producer：「今天调用什么工具？」%
 }
-\\[0.8em]
-\comicpanel{3}{约束爆炸}{%
-\textbf{画面：}屏幕被追加条件塞满：不能取消训练、不能哄、不能命令、不能低估本人、本人会检查逻辑。广坐在旁边逐条审阅。\par\medskip
-\textbf{屏幕：}\texttt{建议说明休息能提高后续表现。}\par
-广：「太普通。驳回。」\par
-Producer：「为什么你也在优化它？」%
+
+\vspace{0.55em}
+
+\fourkomapanel{2}{现场演示}{%
+\textbf{画面：}广在电脑里输入“把 Producer 移到最合适的位置”。Agent 选择小机器人作为工具。桌下的小机器人悄悄伸出挂钩，扣住 Producer 的椅脚。\par\medskip
+\textbf{屏幕：}\texttt{tool: move\_chair(target=Producer)}\par
+Producer：「……等一下。」%
 }
-&
-\comicpanel{4}{AI 直球}{%
-\textbf{画面：}AI 突然给出一行大字。Producer 僵住，广从屏幕转向他；两个人之间留一小段安静的空白。\par\medskip
-\textbf{屏幕：}\texttt{请告诉她：我也累了，可以陪我休息五分钟吗？}\par
-广：「这个输出，需要人工确认。」%
+
+\vspace{0.55em}
+
+\fourkomapanel{3}{参数由谁定义}{%
+\textbf{画面：}小机器人拖着椅子横穿活动室。Producer 抓住桌沿失败；广已经把自己旁边的空位清了出来，平静地拍了拍椅面。\par\medskip
+Producer：「最合适的位置，是谁定义的？」\par
+广：「任务发起者。」%
 }
-\\[0.8em]
-\comicpanel{5}{亲口执行}{%
-\textbf{画面：}Producer 合下一半电脑，把温水推到广手边。广用左手碰住杯沿，视线仍停在他脸上。\par\medskip
-Producer：「广。陪我休息五分钟。」\par
-广：「不是命令？」\par
-Producer：「是请求。」%
+
+\vspace{0.55em}
+
+\fourkomapanel{4}{任务成功}{%
+\textbf{画面：}椅子停在广身边，两人的肩膀只差一点。小机器人举起屏幕：\texttt{SUCCESS / distance: 18 cm}。广露出很浅的笑。\par\medskip
+Producer：「所以，这是工具调用？」\par
+广：「不。」\par
+广：「是调用 Producer。」%
 }
-&
-\comicpanel{6}{归因争夺}{%
-\textbf{画面：}两人并肩坐在窗边，距离比平时近一点。身后的屏幕显示“方案成功，是否加入训练数据”。广伸手合上电脑，露出很浅的笑。\par\medskip
-Producer：「这种任务不能自动化吗？」\par
-广：「不可以。」\par
-广：「这个，只能你做。」%
-}
+\end{minipage}
 \end{tabular}
 \end{center}
 
 \clearpage
-\section*{漫画后日谈：计时结束以后}
+\section*{漫画后日谈：课堂结束以后}
 \phantomsection
-\addcontentsline{toc}{section}{漫画后日谈：计时结束以后}
-\markright{漫画后日谈：计时结束以后}
+\addcontentsline{toc}{section}{漫画后日谈：课堂结束以后}
+\markright{漫画后日谈：课堂结束以后}
 
-五分钟后，桌上的计时器响了。
-
-Producer 刚碰到电脑，广的手指先一步压住了屏幕边缘。
-
-「计时结束了。」
-
-「嗯。」
-
-「还不继续？」
-
-广看了一眼两人之间已经空掉一半的水杯。
-
-「刚才的方案，只验证了一次。样本不足。」
-
-「你想再休息五分钟？」
-
-广轻轻摇头。
-
-「不是。」
-
-她停了一会儿，像在选择一个不容易被误解的输出。
-
-「想再陪你五分钟。」
-
-Producer 没有去拿电脑，只把计时器重新按下。
-
-「这次不算训练。」
-
-广望着重新跳动的数字，嘴角稍稍抬起。
-
-「嗯。所以，比较难。」
-
-合着的电脑忽然亮起一条通知：
+课程结束五分钟后，Agent 按照日程触发了最后一个任务：
 
 \begin{center}
-\texttt{检测到长时间无操作。是否需要帮助？}
+\texttt{restore\_room()}
 \end{center}
 
-广把电脑转到背面。
+桌下的小机器人重新亮灯，准备把 Producer 的椅子拖回原位。
+
+广按住了它的停止键。
+
+「它没有出错。」
+
+「嗯。只是任务过期了。」
+
+Producer 看了一眼自己的椅子。十八厘米的距离并没有变化。
+
+「课程已经结束了。」
+
+「课程结束，不代表当前状态需要复原。」
+
+「那现在的任务是什么？」
+
+广垂下视线，在 Agent 的任务栏里慢慢输入：
+
+\begin{center}
+\texttt{keep(Producer, nearby, until=unknown)}
+\end{center}
+
+「结束条件未知，会一直占用任务队列。」
+
+「很麻烦？」
+
+「很麻烦。」
+
+广轻轻点头，保存任务。
+
+「所以，适合继续。」
+
+Producer 把自动清理日程关掉。小机器人收回挂钩，屏幕上的状态从黄色变成绿色：
+
+\begin{center}
+\texttt{NO ACTION REQUIRED}
+\end{center}
+
+「这样可以？」
+
+广向他那边靠近了一点。距离变成十七厘米。
+
+「观测更新了。」
+
+「需要重新规划吗？」
 
 「不需要。」
 
-「为什么？」
+她的嘴角稍稍抬起。
 
-她向 Producer 那边靠近了一点。只有一点。
-
-「这一段，我想保留人工版本。」
+「这条轨迹，很好。」
