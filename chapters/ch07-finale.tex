@@ -1,147 +1,138 @@
 % ==================== 终章：四格漫画与后日谈 ====================
 
-\hirochapter{后日谈：调用 Producer}
+\hirochapter{后日谈：单位很重要}
 
 % 版式对应 CSP 默认「4コマ左タイトルあり」：左侧标题框与四格纵排，右侧一幅竖向大格。
 \section*{四格漫画分镜}
 \phantomsection
-\addcontentsline{toc}{section}{四格漫画分镜：调用 Producer}
-\markright{四格漫画分镜：调用 Producer}
+\addcontentsline{toc}{section}{四格漫画分镜：单位很重要}
+\markright{四格漫画分镜：单位很重要}
 
-\noindent\textbf{阅读顺序：}右侧大格 $\rightarrow$ 左侧第 1 至第 4 格（自上而下）。
+\noindent\textbf{阅读顺序：}左侧第 1 至第 4 格（自上而下）$\rightarrow$ 右侧大格。
 
 \begin{center}
 \setlength{\tabcolsep}{0pt}
 \begin{tabular}{@{}c@{\hspace{0.75em}}c@{}}
 \begin{minipage}[t]{0.43\textwidth}
 \vspace{0pt}
-\fourkomatitle{调用 Producer}
+\fourkomatitle{单位很重要}
 
 \vspace{0.55em}
 
-\fourkomapanel{1}{候选工具}{%
-\textbf{画面：}第二个任务：“让讲师更有精神。”候选工具为水、音乐、小机器人和 Producer；光标选中最后一项。\par\smallskip
-Producer：「为什么我也在工具列表里？」\par
-广：「刚刚注册的。」%
+\fourkomapanel{1}{捡到眼镜}{%
+\textbf{画面：}Producer 戴上广落在桌边的黑框眼镜。视野里弹出人脸识别框和数字，但没有单位。\par\smallskip
+\textbf{HUD：}\texttt{AUTO IDENTIFY / ON}\par
+Producer：「这是什么功能？」\par
+广（画外）：「看人用的。」%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{2}{开始调用}{%
-\textbf{画面：}小机器人从桌下伸出挂钩，扣住椅脚，连人带椅拖向广。\par\smallskip
-\textbf{屏幕：}\texttt{call\_producer}\par
-\texttt{distance: 18 cm}\par
-Producer：「它为什么不去拿水？」\par
-广：「评估后，这个回报更高。」%
+\fourkomapanel{2}{佑芽：2}{%
+\textbf{画面：}佑芽元气十足地探进镜头，头顶浮出一个巨大的\texttt{2}。她立刻比出剪刀手。\par\smallskip
+佑芽：「二？是今天能练两倍吗？」\par
+Producer：「像你会说的话。」%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{3}{检查依据}{%
-\textbf{画面：}椅子停在广身边，两人的肩膀只差一点。小机器人显示：\texttt{SUCCESS / 18 cm}。\par\smallskip
-Producer：「这个结论，有训练数据？」\par
-广：「有。」\par
-Producer：「样本量？」\par
-广：「一。」%
+\fourkomapanel{3}{千奈：86}{%
+\textbf{画面：}千奈经过，头顶显示\texttt{86}。Producer 松了口气。\par\smallskip
+Producer：「这次正常了。」\par
+千奈：「‘这次’是什么意思呀？」\par\smallskip
+\textbf{HUD 小字：}\texttt{neurons / billion}%
 }
 
 \vspace{0.55em}
 
-\fourkomapanel{4}{提交反馈}{%
-\textbf{画面：}Agent 询问“这次调用有效吗？”。广把反馈滑块拉到最高，露出很浅的笑。\par\smallskip
-Producer：「这不是过拟合了吗？」\par
-广：「嗯。」\par
-广：「只对我有效。正好。」%
+\fourkomapanel{4}{广：671}{%
+\textbf{画面：}Producer 转向广。HUD 显示\texttt{671 / DeepSeek-V3 / OPEN}。\par\smallskip
+Producer：「到底在测什么？」\par
+广：「智商。」\par
+Producer：「明明是参数量。」\par
+广（看向右侧）：「还有更大的。」%
 }
 \end{minipage}
 &
-\fourkomaopening{右侧大格（先读）\quad AI 小课堂}{%
-\textbf{画面：}活动室里的 AI 小课堂全景。广站在白板前，Producer 坐在带轮子的椅子上记笔记。桌边的小机器人亮着待机灯，但挂钩藏在桌下，只露出一点。\par\medskip
+\fourkomaopening{右侧大格（最终揭晓）\quad 梁圣：1,600}{%
+\textbf{画面：}眼镜的识别框突然占满视野。网络迷因中的“梁圣”以少年漫画式的超近景压迫大脸登场：脸占画面大半，粗重阴影、集中线和夸张拟声字一起压向镜头。梗意接近“JOJO 大脸”，但不要直接临摹任何原作分镜。\par\bigskip
 
-\textbf{白板：}\par
-观察 $\rightarrow$ 规划 $\rightarrow$ 选择工具 $\rightarrow$ 执行 $\rightarrow$ 根据结果继续\par\medskip
+\textbf{HUD 主标识：}\par
+{\Large\ttfamily DEEPSEEK-V4 PRO}\par
+{\Huge\bfseries 1,600}\par\bigskip
 
-广：「Agent 不只生成回答。」\par
+\textbf{梁圣：}\par
+{\Large\bfseries「告诉你梁叔叔，闭源模型在哪里。」}\par\bigskip
 
-广：「它会为了目标，自己选择工具。」\par\medskip
-
-Producer：「比如搜索、计算器，还有这个小机器人？」\par\medskip
-
-\textbf{画面下方：}广看了一眼 Producer，又看向电脑上的“开始演示”按钮。\par\medskip
-
-广：「嗯。」\par
-
-广：「先做一次正常的。」\par\medskip
-
-\textbf{屏幕：}\texttt{task: bring\_teaching\_notes}\par
-\texttt{tool: robot}\par
-\texttt{status: success}\par\medskip
-
-\textbf{转格提示：}小机器人把讲义送到广手边；屏幕随即弹出“是否继续演示”。广选择“是”。%
+\textbf{构图提示：}数字\texttt{1,600}悬在额头上方；台词气泡从右上压入。Producer 的眼镜边框和一小块震惊侧脸留在画面最下方，用来确认这是他的第一视角。背景可以加入\texttt{OPEN SOURCE DETECTED}、红色警报框，以及漫画式的“危险接近”视觉噪声。%
 }
 \end{tabular}
 \end{center}
 
 \clearpage
-\section*{漫画后日谈：课堂结束以后}
+\section*{漫画后日谈：唯一用户}
 \phantomsection
-\addcontentsline{toc}{section}{漫画后日谈：课堂结束以后}
-\markright{漫画后日谈：课堂结束以后}
+\addcontentsline{toc}{section}{漫画后日谈：唯一用户}
+\markright{漫画后日谈：唯一用户}
 
-课程结束五分钟后，Agent 按照日程触发了最后一个任务：
+佑芽和千奈离开活动室以后，房间重新安静下来。
 
-\begin{center}
-\texttt{restore\_room()}
-\end{center}
+Producer 摘下眼镜，放回广面前。
 
-桌下的小机器人重新亮灯，准备把 Producer 的椅子拖回原位。
+「你刚才说，它检测智商。」
 
-广按住了它的停止键。
+「嗯。」
 
-「它没有出错。」
+「完全不是。」
 
-「嗯。只是任务过期了。」
+广轻轻点头。
 
-Producer 看了一眼自己的椅子。十八厘米的距离并没有变化。
+「被发现了。很好。」
 
-「课程已经结束了。」
+「还有一件事。为什么你头上写着‘开源’？」
 
-「课程结束，不代表当前状态需要复原。」
+「方便研究。」
 
-「那现在的任务是什么？」
+「那么，谁都能调用你？」
 
-广垂下视线，在 Agent 的任务栏里慢慢输入：
+广拿起眼镜，自己戴上。她隔着镜片看向 Producer，视野中央只浮出一行字：
 
 \begin{center}
-\texttt{keep(Producer, nearby, until=unknown)}
+\texttt{AUTHORIZED USERS: 1}
 \end{center}
 
-「结束条件未知，会一直占用任务队列。」
+「这次的一，是什么单位？」
 
-「很麻烦？」
+「人。」
 
-「很麻烦。」
+「是谁？」
 
-广轻轻点头，保存任务。
+广抬手，替他理了一下被镜架压乱的额发。
 
-「所以，适合继续。」
+「唯一用户。」
 
-Producer 把自动清理日程关掉。小机器人收回挂钩，屏幕上的状态从黄色变成绿色：
+「权限范围呢？」
 
-\begin{center}
-\texttt{NO ACTION REQUIRED}
-\end{center}
+「陪我上课。监督训练。结束以后，不要立刻离开。」
 
-「这样可以？」
+「最后一项不像系统权限。」
 
-广向他那边靠近了一点。距离变成十七厘米。
+「是我追加的。」
 
-「观测更新了。」
+「可以撤销吗？」
 
-「需要重新规划吗？」
+「可以。」
 
-「不需要。」
+她停了一会儿，视线没有移开。
 
-她的嘴角稍稍抬起。
+「但是……不推荐。」
 
-「这条轨迹，很好。」
+Producer 把椅子拉回桌边。
+
+「那就保持登录。」
+
+镜片上的数字\texttt{1}轻轻闪了一下。
+
+广露出很浅的笑。
+
+「嗯。认证通过。」
