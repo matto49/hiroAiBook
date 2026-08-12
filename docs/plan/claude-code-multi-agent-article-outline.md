@@ -398,8 +398,9 @@ flowchart TD
 
 ## 资料定位索引
 
-- 《Dive》：`docs/claude code/2604.14228v2-zh.md`
-- 《ATWZ》：`docs/claude code/2607.22917-zh.md`
+- 公开来源索引：`docs/reference/claude-code/README.md`
+- 《Dive》：<https://arxiv.org/abs/2604.14228>
+- 《ATWZ》：<https://arxiv.org/abs/2607.22917>
 - 现有资料包：`docs/plan/claude-code-multi-agent-research.md`
 - 《Architecture Visually》：<https://blog.dailydoseofds.com/p/claude-codes-architecture-explained>
 - 《End-to-End》：<https://y-agent.github.io/inside-claude-code/01-end-to-end-workflow.html>
