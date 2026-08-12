@@ -267,6 +267,15 @@
 % ==================== 正文 ====================
 \begin{document}
 
+% 章节实时预览入口会预先定义 \HiroPreviewChapter 和
+% \HiroPreviewChapterNumber；正常编译 main.tex 时仍走完整书稿分支。
+\ifdefined\HiroPreviewChapter
+  \mainmatter
+  \setcounter{chapter}{\HiroPreviewChapterNumber}
+  \addtocounter{chapter}{-1}
+  \input{\HiroPreviewChapter}
+\else
+
 % --- 封面（图片，全页铺满） ---
 \hypersetup{pageanchor=false}% 封面不参与正文页码锚点，避免页码重置后重复。
 {\thispagestyle{empty}%
@@ -294,5 +303,7 @@
 
 % --- 附录 & 结语 ---
 \input{chapters/backmatter}
+
+\fi
 
 \end{document}
