@@ -6,7 +6,7 @@
 
 这个项目已经不只是通用 LaTeX 模板。之后处理它时，请把它视为一个写作项目，核心目标有三层：
 
-1. 用 LaTeX 制作一本可读性良好的 A5 小册子。
+1. 用 LaTeX 制作一本可读性良好的 JIS B5（182 mm × 257 mm）小册子。
 2. 用“筱泽广小课堂”的形式，把 AI 主题写得轻盈、有角色感、有一点初星学园式日常。
 3. 在仓库里保留足够的《学园偶像大师》世界观和筱泽广人设资料，保证后续写作口吻一致。
 
@@ -81,7 +81,7 @@ docs/reference/gakumas-hiro/README.md
 
 ## LaTeX 注意事项
 
-当前文档是 A5 `book`，主要使用 `ctex`、`geometry`、`hyperref`、`titlesec`、`fancyhdr` 和 `tikz`。
+当前文档是 JIS B5（182 mm × 257 mm）`book`，主要使用 `ctex`、`geometry`、`hyperref`、`titlesec`、`fancyhdr` 和 `tikz`。
 
 已知结构问题：
 
