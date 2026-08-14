@@ -1,997 +1,524 @@
-% ==================== 章节2：从 GPT-2 到 Kimi K3 ====================
+% ==================== 章节2：Claude Code 如何解决复杂问题 ====================
 
-\hirochapter{从 GPT-2 到 Kimi K3}
+\hirochapter{Claude Code 如何解决复杂问题}
 
-% Compact vector diagrams for the B5 page.
+% Compact vector diagrams for the JIS B5 page.
 \tikzset{
-  chflow/.style={->,thick,draw=primary},
-  chdash/.style={->,thick,dashed,draw=accent},
-  chbox/.style={draw=primary,thick,rounded corners=2pt,align=center,
-    minimum height=0.58cm,font=\scriptsize},
-  chlabel/.style={font=\scriptsize\bfseries,text=primary},
-  chnote/.style={font=\tiny,text=primary,align=center}
+  ccflow/.style={-{Stealth[length=4pt,width=5pt]},thick,draw=primary,
+    shorten <=1pt,shorten >=1.5pt,line cap=round},
+  ccdash/.style={-{Stealth[length=4pt,width=5pt]},thick,dashed,draw=accent,
+    shorten <=1pt,shorten >=1.5pt,line cap=round},
+  ccbox/.style={draw=primary,thick,rounded corners=2pt,align=center,
+    minimum height=0.62cm,font=\scriptsize},
+  ccnote/.style={font=\tiny,text=primary,align=center},
+  cctitle/.style={font=\scriptsize\bfseries,text=primary}
 }
 
 \section*{小剧场}
 \phantomsection
 \addcontentsline{toc}{section}{小剧场}
 
-放学后的活动室里，千奈正对着广的电脑输入文字。
+放学后的教室里，千奈正低头刷视频。她刷到一条数学新闻，视频里引用了 Anthropic 刚公开的一篇文章：Claude Code 今日将黎曼猜想相关数学下界从约 $41.6\%$ 推到了约 $67.2\%$。
 
 \begin{quote}
-\textbf{千奈：}这周末，如果我们三个人一起出去，花海同学想去哪里呢？
-
-\textbf{AI 佑芽：}游乐园！
-
-\textbf{千奈：}很不错呢。坐电车过去的话——
-
-\textbf{AI 佑芽：}跑过去！
-
-\textbf{千奈：}为什么要跑过去呢？
-
-\textbf{AI 佑芽：}因为这样从出发的时候就已经在玩了！早上跑步，中午去游乐园，晚上再一起吃饭团。一天可以做三件开心的事！
+\textbf{千奈：}没有证明，也是一种突破吗？
 \end{quote}
 
-千奈的手停在键盘上。她看了一眼坐在旁边的广，又继续问。
+坐在旁边的广看了一眼屏幕。佑芽听见“猜想”，也从后排凑了过来。
 
 \begin{quote}
-\textbf{千奈：}……的确很像花海同学会制定的计划呢。可是，筱泽同学和我，大概还没有走到游乐园就动不了了。
+\textbf{佑芽：}黎曼猜想是什么？是要猜一个很难的数字吗？
 
-\textbf{AI 佑芽：}没关系！到时候我背着千奈酱，再抱着广酱继续跑！
+\textbf{广：}不是猜一个数字。数学家用一个叫黎曼 $\zeta$ 函数的东西研究质数。这个函数有很多让函数值变成零的点。除去一批早已弄清楚的，剩下的叫非平凡零点。黎曼猜想说，它们应该全部排在同一条线上。
 
-\textbf{千奈：}两个人一起吗？
+\textbf{佑芽：}全部才算？
 
-\textbf{AI 佑芽：}还没有试过，所以正好可以试试看！
+\textbf{广：}嗯。一个也不能漏。
+
+\textbf{千奈：}那视频里的 $67.2\%$，是说已经做完了 $67.2\%$ 吗？
+
+\textbf{广：}不是。它证明的是，不预先假定黎曼猜想正确，也能保证至少约 $67.2\%$ 的零点在这条线上。以前能保证的是约 $41.6\%$。离“全部”还很远，所以黎曼猜想仍然没有被证明。
+
+\textbf{佑芽：}没有跑到终点，但是把纪录往前推了。
+
+\textbf{广：}可以先这么理解。
 \end{quote}
 
-“广同学，千奈同学，你们在看什么？”
-
-真正的佑芽从门口探进头来。千奈把屏幕转向她。
-
-“我正在和佑芽同学商量周末去哪里玩。”
-
-“可是我刚刚才过来啊？”佑芽也凑过来，读起了聊天记录，“……跑去游乐园玩，是一个好主意！”
-
-紧接着她又看见了窗口上方的说明：\textit{请扮演花海佑芽，开始聊天，佑芽是一个......}
-
-“是 AI 酱在扮演我？”
-
-“嗯。”广回答。
-
-“还记得刚入学的时候也有体验过和 AI 酱聊天，那时候的 AI 酱笨笨的，当时让它扮演姐姐大人表扬一下我，结果说出来的话一点不像…”佑芽抬起头，“为什么现在能学的这么像了？”
-
-“是因为运行 AI 酱的电脑变快了吗？”千奈问。
-
-“不对，我觉得是 AI 酱和我们一样做了各种各样的练习，变得更厉害了”
-
-“呼呼，答案都不正确。”广打开两个新的github仓库，“语料库、训练方法、agent架构……都有很大的进步，我们今天来就最重要的模型架构来讲起吧”
-
-屏幕左右各放着一份结构说明：2019 年的 GPT-2，以及 2026 年的 Kimi K3。
-
-广把 GPT-2 的页面移到中央。
-
-“从这里开始。”
-
-\section{GPT-2}
-
-对话框中的 AI 佑芽，看起来像是一口气相应了一整句话，但是模型内部却没有“一口气”这回事。它每次只往前走一小步：读取已经出现的文字，给接下来可能出现的文字片段打分，选出权重最高的那个接到末尾，然后再重复执行下一步。一句完整的回答，就是这样一点点续出来的。
-
- 这种只根据前文一步步续写的方式，叫作自回归生成。GPT-2 是 OpenAI 在 2019 年发布的语言模型，也是 GPT 系列的第二代。它采用纯解码器 Transformer：输入只有已经出现的文字，模型不能偷看后文，只能沿着前文继续预测。GPT-2 虽然是7年前的老模型，但它的结构已经具备本章后面还会反复看到的基本轮廓，公开实现也相对简洁，所以适合作为这次的起点。\cite{waterloo-worklog,gpt2}
-
-再处理用户发起的请求时，模型会先将输入内容切成 token，它代表着模型实际读写的片段。一个 token 可能是一个字、一个词的一部分，也可能是标点；具体怎样切，由分词器决定。我们在聊天时的提示词、聊天记录和已经生成的回答，都会先被处理成这样一串 token，在推测下一个字符应该是什么的过程中，gpt-2会给清单中的候选 token 各打一个分。这些尚未归一化的分数叫作 logits，生成程序会按照解码规则选出一个最优选的 token，把它接回前文，模型再根据变长后的前文给同一张词表重新打分。
-
-从 token 到 logits，中间要经过下面这条主干。词嵌入先回答“这是什么 token”，位置嵌入补上“它出现在第几个位置”；两者相加后进入一层层 Transformer block。最后，词表投影再把内部向量翻译成每个候选 token 的分数。
-
-\begin{lstlisting}[language=Python,caption={GPT-2 主干前向传播}]
-tok_emb = self.transformer.wte(idx)       # (B, T, C)
-pos_emb = self.transformer.wpe(pos)       # (T, C)
-x = self.transformer.drop(tok_emb + pos_emb)
-for block in self.transformer.h:
-    x = block(x)
-x = self.transformer.ln_f(x)
-logits = self.lm_head(x)
-return logits
-\end{lstlisting}
-
-我们暂时不关心批量计算，先忽略注释里的 $B$。$T$ 表示这次读入多少个 token，$C$ 表示每个 token 用多长的向量来表示。词嵌入的形状是 $(B,T,C)$；位置嵌入没有批量维，会复用到同一批的每条序列上。后面的 block 始终接收并返回类型不变的 \texttt{x}。
-
-被反复加工内容的是 \texttt{x = block(x)}。一个 block 里，因果自注意力毁让较后的 token 利用已经出现的前文，MLP 再逐个位置处理汇集后的特征。计算结果通过残差连接加回原表示，所以每一层做的更像是在已有理解上补一笔，而不是把整句话推倒重算。
-
-\begin{lstlisting}[language=Python,caption={带注意力与 MLP 的 Transformer block}]
-class Block(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.ln_1 = LayerNorm(config.n_embd)
-        self.attn = CausalSelfAttention(config)
-        self.ln_2 = LayerNorm(config.n_embd)
-        self.mlp = MLP(config)
-
-    def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
-        return x
-\end{lstlisting}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[
-  font=\scriptsize,
-  >=Latex,
-  flow/.style={->,thick,draw=primary},
-  box/.style={draw=primary,thick,rounded corners=2pt,
-    align=center,minimum height=0.58cm},
-  main/.style={box,minimum width=3.35cm},
-  head/.style={box,minimum width=1.28cm},
-  note/.style={font=\scriptsize\bfseries,text=primary}
-]
-% GPT-2 backbone
-\node[note] (lefttitle) at (0,3.15) {GPT-2 主干};
-\node[main,fill=codebg] (input) at (0,2.55) {token 表示 + 位置表示};
-\node[main,fill=yellow!25] (ln1) at (0,1.70) {LayerNorm};
-\node[main,fill=orange!25] (mha) at (0,0.85) {多头因果自注意力};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (add1) at (0,0.10) {$+$};
-\node[main,fill=yellow!25] (ln2) at (0,-0.65) {LayerNorm};
-\node[main,fill=blue!20] (mlp) at (0,-1.50) {MLP};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (add2) at (0,-2.25) {$+$};
-\node[main,fill=green!20] (vocab) at (0,-3.05) {LayerNorm $\rightarrow$ 词表投影};
-\node[draw=primary!45,dashed,rounded corners=3pt,
-  fit=(ln1)(add2),inner sep=5pt] (repeatblock) {};
-
-\draw[flow] (input) -- (ln1);
-\draw[flow] (ln1) -- (mha);
-\draw[flow] (mha) -- (add1);
-\draw[flow] (add1) -- (ln2);
-\draw[flow] (ln2) -- (mlp);
-\draw[flow] (mlp) -- (add2);
-\draw[flow] (add2) -- (vocab);
-% Two residual branches use separate lanes outside the main boxes.
-\draw[flow,rounded corners=4pt] (input.west) -- ++(-0.55,0) |- (add1.west);
-\draw[flow,rounded corners=4pt] (add1.west) -- ++(-1.70,0) |- (add2.west);
-\node[note,anchor=south east] at
-  ([xshift=-0.08cm,yshift=0.08cm]repeatblock.south east) {$\times 12$};
-
-% One attention module, separated from the tall backbone.
-\node[note] (righttitle) at (5.05,3.15) {一次多头注意力};
-\node[box,fill=codebg,minimum width=2.10cm] (attnin) at (5.05,2.55)
-  {输入表示 $x$};
-\node[head,fill=codebg] (q) at (3.45,1.70) {$Q$ 投影};
-\node[head,fill=codebg] (k) at (5.05,1.70) {$K$ 投影};
-\node[head,fill=codebg] (v) at (6.65,1.70) {$V$ 投影};
-\node[box,fill=orange!18,minimum width=4.80cm]
-  (heads) at (5.05,0.78) {拆分为多个 head：$Q_h, K_h, V_h$};
-\node[box,fill=red!10,minimum width=4.80cm,minimum height=0.86cm]
-  (attn) at (5.05,-0.28)
-  {各 head 并行计算\\缩放点积 $\rightarrow$ 因果掩码 $\rightarrow$ Softmax $\rightarrow$ 对 $V_h$ 加权};
-\node[box,fill=codebg,minimum width=3.70cm]
-  (concat) at (5.05,-1.42) {拼接所有 head};
-\node[box,fill=green!18,minimum width=3.70cm]
-  (oproj) at (5.05,-2.42) {输出投影 $W_O$};
-
-\draw[flow] (attnin) -- (q);
-\draw[flow] (attnin) -- (k);
-\draw[flow] (attnin) -- (v);
-\draw[flow] (q) -- (heads);
-\draw[flow] (k) -- (heads);
-\draw[flow] (v) -- (heads);
-\draw[flow] (heads) -- (attn);
-\draw[flow] (attn) -- (concat);
-\draw[flow] (concat) -- (oproj);
-\draw[thick,dashed,draw=accent]
-  (mha.east) to[out=5,in=180]
-  node[pos=0.52,above,sloped,font=\tiny,text=accent] {内部展开}
-  (attnin.west);
-\end{tikzpicture}
-\caption{GPT-2 主干与多头注意力展开。}
-\label{fig:ch02-gpt2-backbone}
-\end{figure}
-
-一次注意力计算从 Query、Key 和 Value 三组投影开始。对第 $i$ 个 token 来说，它的 Query 要和当前位置以及前面各个位置的 Key 比较，再从对应的 Value 中取回信息。这个过程可以写成：
-
-\[
-\operatorname{Attn}(Q,K,V)
-=
-\operatorname{softmax}\left(
-\frac{QK^{\mathsf T}}{\sqrt{d}}
-+M_{\mathrm{causal}}
-\right)V
-\]
-
-式中的 $d$ 是一个 head 的维度。除以 $\sqrt d$ 是为了缩放点积分数；$M_{\mathrm{causal}}$ 则把未来位置挡住，使第 $i$ 个 token 只能看到它自己和此前的内容。Softmax 随后把剩余分数变成权重，加权汇总对应的 Value。
-
-Key 决定“从哪里取”，Value 决定“取回什么”，两者分工不同。多个 head 会使用各自的投影并行计算，所得结果拼接以后，再通过输出投影回到隐藏维度。这个新表示会继续经过后面的层，并最终影响词表中的候选分数。
-
-上面的公式只是一次注意力计算。一条完整回复会反复运行公式计算：每得到一个 token，就把它接到已有序列末尾，再计算下一个。“下车以后再跑”看起来是一句话，模型实际完成的是若干次这样的续写。
-
-第一次运行时，提示词、人物说明和聊天记录都已经存在。模型会一次处理这段输入，并算出各层、各个位置的 Key 和 Value；这一阶段叫作 \textit{prefill}。此后进入 \textit{decode}。每一轮只多出一个 token：它经过模型各层，与此前内容计算注意力，最后一个位置的 logits 再交给解码程序选出后续 token。新结果接回序列，下一轮继续。
-
-如果每轮都从头计算，提示词和已经生成的回复会被反复投影成同样的 Key 和 Value。KV Cache 把各层已经算出的 Key 和 Value 留下来。decode 时只需计算新 token 的投影，让它的 Query 读取缓存中的历史，再把新得到的 Key、Value 追加到末尾。
-
-\begin{lstlisting}[language=Python,caption={带 KV Cache 的 Softmax 注意力核心}]
-q, k, v = split_heads(self.qkv_proj(x))
-
-if past_kv is not None:
-    k_past, v_past = past_kv
-    k = torch.cat((k_past, k), dim=2)
-    v = torch.cat((v_past, v), dim=2)
-
-scores = (q @ k.transpose(-1, -2)) / math.sqrt(d_head)
-if past_kv is None:
-    scores = scores.masked_fill(causal_mask, float("-inf"))
-
-attn = scores.softmax(dim=-1)
-out = attn @ v
-return self.o_proj(merge_heads(out)), (k, v)
-\end{lstlisting}
-
-KV Cache 能够节省重复计算的成本，但是没法省掉记录历史信息的成本。序列每增加一个 token，缓存仍要增加一组 Key 和 Value；上下文越长，decode 时需要保存和读取的内容也越多。随着问题的复杂化，接下来问题的是：能不能不再逐个保存这些 K、V，却仍让后面的 token 用到前文？
-
-\section{线性注意力与固定状态}
-
-线性注意力给出的办法，是不再为每个早期 token 保留独立的 Key 和 Value，而是把它们逐步合并到一个固定大小的状态中。缓存不再随序列长度增长，代价是注意力的计算方式也必须改变。\cite{linear-transformer}
-
-标准注意力先计算 $QK^{\mathsf T}$，再做 Softmax。由于 Softmax 位于两次矩阵乘法之间，不能简单地把计算改写成 $Q(K^{\mathsf T}V)$。线性注意力改为分别映射 Query 和 Key，例如：
-
-\[
-\phi(q)=\operatorname{ELU}(q)+1,\qquad
-\phi(k)=\operatorname{ELU}(k)+1.
-\]
-
-映射后的结果为正，后续归一化也可以拆开计算。此前的 Key 和 Value 便能先合并为两个状态：
-
-\[
-S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
-\qquad
-z_t=\sum_{i=1}^{t}\phi(k_i),
-\]
-
-第 $t$ 个 Query 再从中计算输出：
-
-\[
-o_t=
-\frac{\phi(q_t)S_t}
-     {\phi(q_t)z_t}.
-\]
-
-这里的 $S_t$ 累积 Key 与 Value 的外积，$z_t$ 累积映射后的 Key，用于分母中的归一化。只要 head 维度不变，两者的形状就不会随序列长度改变。decode 不再携带全部 K、V，只需携带当前的 $S_t$ 和 $z_t$。
-
-$S_t$ 记录的是“各个 Key 方向累计写入了哪些 Value”，$z_t$ 则记录这些方向一共积累了多少权重。Query 乘上 $S_t$ 得到加权后的 Value 总量，再除以 Query 乘上 $z_t$ 得到的权重总量。少了 $z_t$，序列越长，状态中累积的数值通常也会越大，输出就不再对应归一化的加权平均。
-
-$\operatorname{ELU}+1$ 只是一种可拆分计算的非负特征映射，并不等同于 Softmax。两种方法都会归一化分数并对 Value 求加权和，但它们产生权重的方式不同，不能把线性注意力理解成对标准注意力的等价改写。
-
-\begin{lstlisting}[language=Python,caption={把历史 K、V 折叠进固定状态}]
-q, k, v = split_heads(self.qkv_proj(x))
-q = F.elu(q) + 1
-k = F.elu(k) + 1
-
-S, z = cache if cache is not None else (0.0, 0.0)
-S = S + k.transpose(-1, -2) @ v
-z = z + k.sum(dim=-2, keepdim=True)
-
-out = q @ S
-denom = q @ z.transpose(-1, -2)
-out = out / denom.clamp_min(1e-6)
-return self.o_proj(merge_heads(out)), (S, z)
-\end{lstlisting}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.75,2.25) {KV Cache};
-\node[chbox,fill=codebg,minimum width=1.20cm] (xt) at (0,1.15) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv) at (1.75,1.15) {$Q_t,K_t,V_t$};
-\node[chbox,fill=orange!14,minimum width=3.15cm] (kc) at (4.75,1.65)
-  {$K_{1:t-1}\;\Vert\;K_t$};
-\node[chbox,fill=orange!14,minimum width=3.15cm] (vc) at (4.75,0.65)
-  {$V_{1:t-1}\;\Vert\;V_t$};
-\node[chbox,fill=red!10,minimum width=1.55cm] (soft) at (7.25,1.15)
-  {Softmax\\注意力};
-\node[chbox,fill=green!15,minimum width=1.20cm] (okv) at (9.25,1.15) {$o_t$};
-\draw[chflow] (xt) -- (qkv);
-\draw[chflow] (qkv) -- (kc);
-\draw[chflow] (qkv) -- (vc);
-\draw[chflow] (kc) -- (soft);
-\draw[chflow] (vc) -- (soft);
-\draw[chflow] (qkv.north) to[out=75,in=155]
-  node[chnote,above,sloped] {Query $Q_t$} (soft.north);
-\draw[chflow] (soft) -- (okv);
-\node[chnote] at (4.75,-0.05) {缓存形状随序列长度 $t$ 增长};
-
-\node[chlabel] at (2.75,-1.10) {线性注意力};
-\node[chbox,fill=codebg,minimum width=1.20cm] (xt2) at (0,-2.05) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv2) at (1.75,-2.05) {$q_t,k_t,v_t$};
-\node[chbox,fill=blue!14,minimum width=2.20cm] (state) at (4.35,-1.60)
-  {$S_t=S_{t-1}+\phi(k_t)^{\mathsf T}v_t$};
-\node[chbox,fill=blue!14,minimum width=2.20cm] (zstate) at (4.35,-2.50)
-  {$z_t=z_{t-1}+\phi(k_t)$};
-\node[chbox,fill=green!15,minimum width=2.40cm] (readstate) at (7.30,-2.05)
-  {归一化读取\\$\displaystyle\frac{\phi(q_t)S_t}{\phi(q_t)z_t}$};
-\node[chbox,fill=codebg,minimum width=1.20cm] (ols) at (9.65,-2.05) {$o_t$};
-\draw[chflow] (xt2) -- (qkv2);
-\draw[chflow] (qkv2) -- (state);
-\draw[chflow] (qkv2) -- (zstate);
-\draw[chflow] (state) -- (readstate);
-\draw[chflow] (zstate) -- (readstate);
-\draw[chflow,draw=accent,rounded corners=4pt]
-  (qkv2.south) -- ++(0,-1.30) -|
-  node[chnote,below,pos=0.52,fill=white,inner sep=1pt] {Query $q_t$ 直接读取}
-  (readstate.south);
-\draw[chflow] (readstate) -- (ols);
-\node[chnote] at (4.35,-3.12) {状态尺寸固定};
-\end{tikzpicture}
-\caption{KV Cache 与线性注意力的读写路径。}
-\label{fig:ch02-cache-vs-state}
-\end{figure}
-
-固定状态节省空间的方式，是把不同位置的信息写入同一个矩阵。它无法像 KV Cache 那样，始终为每个 token 保留一份相互分离的 Key 和 Value。写入次数超过状态可以清楚区分的范围后，不同关联就会互相干扰。
-
-这种干扰可以从更新式直接看出来。若两个 Key 的方向接近，它们的外积会写入 $S_t$ 的相近部分；纯加法只会把新的 Value 继续叠上去，不能先移除旧关联。之后沿这个方向查询时，输出便可能同时包含新旧两次写入的成分。
-
-因此，固定状态带来了新的问题：在不恢复逐 token 缓存的前提下，怎样修改已经写入的关联？
-
-\subsection{Delta Rule}
-
-固定状态的纯加法可以写成：
-
-\[
-S_t=S_{t-1}+k_t^{\mathsf T}v_t,
-\]
-
-Delta Rule 修改了写入动作。它先用当前 Key 从状态中读出旧值，再计算目标 Value 与旧值的差，只把这部分差写回状态。\cite{fast-weight}
-
-\begin{lstlisting}[language=Python,caption={带逐 token 写入强度的 Delta 更新}]
-q, k, v = split_heads(self.qkv_proj(x))
-q = F.normalize(F.silu(q), dim=-1)
-k = F.normalize(F.silu(k), dim=-1)
-beta = torch.sigmoid(self.w_beta(x)).view(B, 1, T, 1)
-
-S = cache if cache is not None else 0.0
-v_old = k @ S
-u = beta * (v - v_old)
-S = S + k.transpose(-1, -2) @ u
-
-out = q @ S
-return self.o_proj(merge_heads(out)), S
-\end{lstlisting}
-
-这里的 $\beta$ 控制本次更新的强度。Key 经过归一化后，如果状态中只有关联 $k^{\mathsf T}v$，再用同一个 $k$ 读取，就会得到 $v$。因此，$v-v_{\mathrm{old}}$ 表示当前读出与目标值之间的误差。
-
-从同一个 Key 方向把更新式再读一次，效果会更清楚。记 $v_{\mathrm{old}}=k_tS_{t-1}$，并令 $\lVert k_t\rVert=1$，则
-
-\[
-k_tS_t=(1-\beta_t)v_{\mathrm{old}}+\beta_t v_t.
-\]
-
-$\beta_t=0$ 时状态不变；$\beta_t=1$ 时，当前 Key 方向的读出更新为目标 Value；中间值则在两者之间插值。这个结论依赖单位 Key 的简化条件，相近方向上的其他关联仍可能受到更新影响。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.15,2.05) {纯加法写入};
-\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (0.20,0.75) {$S_{t-1}$};
-\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (1.85,1.35) {$k_t^{\mathsf T}v_t$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (plus1) at (3.20,0.75) {$+$};
-\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (4.40,0.75) {$S_t$};
-\draw[chflow] (s1) -- (plus1);
-\draw[chflow] (write1) -- (plus1);
-\draw[chflow] (plus1) -- (new1);
-\node[chnote] at (2.20,0.05) {直接叠加};
-
-\node[chlabel] at (8.15,2.25) {Delta Rule};
-\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (5.30,1.45) {$S_{t-1}$};
-\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (7.10,1.45) {Key $k_t$};
-\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (9.35,1.45) {目标 $v_t$};
-\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (7.10,0.55)
-  {读出 $v_{\mathrm{old}}=k_tS_{t-1}$};
-\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (9.35,0.55)
-  {误差 $v_t-v_{\mathrm{old}}$};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (6.80,-0.35)
-  {强度 $\beta_t$};
-\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (8.65,-0.35)
-  {按 Key 方向写回\\$\beta_t(v_t-v_{\mathrm{old}})$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (plus2) at (10.25,-0.35) {$+$};
-\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (11.15,-0.35) {$S_t$};
-\draw[chflow] (s2) -- (read);
-\draw[chflow] (key2) -- (read);
-\draw[chflow] (read) -- (error);
-\draw[chflow] (value2) -- (error);
-\draw[chflow] (error) -- (write2);
-\draw[chflow] (beta2) -- (write2);
-\draw[chflow] (write2) -- (plus2);
-\draw[chflow] (plus2) -- (new2);
-\draw[chflow,rounded corners=3pt] (s2.south) -- ++(0,-2.25) -|
-  (plus2.south);
-\end{tikzpicture}
-\caption{纯加法写入与 Delta Rule。}
-\label{fig:ch02-delta}
-\end{figure}
-
-\subsection{分块并行}
-
-Delta Rule 可以修改已有的关联，但第 $i$ 个 token 的更新仍然依赖第 $i-1$ 步留下的状态。按 token 顺序实现时，代码很直接：
-
-\begin{lstlisting}[language=Python,caption={顺序执行的 Delta 更新}]
-S = torch.zeros(B, H, D, D) if cache is None else cache
-outs = []
-for i in range(T):
-    k_i = k[:, :, i:i+1]
-    v_i = v[:, :, i:i+1]
-    b_i = beta[:, :, i:i+1]
-    v_old = k_i @ S
-    u_i = b_i * (v_i - v_old)
-    S = S + k_i.transpose(-1, -2) @ u_i
-    outs.append(q[:, :, i:i+1] @ S)
-out = torch.cat(outs, dim=2)
-\end{lstlisting}
-
-这种顺序依赖在 decode 阶段不是主要问题，因为下一个 token 本来就要等上一个 token 生成。训练和 prefill 则不同：整段输入已经给出，如果每个位置仍要等待前一个位置更新完状态，就无法充分并行计算。
-
-一种实现办法是把序列切成若干 chunk。块与块之间继续顺序传递状态，块内则把递归更新重新参数化成矩阵运算。于是，一个块的输出由两部分组成：从前一个块继承的状态，以及当前块内较早位置产生的更新。
-
-难点在于，块内第二个位置的修正已经受第一个位置影响，不能把所有 Delta 当成彼此独立的外积一次相加。下面的 \texttt{Tmat} 正是用来整理这种块内依赖：它把较早 Key 对较晚更新的影响吸收到 $W$ 和 $U$ 中。外层仍按块推进，块内才有机会改写成适合矩阵乘法的计算。
-
-\begin{lstlisting}[language=Python,caption={重参数化后的 chunk Delta 核心}]
-Q, K, V = map(lambda x: x.reshape(-1, C, D), (Q, K, V))
-beta = beta.reshape(-1, C)
-K_beta = K * beta.unsqueeze(-1)
-V_beta = V * beta.unsqueeze(-1)
-
-Tmat = -(K_beta @ K.transpose(-1, -2)).tril(-1)
-for i in range(1, C):
-    Tmat[:, i, :i] += (
-        Tmat[:, i, :, None] * Tmat[:, :, :i]
-    ).sum(-2)
-Tmat = Tmat + torch.eye(C, device=K.device)
-W, U = Tmat @ K_beta, Tmat @ V_beta
-
-for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
-    u_i = u0_i - w_i @ S
-    out_inter = q_i @ S
-    out_intra = (q_i @ k_i.T).tril() @ u_i
-    S = S + k_i.T @ u_i
-    outs.append(out_inter + out_intra)
-\end{lstlisting}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.25,2.35) {prefill：块内并行，块间递归};
-\node[chbox,fill=codebg,minimum width=0.85cm] (s0) at (0,1.30) {$S_0$};
-\node[chbox,fill=blue!12,minimum width=1.75cm,minimum height=0.95cm]
-  (c1) at (1.55,1.30) {chunk 1\\$t_1\ldots t_C$};
-\node[chbox,fill=codebg,minimum width=0.85cm] (cs1) at (3.05,1.30) {$S_1$};
-\node[chbox,fill=blue!12,minimum width=1.90cm,minimum height=0.95cm]
-  (c2) at (4.75,1.30) {chunk 2\\$t_{C+1}\ldots t_{2C}$};
-\node[chbox,fill=codebg,minimum width=0.85cm] (cs2) at (6.40,1.30) {$S_2$};
-\node[fill=white,inner xsep=4pt] (chunkdots) at (7.35,1.30) {$\cdots$};
-\node[chbox,fill=blue!12,minimum width=1.75cm,minimum height=0.95cm]
-  (cm) at (8.70,1.30) {chunk $m$\\$C$ 个 token};
-\node[chbox,fill=codebg,minimum width=0.90cm] (csm) at (10.25,1.30) {$S_m$};
-\draw[chflow] (s0) -- (c1);
-\draw[chflow] (c1) -- (cs1);
-\draw[chflow] (cs1) -- (c2);
-\draw[chflow] (c2) -- (cs2);
-\draw[thick,draw=primary] (cs2) -- (chunkdots.west);
-\draw[chflow] (chunkdots.east) -- (cm);
-\draw[chflow] (cm) -- (csm);
-\node[chbox,fill=codebg,minimum width=7.00cm] at (5.25,0.05)
-  {每个 chunk 内：$O_i=Q_iS_{i-1}+\operatorname{causal}(Q_iK_i^{\mathsf T})U_i$};
-
-\node[chlabel] at (3.55,-0.70) {decode};
-\node[chbox,fill=orange!16,minimum width=1.90cm] (cache) at (0.70,-1.15)
-  {prefill 输出\\缓存状态 $S_m$};
-\node[chbox,fill=green!16,minimum width=1.55cm] (token) at (0.70,-1.95) {新 token};
-\node[chbox,fill=yellow!20,minimum width=2.05cm] (update) at (3.45,-1.55) {更新状态};
-\node[chbox,fill=codebg,minimum width=1.55cm] (out) at (6.25,-1.55) {输出 / 新状态};
-\draw[chflow] (cache) -- (update);
-\draw[chflow] (token) -- (update);
-\draw[chflow] (update) -- (out);
-\end{tikzpicture}
-\caption{chunkwise prefill 与单步 decode。}
-\label{fig:ch02-chunk}
-\end{figure}
-
-若一个 chunk 覆盖整段序列，块内交互会回到二次计算量，但其中执行的仍是 Delta 更新，并不等同于标准 Softmax 注意力。若 chunk 只含一个 token，算法就退化为完全递归的实现。chunk 大小由此决定块内并行与块间顺序更新的比例。
-
-图中的两项对应代码里的两个输出：$\texttt{out\_inter}=Q_iS_{i-1}$ 读取进入当前块以前的状态，$\texttt{out\_intra}$ 用带因果掩码的 $Q_iK_i^{\mathsf T}$ 汇总块内较早位置的更新。两部分相加得到当前块的输出。
-
-chunk 规定的是计算粒度，不是上下文窗口。一个块结束后，最终状态仍会交给下一个块，因此较早信息不会仅因跨过块边界而被丢弃。
-
-Delta 更新之所以难以直接并行，是因为每次修正都要先知道更新前的读出。论文使用广义 Householder 转移矩阵重新参数化块内的连续更新，把它们整理成可以批量计算的矩阵。状态仍在块间递归，块内计算则可以使用矩阵运算并行完成。
-
-\section{门控与 KDA}
-
-\subsection{Gated DeltaNet}
-
-Delta Rule 只会在新的 Key 到来时修正相关方向。如果上下文已经切换，一些旧关联可能再也等不到对应的新值，却仍保留在固定状态中。要释放这部分容量，还需要让旧状态随时间衰减。
-
-Gated DeltaNet 为旧状态增加了保留系数 $\alpha_t$。\cite{gated-delta}
-
-\[
-S_t=
-\alpha_t S_{t-1}
-+k_t^{\mathsf T}
-\left[\beta_t\left(v_t-k_tS_{t-1}\right)\right],
-\qquad 0\leq\alpha_t\leq1.
-\]
-
-\begin{lstlisting}[language=Python,caption={门控与 Delta Rule 的组合}]
-S_old = cache
-v_old = k @ S_old
-u = beta * (v - v_old)
-S = alpha * S_old + k.transpose(-1, -2) @ u
-\end{lstlisting}
-
-式中，$\alpha_t$ 先缩放整个旧状态，$\beta_t$ 再控制当前 Key 方向上的 Delta 更新强度。前者决定旧状态整体保留多少，后者决定本次误差修正多少。两项计算共同得到新的 $S_t$。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[scale=0.97,transform shape,font=\scriptsize,>=Latex]
-\node[chlabel] at (1.65,2.55) {Transformer block};
-\node[chbox,fill=codebg,minimum width=1.15cm] (xin) at (0,1.65) {$x_t$};
-\node[chbox,fill=yellow!22,minimum width=1.55cm] (rn1) at (1.65,1.65) {RMSNorm};
-\node[chbox,fill=orange!18,minimum width=2.00cm] (gdn) at (1.65,0.55) {Gated DeltaNet};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (ra1) at (1.65,-0.25) {$+$};
-\node[chbox,fill=yellow!22,minimum width=1.55cm] (rn2) at (1.65,-1.05) {RMSNorm};
-\node[chbox,fill=blue!16,minimum width=1.55cm] (swiglu) at (1.65,-1.85) {SwiGLU};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (ra2) at (1.65,-2.60) {$+$};
-\node[draw=primary!45,dashed,rounded corners=3pt,
-  fit=(rn1)(ra2),inner sep=5pt] (gdnblock) {};
-\draw[chflow] (xin) -- (rn1);
-\draw[chflow] (rn1) -- (gdn);
-\draw[chflow] (gdn) -- (ra1);
-\draw[chflow] (ra1) -- (rn2);
-\draw[chflow] (rn2) -- (swiglu);
-\draw[chflow] (swiglu) -- (ra2);
-\draw[chflow,rounded corners=3pt] (xin.west) -- ++(-0.35,0) |- (ra1.west);
-\draw[chflow,rounded corners=3pt] (ra1.west) -- ++(-1.35,0) |- (ra2.west);
-\node[chnote,anchor=south east] at
-  ([xshift=-0.08cm,yshift=0.08cm]gdnblock.south east) {$\times N$};
-
-\node[chlabel] at (7.50,2.65) {模块展开：Gated DeltaNet 内部};
-\node[chbox,fill=codebg,minimum width=1.05cm] (h) at (3.45,1.75) {$h_t$};
-\node[chbox,fill=green!13,minimum width=6.40cm] (projall) at (7.50,1.75)
-  {并行投影：$Q,\ K,\ V,\ \alpha,\ \beta,\ g$};
-\draw[chflow] (h) -- (projall);
-
-\node[chbox,fill=red!10,minimum width=1.30cm] (qprep) at (4.15,0.70)
-  {$Q$\\Conv + L2};
-\node[chbox,fill=red!10,minimum width=1.30cm] (kprep) at (5.75,0.70)
-  {$K$\\Conv + L2};
-\node[chbox,fill=red!10,minimum width=1.20cm] (vprep) at (7.25,0.70)
-  {$V$\\Conv};
-\node[chbox,fill=yellow!18,minimum width=1.30cm] (abprep) at (8.80,0.70)
-  {$\alpha_t,\beta_t$};
-\node[chbox,fill=yellow!18,minimum width=1.30cm] (gprep) at (10.25,0.70)
-  {输出门 $g_t$};
-\foreach \x/\dst in {-3.35/qprep,-1.75/kprep,-0.25/vprep,1.30/abprep,2.75/gprep} {
-  \draw[chflow] ([xshift=\x cm]projall.south) -- (\dst.north);
-}
-
-\node[chbox,fill=blue!14,minimum width=5.55cm,minimum height=0.72cm]
-  (rule) at (6.65,-0.40)
-  {$S_t=\alpha_tS_{t-1}+k_t^{\mathsf T}\beta_t(v_t-k_tS_{t-1})$};
-\draw[chflow] (qprep) -- ($(rule.north west)!0.14!(rule.north east)$);
-\draw[chflow] (kprep) -- ($(rule.north west)!0.36!(rule.north east)$);
-\draw[chflow] (vprep) -- ($(rule.north west)!0.62!(rule.north east)$);
-\draw[chflow] (abprep) -- ($(rule.north west)!0.86!(rule.north east)$);
-
-\node[chbox,fill=yellow!18,minimum width=1.15cm] (on) at (6.65,-1.55) {Norm};
-\node[chbox,fill=green!15,minimum width=1.20cm] (op) at (8.15,-1.55) {$O$ proj};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (gmul) at (9.55,-1.55) {$\times$};
-\node[chbox,fill=codebg,minimum width=1.10cm] (hout) at (10.75,-1.55) {输出};
-\draw[chflow] (rule) -- (on);
-\draw[chflow] (on) -- (op);
-\draw[chflow] (op) -- (gmul);
-\draw[chflow] (gprep) -- (gmul);
-\draw[chflow] (gmul) -- (hout);
-\end{tikzpicture}
-\caption{Gated DeltaNet 的 block 与内部投影。}
-\label{fig:ch02-gated-delta}
-\end{figure}
-
-$\alpha_t=1$ 时，旧状态在这一步不发生衰减；$\alpha_t$ 越接近零，旧状态保留得越少。一项信息从第 $r$ 步保留到第 $t$ 步，要连续经过中间每一步的门控，因此累计保留比例近似为：
-
-\[
-\prod_{i=r+1}^{t}\alpha_i.
-\]
-
-连续一百步都取 $\alpha=0.99$，累计保留比例约为 $0.366$；若取 $0.999$，则约为 $0.905$。即使单步门值都接近 1，长序列上的累计差异也会很明显。
-
-\subsection{Kimi Delta Attention}
-
-Gated DeltaNet 同时具备误差修正和状态衰减，但每个 token、每个 head 的 $\alpha_t$ 仍是一个标量。在同一个时间步内，该 head 的所有状态通道都按相同比例缩放。Kimi Delta Attention（KDA）把标量门改成向量门，让不同通道使用不同的保留系数。\cite{kimi-linear}
-
-\[
-\boldsymbol{\alpha}_t
-=\sigma(W_\alpha x_t),
-\qquad
-S_t=
-\operatorname{diag}(\boldsymbol{\alpha}_t)S_{t-1}
-+\Delta S_t.
-\]
-
-对角矩阵的写法表示，$S_{t-1}$ 的不同行可以乘上不同的系数。于是，同一个 head 在同一步里也能让一部分通道缓慢遗忘，让另一部分通道迅速让位给新内容。Delta 项仍负责修正当前 Key 指向的关联；KDA 改变的是旧状态被保留的粒度。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (1.55,1.60) {Delta Rule};
-\node[chbox,fill=blue!12,minimum width=3.00cm,minimum height=0.88cm]
-  (d) at (1.55,0.55) {$S_t=S_{t-1}+\Delta S_t$};
-\node[chnote] at (1.55,-0.18) {无衰减};
-
-\node[chlabel] at (5.05,1.60) {Gated DeltaNet};
-\node[chbox,fill=orange!14,minimum width=3.00cm,minimum height=0.88cm]
-  (g) at (5.05,0.55) {$S_t=\alpha_tS_{t-1}+\Delta S_t$};
-\node[chnote] at (5.05,-0.18) {标量衰减};
-
-\node[chlabel] at (8.55,1.60) {KDA};
-\node[chbox,fill=green!14,minimum width=3.00cm,minimum height=0.88cm]
-  (kda) at (8.55,0.55) {$S_t=\mathrm{diag}(\boldsymbol\alpha_t)S_{t-1}+\Delta S_t$};
-\node[chnote] at (8.55,-0.18) {逐通道衰减};
-\draw[chdash] (d) -- (g);
-\draw[chdash] (g) -- (kda);
-\end{tikzpicture}
-\caption{Delta Rule、Gated DeltaNet 与 KDA 的门控粒度。}
-\label{fig:ch02-kda-evolution}
-\end{figure}
-
-\begin{lstlisting}[language=Python,caption={三种状态更新在实现上的差别}]
-S = S + delta                            # Delta Rule
-S = alpha[..., None, None] * S + delta  # scalar gate
-S = alpha[..., :, None] * S + delta     # channel gate
-\end{lstlisting}
-
-向量门没有增加状态矩阵的大小，改变的是各通道的衰减粒度。训练后，一些通道可以保留较大的门值，让信息经过更多 token；另一些通道可以更快衰减，减少较早内容对当前状态的影响。至于各通道最终承担什么功能，并没有预先规定。
-
-到这里，固定状态已经可以累积信息、按误差修正关联，并以逐通道门控衰减旧内容。不过，状态大小仍然固定，被合并的位置细节不会因为门控更精细而重新出现。这正是 Kimi Linear 仍然保留 Softmax 注意力的原因。
-
-\section{Kimi Linear 与 Kimi K3}
-
-\subsection{KDA 与 Kimi Linear}
-
-Kimi Linear 将 KDA 与 Multi-head Latent Attention（MLA）交错排列。多数层使用 KDA，在固定状态上完成读写；每隔三层插入一层 MLA，对 token 序列执行一次 Softmax 注意力。前者控制大部分层的缓存大小，后者保留按位置检索上下文的能力。
-
-Kimi Linear 论文报告，在其受控实验中，这种混合结构的质量超过对应的全注意力基线，解码吞吐量最高提升 6 倍。该结果依赖论文给定的模型、任务与硬件条件，不能直接外推到所有部署。\cite{kimi-linear}
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.15,2.85) {四层周期（每个框是一层）};
-\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
-  (la) at (1.30,1.85) {KDA\\$\downarrow$\\MoE};
-\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
-  (lb) at (3.90,1.85) {KDA\\$\downarrow$\\MoE};
-\node[chbox,fill=blue!12,minimum width=2.15cm,minimum height=1.12cm]
-  (lc) at (6.50,1.85) {KDA\\$\downarrow$\\MoE};
-\node[chbox,fill=orange!16,minimum width=2.15cm,minimum height=1.12cm]
-  (ld) at (9.10,1.85) {MLA\\$\downarrow$\\MoE};
-\draw[chflow] (la) -- (lb);
-\draw[chflow] (lb) -- (lc);
-\draw[chflow] (lc) -- (ld);
-\node[chnote,anchor=west] at (10.35,1.85) {继续下一周期};
-
-\node[chlabel] at (5.15,0.55) {KDA 内部};
-\node[chbox,fill=codebg,minimum width=1.00cm] (kin) at (0,-0.35) {$h_t$};
-\node[chbox,fill=green!13,minimum width=3.35cm] (kproj) at (2.55,-0.35)
-  {并行投影 $Q,K,V,\beta,\boldsymbol\alpha,g$};
-\node[chbox,fill=yellow!18,minimum width=1.30cm] (kgate) at (8.90,-0.35)
-  {输出门 $g_t$};
-\draw[chflow] (kin) -- (kproj);
-\draw[chflow,rounded corners=3pt] (kproj.north) -- ++(0,0.35) -| (kgate.north);
-
-\node[chbox,fill=blue!14,minimum width=4.50cm,minimum height=0.78cm]
-  (kdacore) at (3.90,-1.55)
-  {$Q,K,V$ 预处理\\逐通道衰减 $+$ Delta 更新};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (kdanorm) at (6.80,-1.55) {Norm};
-\node[chbox,fill=green!15,minimum width=1.15cm] (kdao) at (8.20,-1.55) {$O$ proj};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (kgmul) at (9.55,-1.55) {$\times$};
-\node[chbox,fill=codebg,minimum width=1.05cm] (kout) at (10.65,-1.55) {输出};
-\draw[chflow] (kproj) -- (kdacore);
-\draw[chflow] (kdacore) -- (kdanorm);
-\draw[chflow] (kdanorm) -- (kdao);
-\draw[chflow] (kdao) -- (kgmul);
-\draw[chflow] (kgate) -- (kgmul);
-\draw[chflow] (kgmul) -- (kout);
-\end{tikzpicture}
-\caption{Kimi Linear 的层级周期与 KDA 内部。}
-\label{fig:ch02-kimi-linear}
-\end{figure}
-
-\subsection{Kimi K3}
-
-Kimi K3 沿用了 Kimi Linear 的混合方式。前 92 层由 23 个四层周期组成，每个周期依次包含三层 KDA 和一层 Gated MLA；第 93 层再使用一层 Gated MLA。整条主干因此共有 69 个 KDA 层和 24 个 Gated MLA 层。\cite{kimi-k3}
-
-在每个周期中，前三层通过 KDA 读取并更新固定状态；第四层通过 MLA 访问按位置保存的 token 上下文。MLA 的输出还要经过门控，模型可以调节这次检索结果写入残差流的比例。两种注意力分别保留固定状态的空间优势和 Softmax 注意力的位置检索能力。
-
-每层注意力之后还有前馈网络。第 1 层使用稠密前馈网络，其余层使用 LatentMoE。LatentMoE 包含 896 个路由专家和 2 个共享专家：共享专家始终参与，路由器再为每个 token 选择 16 个路由专家。Kimi K3 的总参数量为 2.8 万亿，但每个 token 只激活约 1040 亿参数。MoE 由此把模型的总参数容量与单个 token 实际经过的计算量分开。\cite{kimi-k3}
-
-这里的两个参数量不能互相替代。2.8 万亿描述模型拥有的全部专家权重，部署时仍要容纳这些权重；约 1040 亿描述一个 token 经过路由以后实际调用的部分。MoE 节省的是每次前向传播都遍历全部参数的计算，并不是把整个模型缩成了 1040 亿参数。
-
-Gated MLA 还使用 Query LoRA 压缩 Query 投影，并在输出进入残差流以前增加门控。Query LoRA 减少这一分支的参数与计算，输出门则调节注意力结果的写入强度。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.10,2.35) {Kimi K3：93 层主干};
-\node[chbox,fill=codebg,minimum width=0.80cm] (inputk3) at (-0.15,0.85) {输入};
-\node[chbox,font=\scriptsize,fill=blue!12,text width=1.25cm,
-  minimum width=1.55cm,minimum height=2.05cm]
-  (layer1) at (1.25,0.85) {第 1 层\\KDA\\稠密 FFN};
-\node[chbox,font=\scriptsize,fill=blue!8,text width=2.45cm,
-  minimum width=2.75cm,minimum height=2.05cm]
-  (layers24) at (3.65,0.85)
-  {第 2--4 层\\KDA $\times2$\\Gated MLA $\times1$\\\mbox{Stable LatentMoE}\\共 3 层};
-\node[chbox,font=\scriptsize,fill=blue!8,text width=2.80cm,
-  minimum width=3.10cm,minimum height=2.05cm]
-  (cycles) at (6.90,0.85)
-  {第 5--92 层\\四层周期 $\times22$\\KDA $\times66$\\Gated MLA $\times22$\\\mbox{Stable LatentMoE}\\共 88 层};
-\node[chbox,font=\scriptsize,fill=orange!16,text width=2.10cm,
-  minimum width=2.40cm,minimum height=2.05cm]
-  (layer93) at (9.85,0.85) {第 93 层\\Gated MLA\\Stable\\LatentMoE};
-\draw[chflow] (inputk3) -- (layer1);
-\draw[chflow] (layer1) -- (layers24);
-\draw[chflow] (layers24) -- (cycles);
-\draw[chflow] (cycles) -- (layer93);
-
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (finaln) at (9.85,-0.65) {Norm};
-\node[chbox,fill=green!15,minimum width=1.10cm] (linear) at (9.85,-1.45) {Linear};
-\node[chbox,fill=codebg,minimum width=1.10cm] (outputk3) at (9.85,-2.25) {输出};
-\draw[chflow] (layer93) -- (finaln);
-\draw[chflow] (finaln) -- (linear);
-\draw[chflow] (linear) -- (outputk3);
-\node[font=\scriptsize\bfseries,text=primary,align=center] (summaryk3) at (4.35,-1.45)
-  {注意力层合计：69 个 KDA + 24 个 Gated MLA};
-\node[chnote] at (4.35,-2.25) {Block AttnRes 沿深度方向另行汇总块级表示};
-\end{tikzpicture}
-\caption{Kimi K3 的层组、四层周期与输出路径；四个主框依次表示第 1 层、第 2--4 层、第 5--92 层和第 93 层。}
-\label{fig:ch02-k3-cycle}
-\end{figure}
-
-注意力更新完成后，token 表示进入前馈网络。Kimi K3 的专家使用 SiTU 激活函数：输入沿最后一维分成 gate 与 up 两部分，两条分支都可以用可学习参数控制双曲正切的饱和范围。
-
-\begin{lstlisting}[language=Python,caption={SiTU 激活函数}]
-d = x.shape[-1] // 2
-gate = x[..., :d].to(torch.float32)
-up = x[..., d:].to(torch.float32)
-
-situ_a = (
-    self.beta
-    * torch.tanh(gate / self.beta)
-    * torch.sigmoid(gate)
-)
-if self.linear_beta is not None:
-    up = self.linear_beta * torch.tanh(up / self.linear_beta)
-return (situ_a * up).to(x.dtype)
-\end{lstlisting}
-
-式中的 $\beta\tanh(x/\beta)$ 在零附近近似 $x$，输入的绝对值增大后则趋近 $\pm\beta$。Gate 分支还要乘以 sigmoid，up 分支可以使用另一组参数完成同样的限制。路由器负责选择专家，SiTU 负责专家内部的非线性变换，两者处在不同层次。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.15,3.15) {专家路由};
-\node[chbox,fill=codebg,minimum width=1.10cm] (mx) at (0,2.15) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.30cm] (mr) at (1.65,2.15) {Router};
-\node[chbox,fill=blue!15,minimum width=2.10cm] (shared) at (4.05,2.70) {共享专家 $\times2$};
-\node[chbox,fill=purple!12,minimum width=2.10cm] (routed) at (4.05,1.60) {路由专家 $16/896$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (msum) at (6.35,2.15) {$\Sigma$};
-\node[chbox,fill=green!15,minimum width=1.15cm] (my) at (7.80,2.15) {输出};
-\draw[chflow] (mx) -- (mr);
-\draw[chflow] (mx) to[out=45,in=180] (shared);
-\draw[chflow] (mr) -- (routed);
-\draw[chflow] (shared) -- (msum);
-\draw[chflow] (routed) -- (msum);
-\draw[chflow] (msum) -- (my);
-
-\node[chlabel] at (5.15,0.95) {Kimi Linear 专家};
-\node[chbox,fill=codebg,minimum width=1.00cm] (linx) at (0,0.05) {输入};
-\node[chbox,fill=orange!14,minimum width=1.15cm] (lw3) at (1.55,0.40) {$W_3$ gate};
-\node[chbox,fill=orange!14,minimum width=1.15cm] (lw1) at (1.55,-0.30) {$W_1$ up};
-\node[chbox,fill=yellow!18,minimum width=1.05cm] (lsilu) at (3.10,-0.30) {SiLU};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (lmul) at (4.30,0.05) {$\times$};
-\node[chbox,fill=green!14,minimum width=1.20cm] (lw2) at (5.75,0.05) {$W_2$ down};
-\node[chbox,fill=codebg,minimum width=1.00cm] (linout) at (7.25,0.05) {输出};
-\draw[chflow] (linx) -- (lw3);
-\draw[chflow] (linx) -- (lw1);
-\draw[chflow] (lw3) -- (lmul);
-\draw[chflow] (lw1) -- (lsilu);
-\draw[chflow] (lsilu) -- (lmul);
-\draw[chflow] (lmul) -- (lw2);
-\draw[chflow] (lw2) -- (linout);
-
-\node[chlabel] at (5.15,-1.00) {Kimi K3 专家};
-\node[chbox,fill=codebg,minimum width=1.00cm] (kx) at (0,-2.00) {输入};
-\node[chbox,fill=blue!14,minimum width=1.25cm] (down) at (1.45,-2.00) {down proj};
-\node[chbox,fill=orange!14,minimum width=1.10cm] (kw3) at (3.05,-1.65) {$W_3$ gate};
-\node[chbox,fill=orange!14,minimum width=1.10cm] (kw1) at (3.05,-2.35) {$W_1$ up};
-\node[chbox,fill=yellow!18,minimum width=1.25cm] (ksitu) at (4.70,-1.65) {$\sigma\times\tanh$};
-\node[chbox,fill=yellow!18,minimum width=1.05cm] (ktanh) at (4.70,-2.35) {$\tanh$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (kmul) at (6.05,-2.00) {$\times$};
-\node[chbox,fill=green!14,minimum width=1.15cm] (kw2) at (7.35,-2.00) {$W_2$ down};
-\node[chbox,fill=blue!14,minimum width=1.20cm] (up) at (8.80,-2.00) {up proj};
-\node[chbox,fill=codebg,minimum width=1.00cm] (kout2) at (10.20,-2.00) {输出};
-\draw[chflow] (kx) -- (down);
-\draw[chflow] (down) -- (kw3);
-\draw[chflow] (down) -- (kw1);
-\draw[chflow] (kw3) -- (ksitu);
-\draw[chflow] (kw1) -- (ktanh);
-\draw[chflow] (ksitu) -- (kmul);
-\draw[chflow] (ktanh) -- (kmul);
-\draw[chflow] (kmul) -- (kw2);
-\draw[chflow] (kw2) -- (up);
-\draw[chflow] (up) -- (kout2);
-\end{tikzpicture}
-\caption{Kimi K3 的专家路由与 SiTU 专家。}
-\label{fig:ch02-latent-moe}
-\end{figure}
-
-图中的 down projection 先把输入压到较低维的潜空间，专家完成计算后，up projection 再把结果映射回模型维度。专家路由减少每个 token 实际调用的专家数量，潜空间投影则减少每个专家内部的计算宽度。
-
-\subsection{AttnRes}
-
-KDA 与 MLA 处理的是 token 序列上的信息传递。Kimi K3 有 93 层，表示在网络深度上的传递也需要处理：后面的层怎样使用较早层产生的表示？
-
-这是另一条轴。KDA 和 MLA 讨论同一层里，当前 token 怎样取得前面 token 的信息；接下来的 AttnRes 讨论同一个 token 穿过许多层以后，深层计算怎样重新取用浅层表示。两种机制都使用“注意力”，检索的对象却不同。
-
-普通残差网络不断累加此前各层的输出。用简化写法表示，第 $l$ 层看到的是
-
-\[
-h_l=h_1+\sum_{i=1}^{l-1}f_i(h_i).
-\]
-
-其中，$f_i(h_i)$ 表示第 $i$ 个子层的输出。普通残差连接以相同系数累加这些结果，第 $l$ 层无法直接调节某个早期子层所占的比例。网络越深，需要合并的历史层输出也越多。
-
-Attention Residual（AttnRes）把固定求和改为带权混合：
-
-\nopagebreak[4]
-
-\[
-h_l=
-\alpha_0h_1+
-\sum_{i=1}^{l-1}\alpha_i f_i(h_i),
-\qquad
-\sum_i\alpha_i=1.
-\]
-
-AttnRes 为每个子层学习一个 pseudo-query，较早的残差表示同时作为 Key 和 Value。pseudo-query 与这些 Key 计算分数，Softmax 沿网络深度归一化，随后按权重合并对应的 Value。这样，第 $l$ 层接收的不再是固定的历史层总和，而是由模型学习各个早期表示的权重。
-
-\begin{lstlisting}[language=Python,caption={blockwise AttnRes 的核心操作}]
-V = torch.stack(blocks + [partial_block])  # [N+1,B,T,D]
-K = norm(V)
-logits = torch.einsum(
-    "d,nbtd->nbt", proj.weight.squeeze(), K)
-h = torch.einsum(
-    "nbt,nbtd->btd", logits.softmax(0), V)
-return h
-\end{lstlisting}
-
-代码把保存的 block 放在最前面的 $N$ 维。第一次 \texttt{einsum} 为每个 block、每个 token 算一个分数，Softmax 也沿这条深度维归一化；第二次再按权重合并表示。输出仍是 $(B,T,D)$，因此后续层收到的张量形状没有变化，只是其中混入浅层表示的比例不再固定。
-
-\begin{figure}[htbp]
-\centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (1.70,2.15) {普通残差};
-\node[chbox,fill=codebg,minimum width=0.90cm] (rin) at (-0.30,0.45) {$h_l$};
-\node[chbox,fill=blue!12,minimum width=2.25cm] (rblock) at (1.35,0.45)
-  {Transformer block};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (rplus) at (2.95,0.45) {$+$};
-\node[chbox,fill=green!14,minimum width=0.95cm] (rout) at (3.75,0.45) {$h_{l+1}$};
-\draw[chflow] (rin) -- (rblock);
-\draw[chflow] (rblock) -- (rplus);
-\draw[chflow] (rplus) -- (rout);
-\draw[chflow,rounded corners=4pt] (rin.north) -- ++(0,0.72) -|
-  node[chnote,above,pos=0.58] {残差旁路} (rplus.north);
-\node[chnote] at (1.75,-0.52) {$h_{l+1}=h_l+f_l(h_l)$；逐层重复};
-
-\node[chlabel] at (8.05,2.15) {Block AttnRes};
-\node[chnote] at (5.20,1.82) {保存的块表示};
-\foreach \y/\id/\name in {1.25/b1/$B_0$,0.45/b2/$B_1$,-0.35/b3/$B_7$} {
-  \node[chbox,fill=green!12,minimum width=1.25cm] (\id) at (5.20,\y) {\name};
-}
-\node at (5.20,0.02) {$\vdots$};
-\node[chbox,fill=blue!12,minimum width=1.35cm] (stack) at (6.90,0.45) {stack $V$};
-\node[chbox,fill=yellow!18,minimum width=1.35cm] (keys) at (8.65,1.15) {$K=\mathrm{Norm}(V)$};
-\node[chbox,fill=orange!15,minimum width=1.35cm] (query) at (8.65,-0.25) {伪查询 $q_l$};
-\node[chbox,fill=red!10,minimum width=1.55cm] (scores) at (10.45,0.45) {$\mathrm{softmax}(q_lK)$};
-\node[chbox,fill=green!18,minimum width=1.55cm] (mix) at (10.45,-0.75) {$\sum_i\alpha_iV_i$};
-\draw[chflow] (b1) -- (stack);
-\draw[chflow] (b2) -- (stack);
-\draw[chflow] (b3) -- (stack);
-\draw[chflow] (stack) -- (keys);
-\draw[chflow] (keys) -- (scores);
-\draw[chflow] (query) -- (scores);
-\draw[chflow] (scores) -- (mix);
-\draw[chflow,draw=accent,rounded corners=3pt] (stack.south) |-
-  node[chnote,below,pos=0.62] {Value 路径} (mix.west);
-\node[chnote] at (7.75,-1.60) {每 12 层保存一次，共 8 个深度块};
-\end{tikzpicture}
-\caption{普通残差与 Block AttnRes。}
-\label{fig:ch02-attnres}
-\end{figure}
-
-保存并检索每一层的表示会带来较高开销，因此 Kimi K3 采用 blockwise AttnRes，每 12 层保存一次块级表示，共形成 8 个 block。后续边界只在这些块级表示之间计算权重。MLA 沿序列维度检索较早的 token，AttnRes 沿深度维度选择较早的 block；二者处理的是不同方向上的信息传递。
-
-回看整条主干，GPT-2 中的 decoder-only 结构、注意力、前馈网络和残差连接仍然存在。Kimi K3 改变了这些部件的具体组织方式：KDA 用固定状态处理大部分序列信息，MLA 定期执行 Softmax 检索，AttnRes 在网络深度上选择早期表示，MoE 则让每个 token 只调用一部分专家参数。
-
-\bigskip
-
-广把最后一张结构图收起来。屏幕上还停着最开始的周末计划。
-
-“所以，把这些都装进去，就会变得像我吗？”佑芽问。
-
-“不会。”
-
-广把代码窗口缩小，指了指最上方那句“请扮演花海佑芽”。
-
-“结构只是一部分。它读过什么，后来怎么训练，窗口又临时塞给它什么……这些还没拆。”
-
-千奈把聊天记录往上翻，停在“跑去游乐园”那一句。
-
-“那么，周末怎么办呢？”
-
-“坐电车。”广说。
-
-“欸——”
-
-“到游乐园以后，可以陪你跑。”
-
-佑芽认真想了几秒。
-
-“那我从车站跑到游乐园！”
-
-千奈把计划改成“坐电车过去”。窗口里的 AI 佑芽很快回复：
+视频讲到研究过程。第一次 Claude Code 会话提出了大约六百五十种想法，但没有一种能成为证明。第二次会话又先后调用了约六十个子 Agent。
 
 \begin{quote}
-\textbf{AI 佑芽：}好！那下车以后再跑！
+\textbf{千奈：}六百五十种都没有成功，还能从哪里继续呢？
+
+\textbf{广：}先看它们为什么没有成功。有的是条件不够，有的是算到一半走不下去，还有的会被反例推翻。失败的位置不一样，下一步也不一样。
+
+\textbf{佑芽：}那六十个 Agent 都去想新的证明吗？
+
+\textbf{广：}没有。有人继续推导，有人写程序检查，有人查以前的论文。也有人什么都不往前做，只负责找别人的错误。
+
+\textbf{千奈：}它们要是得出不同的答案呢？
+
+\textbf{广：}那就不能只听谁说得像真的。算过的要能重新算，引用的要能找到原文，证明也要交给别的 Agent 挑错。能经得住这些检查的部分，才会留下来。
+
+\textbf{佑芽：}所以，六十个 Agent 给出的不是六十个答案。
+
+\textbf{广：}嗯。更多时候，是一堆还要继续检查的中间结果。
 \end{quote}
 
-三个人一起看着屏幕。
+千奈把视频暂停在介绍研究过程的那一段。
 
-“……这一句，”广说，“也很像。”
+\begin{quote}
+\textbf{千奈：}那它到底是怎么记住这些失败、把工作分出去，最后又收回来的？
 
-\begin{thebibliography}{9}
+\textbf{广：}从它接到那句话的时候开始看。
+\end{quote}
 
-\bibitem{waterloo-worklog}
-waterloo\_intern,
-\textit{From GPT2 to Kimi3, Explained},
-X Article, 2026.
-\url{https://x.com/waterloo_intern/status/2081762065392541951}
+\hiropapertitle{Claude Code 如何解决复杂问题}{広，千奈，佑芽}{初星学园放学后 AI 小课堂}
 
-\bibitem{gpt2}
-Alec Radford et al.,
-\textit{Language Models are Unsupervised Multitask Learners},
-OpenAI, 2019.
-\url{https://cdn.openai.com/better-language-models/language-models.pdf}
+\section{一次请求进入终端以后}
 
-\bibitem{linear-transformer}
-Angelos Katharopoulos et al.,
-\textit{Transformers are RNNs: Fast Autoregressive Transformers with Linear Attention},
-ICML, 2020.
-\url{https://arxiv.org/abs/2006.16236}
+Anthropic 公开文章里，这次任务的原句只有一句：
 
-\bibitem{fast-weight}
-Ido Schlag, Kazuki Irie, Jürgen Schmidhuber,
-\textit{Linear Transformers Are Secretly Fast Weight Programmers},
-ICML, 2021.
-\url{https://arxiv.org/abs/2102.11174}
+\begin{quote}
+\textit{Take a real stab at the Riemann hypothesis.}
+\end{quote}
 
-\bibitem{gated-delta}
-Songlin Yang et al.,
-\textit{Gated Delta Networks: Improving Mamba2 with Delta Rule},
-2024.
-\url{https://arxiv.org/abs/2412.06464}
+不妨译成：“认真试着攻一攻黎曼猜想。”这是目前能核实到的公开原文；文章没有披露更长的终端输入。它最后没有证明黎曼猜想。留下来的，是尝试途中碰到的另一个结果：在不预先假定黎曼猜想成立时，临界线 $\operatorname{Re}(s)=\tfrac12$ 上至少有多大比例的非平凡零点。Claude 把这个无条件下界从约 $41.6\%$ 推到了约 $67.2\%$。\cite{ch02riemannweb,ch02riemannpaper}
 
-\bibitem{kimi-linear}
-Kimi Team,
-\textit{Kimi Linear: An Expressive, Efficient Attention Architecture},
-2025.
-\url{https://arxiv.org/abs/2510.26692}
+这句话给了目标，没有给路线。哪些文献有用、哪条不等式成立、哪段推导会被反例击穿，都要在工作过程中逐步发现。模型每次只能依据眼前材料提出下一项动作；Claude Code 则读取文件、运行程序、保存结果，再把新的观察送回模型。一次回答就这样变成了一段持续数小时、不断改道的工作。\cite{ch02riemannweb,ch02e2e,ch02loop}
 
-\bibitem{kimi-k3}
-Kimi Team,
-\textit{Kimi K3: Open Frontier Intelligence},
-2026.
-\url{https://arxiv.org/abs/2607.24653}
+这项推进也不是从空白中凭空长出来的。论文大量依靠 Bombieri 对 Weil 二次型的观察，以及 Baluyot、Goldston、Suriajaya、Turnage-Butterbaugh 等人近年得到的无条件配对相关结果。Claude 找到的新接法，是用线性代数同时追踪二次型的正、负方向，再把已有结果读成更强的比例下界。\cite{ch02riemannweb,ch02riemannpaper}
 
+从端到端看，整件事可以收成三段：开头准备环境和上下文；中间让模型与工具反复往返；结尾整理证据并交给外部复核。真正反复发生的是中间那一小圈。第三方架构图常把围在模型外面的运行环境称作 Agent Harness。模型负责判断“下一步做什么”，Harness 决定它看见哪些材料、能调用哪些能力、动作是否获准，以及结果怎样回到下一轮。模型只是其中一个节点。\cite{ch02visual,ch02e2e}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=blue!12,minimum width=2.35cm] (request) at (-4.45,1.55)
+    {用户请求\\尝试黎曼猜想};
+  \node[ccbox,fill=green!13,minimum width=2.35cm] (context) at (-1.48,1.55)
+    {组装上下文\\规则、工具、历史};
+  \node[ccbox,fill=yellow!22,minimum width=2.35cm] (model) at (1.48,1.55)
+    {模型判断\\下一项动作};
+  \node[ccbox,fill=orange!18,minimum width=2.35cm] (gate) at (4.45,1.55)
+    {权限闸门\\允许 / 询问 / 拒绝};
+  \node[ccbox,fill=red!10,minimum width=2.35cm] (tool) at (4.45,0)
+    {工具执行\\读论文 / 跑实验 / 写文件};
+  \node[ccbox,fill=purple!12,minimum width=2.35cm] (observe) at (1.48,0)
+    {新观察\\加入下一轮历史};
+  \node[ccbox,fill=cyan!13,minimum width=2.35cm] (verify) at (-1.48,0)
+    {检查完成条件\\通过，或回送缺口};
+  \node[ccbox,fill=codebg,minimum width=2.35cm] (result) at (-4.45,0)
+    {交回结果\\新结论与证据包};
+  \draw[ccflow] (request) -- (context);
+  \draw[ccflow] (context) -- (model);
+  \draw[ccflow] (model) -- node[ccnote,above] {tool\_use} (gate);
+  \draw[ccflow] (gate) -- (tool);
+  \draw[ccflow] (tool) -- (observe);
+  \draw[ccdash] (observe.north) -- node[ccnote,right] {tool\_result\\下一轮} (model.south);
+  \draw[ccflow] (model.south west) -- node[ccnote,above left] {end\_turn} (verify.north east);
+  \draw[ccflow] (verify) -- node[ccnote,above] {通过} (result);
+\end{tikzpicture}
+\caption{一次 Claude Code 任务的讲解路径。工具结果回到下一轮；只有 \texttt{end\_turn} 才进入完成检查。}
+\label{fig:ch02-overview}
+\end{figure}
+
+这也是 Claude Code 和普通聊天最根本的差别。没有 Harness，模型可以提出“也许从 Weil 的二次型入手”，却无法自行打开前一轮留下的笔记、写一个数值检查、读取失败参数，再据此修改推导。有了工具、权限和反馈通道，想法才会遇到真实材料，并承担被证伪的后果。
+
+Anthropic 公开的过程正沿着这条路前进：第一次会话试过约六百五十条思路，全部没有留下成果；第二次会话才把问题拆给约六十个子 Agent。它们共同运行约两千四百条 Shell 命令、写下数百个 Python 脚本，并对已知零点做了数千次数值检查。大量动作、失败记录和复核结果反复回流，最后只有少数结论幸存下来。\cite{ch02riemannweb}
+
+\FloatBarrier
+
+\section{模型开始推理前，已经看见什么}
+
+模型真正收到的输入，远比终端里的那句要求长。会话开始时，Claude Code 会读取配置与项目指令，恢复会话信息，并登记内置工具、Skills 和 MCP 工具。随后，它才挑出本轮需要的片段，组装成一次 API 调用的 Prompt。Prompt 是运行时产物，不是写死在程序里的一大段文字。\cite{ch02e2e,ch02prompt}
+
+这些片段的职责并不相同。System Prompt 规定 Claude Code 怎样使用工具、怎样面对错误；\texttt{CLAUDE.md} 保存跨任务沿用的项目约定；用户消息说明这次要完成什么；工具 Schema 则列出工具名、参数和限制。放进一个数学研究工作区，长期规则可以是“引用结论时写明来源”“数值实验不能冒充证明”“失败路线要留下首个未证明步骤”；“继续尝试黎曼猜想”则是当前任务，不该被写成永久有效的项目知识。
+
+工具也不会只凭一句“可以做研究”就出现。它必须先注册，完整 Schema 也要进入模型可见的能力清单。只能读本地文件时，模型可以整理已有笔记；获得 Shell 后，它才能运行 Python 检查候选公式；允许联网检索后，它才有机会核对一项结论是否已经出现；接入 Lean 后，才可能把适合形式化的证明义务交给证明助手。换一套工具，同一句研究要求会产生完全不同的行动空间。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=blue!11,minimum width=5.15cm] (system) at (-2.85,2.05)
+    {系统行为\\工具调用、权限、结束条件};
+  \node[ccbox,fill=green!12,minimum width=5.15cm] (project) at (-2.85,1.12)
+    {项目知识\\\texttt{CLAUDE.md}、目录规则、Skills};
+  \node[ccbox,fill=purple!10,minimum width=5.15cm] (schemas) at (-2.85,0.19)
+    {工具说明\\名称、输入 schema、使用限制};
+  \node[draw=primary!60,dashed,rounded corners=3pt,fit=(system)(schemas),inner sep=4pt,
+        label={[ccnote]above:较稳定的前缀}] (stable) {};
+
+  \node[ccbox,fill=yellow!20,minimum width=5.15cm] (ask) at (2.85,1.66)
+    {当前请求\\认真尝试黎曼猜想};
+  \node[ccbox,fill=orange!15,minimum width=5.15cm,minimum height=1.00cm] (history) at (2.85,0.55)
+    {不断增长的任务轨迹\\候选路线、反例、脚本与审稿意见};
+  \node[draw=accent!65,dashed,rounded corners=3pt,fit=(ask)(history),inner sep=4pt,
+        label={[ccnote]above:每轮变化的尾部}] (dynamic) {};
+
+  \node[ccbox,fill=codebg,minimum width=4.00cm] (prompt) at (0,-0.72)
+    {本轮 Prompt};
+  \node[ccbox,fill=cyan!12,minimum width=2.75cm] (call) at (0,-1.67)
+    {模型调用};
+  \draw[ccflow] (stable.south) -- (prompt.north west);
+  \draw[ccflow] (dynamic.south) -- (prompt.north east);
+  \draw[ccflow] (prompt) -- (call);
+\end{tikzpicture}
+\caption{Prompt 的稳定前缀与动态尾部。缓存可以减少稳定部分的重复处理，却不会替任务轨迹腾出上下文。}
+\label{fig:ch02-prompt}
+\end{figure}
+
+把稳定内容放在前面还有一个现实理由：Prompt Caching 按前缀复用计算。系统行为和工具说明通常不会在每轮改变，放在前面就更容易命中缓存；实验输出与研究记录总在变化，适合留在后面。缓存降低的是重复处理成本，并不会扩大上下文窗口，也不会让一条已经被反例推翻的路线重新有效。
+
+所以，观察仍然要收窄。模型不必每轮吞下所有脚本输出和整篇论文；它更需要知道当前命题、已经排除的路线、刚发现的反例和仍未证明的那一步。Prompt 只负责把材料摆到眼前。某个假设是否已经被新结果推翻、某条引文是否真能支持眼前结论，还要靠循环继续核对。
+
+\FloatBarrier
+
+\section{它没有完整答案，只能走一小步}
+
+模型看到上下文以后，会生成文字，也可能提出一项 Tool 调用。下面这段轨迹根据公开过程整理，只用于展示动作之间的关系，并不是对原始命令逐行复刻：
+
+\begin{lstlisting}[caption={一条候选研究路线的教学化工具轨迹}]
+Read    研究计划与失败路线表
+Search  检索相关解析数论结果
+Bash    运行候选不等式的数值检查
+        -> 在控制对象上出现反例
+Edit    记录反例，关闭这条路线
+Agent   委派另一种估计方法
+        -> 返回待复核的局部引理
+\end{lstlisting}
+
+中间那条反例改变了问题。运行程序以前，候选不等式还只是一段看起来顺畅的推导；控制对象一旦把它击穿，下一轮就不应继续润色原证明，而要记录首个失败步骤、缩小命题或另开路线。模型上一轮写出的自信文字，不是研究对象的当前状态。
+
+这段往返就是 Agent Loop。它的主干很朴素：组装输入，调用模型，读取响应，执行工具，再把结果附到历史里。所参考的 v2.1.88 源码分析用异步生成器组织这条主干。文本和 Tool 请求随 API 响应逐项到达，终端可以边收边显示；工具参数一旦完整，执行器便能开始工作。循环则保留状态，等观察回来再接着走。\cite{ch02loop}
+
+每轮也不一定都产生新结论。停止原因会把流程送往不同出口：\texttt{tool\_use} 进入工具执行，\texttt{end\_turn} 转去申请结束；输出被截断、请求过长或服务暂时不可用，则进入恢复路径。提高输出额度、压缩上下文、退避或切换备用模型都有上限，免得救场逻辑变成新的死循环。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=0.52cm and 0.68cm]
+  \node[ccbox,fill=blue!12,minimum width=2.55cm] (judge) {判断\\下一项缺失的证据};
+  \node[ccbox,fill=yellow!22,minimum width=2.55cm,right=of judge] (call) {提出动作\\tool\_use};
+  \node[ccbox,fill=red!10,minimum width=2.55cm,below=of call] (execute) {执行工具\\访问真实环境};
+  \node[ccbox,fill=green!13,minimum width=2.55cm,left=of execute] (observe) {接收结果\\tool\_result};
+  \node[ccbox,fill=purple!11,minimum width=2.55cm,left=of observe] (update) {更新上下文\\保留有效证据};
+  \draw[ccflow] (judge) -- (call);
+  \draw[ccflow] (call) -- (execute);
+  \draw[ccflow] (execute) -- (observe);
+  \draw[ccflow] (observe) -- (update);
+  \draw[ccflow,rounded corners=5pt] (update.north) |- node[ccnote,above] {下一轮} (judge.west);
+\end{tikzpicture}
+  \caption{Agent Loop 让“判断--动作--观察--更新”反复往返，把行动结果带回下一次判断。}
+\label{fig:ch02-agent-loop}
+\end{figure}
+
+这个循环真正有用的地方，在于观察会改变下一步。数值实验若找出反例，候选引理就要撤回；文献检索若发现结论早已存在，就要重新说明新意在哪里；审稿 Agent 若指出证明偷偷用了待证命题，缺口必须回到推导阶段。一个不接收这些反馈的循环，只会更有耐心地重写同一项错误。
+
+因此，生产环境里的 Loop 花了很大力气处理三种坏结局。第一种是发散：它不断产生新猜法，却始终靠近不了可检验的命题，需要轮次和资源上限收住。第二种是过早收敛：模型很快说“证明完成”，证据却没齐，需要外部检查把缺口送回去。第三种是振荡：它在几条已经失败的等价路线之间来回，需要重复调用检测或失败台账打断。这些守卫不负责想答案，只在模型偏离、误停或原地踏步时改变执行路径。\cite{ch02loop,ch02hooks}
+
+\FloatBarrier
+
+\section{文字怎样变成真实动作}
+
+“这个不等式应该成立”和“程序在指定范围内没有找到反例”不是同一件事；“暂时没有反例”和“已经证明”更不是同一件事。前者是模型提出的判断，后两者分别要由可复现的实验与严谨推导作证。工具正是聊天与 Agent 之间的分水岭：它让文字撞上文件、程序和外部资料，也把成功或失败原样送回来。\cite{ch02tools}
+
+不同工具共享一套调用约定。名称、用途和输入 Schema 教模型怎样提出动作；只读性、能否并发和中断方式等元数据，则告诉 Harness 怎样调度。执行器按工具名找到实现、校验参数，并在权限与 Hook 通过后调用。成功、失败和用户拒绝，最后都会整理成 Tool Result。
+
+Read、Grep 这类只读且声明为并发安全的工具可以重叠执行；Edit、Bash 等可能改变环境的工具，前后要设串行屏障。能否并发由工具对副作用的声明决定，不由模型临时发挥。\cite{ch02tools}
+
+Tool Result 也不能毫无节制地塞回对话。宽泛搜索或很长的命令输出会先被限流，必要时截断，并把“结果过大，需要缩小查询”交给模型。下一轮再改用更窄的范围、行号或过滤条件。看不完时先收窄问题，也是 Agent Loop 的一部分。
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{L{0.16\textwidth}L{0.30\textwidth}L{0.44\textwidth}}
+\toprule
+工具 & 给模型的能力 & 在这项研究中的产物 \\
+\midrule
+Read / Grep & 读取笔记、代码与本地论文 & 已知条件、旧路线和待证缺口 \\
+Bash / Python & 检查公式、搜索数值反例 & 可复现输出与失败参数 \\
+Edit & 更新计划、脚本与证明稿 & 可追踪的研究状态 \\
+Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查报告 \\
+\bottomrule
+\end{tabular}
+\caption{Tool 把模型的研究意图变成可复查的文件、程序输出和报告。}
+\label{tab:ch02-tools}
+\end{table}
+
+工具产物各自回答不同问题。Python 很适合快速找错，却不能把有限范围的检查外推成无限情形的证明；文献搜索可以降低重复发现旧结果的风险，却不能保证“没搜到”就等于从未有人做过；Lean 能核对已经形式化的命题和推导，却不会替作者判断整篇论文的新颖性。把工具接进循环以后，证据变多了，证据的边界也必须一起写清楚。
+
+\FloatBarrier
+
+\section{副作用之前，谁有最后决定权}
+
+工具也把风险带进系统。读取一份论文失败，通常只是少了一项材料；运行陌生脚本、联网下载内容或覆盖研究文件，却可能影响工作区与机器环境。Claude Code 因此把权限检查放在意图和副作用之间。参考页面所分析的实现会先校验输入，再结合权限规则、风险判断与 PreToolUse Hook 决定允许、询问或拒绝；真正的工具执行发生在后面，结果还会经过 PostToolUse Hook 和格式化，再回到对话。\cite{ch02safety,ch02hooks}
+
+这里要分清“提醒模型别做”和“系统保证做不了”。把“只修改指定研究目录，不执行来源不明的程序”写进 Prompt，属于行为指令；用工作目录白名单、命令规则和 Hook 阻断越界操作，才接近强制边界。Prompt 会影响模型怎样选择动作，权限系统则决定动作能否真正发生，二者不能互相代替。
+
+权限、Hook 和沙箱也不是同一层东西。权限引擎回答“这次调用是否获准”，PreToolUse Hook 加上项目自己的规则；对 Bash 等本地能力，操作系统级沙箱还会限制“即使获准，进程最多能碰到哪里”。纵深防御的意义，就在于任何一层看漏了，后面仍有不同性质的约束。\cite{ch02safety,ch02officialhooks}
+
+不过，这些边界只保护执行环境。权限闸门可以阻止一个进程越界读写，不能阻止一份数学证明写错。数学正确性必须由反例、独立推导、形式化检查和人类审阅来把关，那是另一条验证链。
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=blue!12,minimum width=1.75cm] (input) at (-5.20,0.75) {Tool 请求};
+  \node[ccbox,fill=yellow!20,minimum width=1.75cm] (schema) at (-3.12,0.75) {参数校验};
+  \node[ccbox,fill=orange!16,minimum width=1.75cm] (permission) at (-1.04,0.75) {权限判断};
+  \node[ccbox,fill=purple!12,minimum width=1.75cm] (pre) at (1.04,0.75) {PreToolUse};
+  \node[ccbox,fill=cyan!12,minimum width=1.75cm] (boundary) at (3.12,0.75) {沙箱 / 边界};
+  \node[ccbox,fill=red!10,minimum width=1.75cm] (run) at (5.20,0.75) {工具执行};
+  \node[ccbox,fill=codebg,minimum width=2.70cm] (deny) at (0,-0.65)
+    {拒绝 / 阻断\\工具不执行};
+  \node[ccbox,fill=green!13,minimum width=2.80cm] (post) at (4.50,-0.65)
+    {PostToolUse\\记录与附加反馈};
+  \node[ccbox,fill=cyan!13,minimum width=3.00cm] (result) at (2.35,-2.02)
+    {Tool Result\\送回下一轮};
+  \draw[ccflow] (input) -- (schema);
+  \draw[ccflow] (schema) -- (permission);
+  \draw[ccflow] (permission) -- node[ccnote,above] {允许} (pre);
+  \draw[ccflow] (pre) -- (boundary);
+  \draw[ccflow] (boundary) -- (run);
+  \draw[ccflow] (run.south) -- (post.north);
+  \draw[ccflow] (post.south) -- (result.north east);
+  \draw[ccdash] (permission.south) -- node[ccnote,left] {拒绝} (deny.north west);
+  \draw[ccdash] (pre.south) -- node[ccnote,right] {阻断} (deny.north east);
+  \draw[ccdash] (deny.south) -- (result.north west);
+\end{tikzpicture}
+\caption{工具请求经过校验、权限、Hook 与执行边界后才产生副作用。拒绝也会送回模型。}
+\label{fig:ch02-tool-gate}
+\end{figure}
+
+权限询问不是额外插入的暂停画面。用户选择允许或拒绝，本身就是 Agent Loop 的一项新观察。若某次联网、写文件或执行命令被拒绝，模型就必须回到当前状态，改用本地材料、缩小动作范围，或者如实说明缺少哪项证据。人的决定由此进入推理链，而不是站在系统外面等最后结果。
+
+\FloatBarrier
+
+\section{上下文为什么会越来越挤}
+
+这项研究跨越两次 Claude Code 会话，总计生成约三千一百万个输出 token。第二次会话里还有约六十个子 Agent、两千四百条 Shell 命令、数百个 Python 脚本和大量论文材料。系统行为、工具 Schema、项目规则与研究轨迹都在争用上下文，还要给下一次输出预留空间。可以把约束粗略写成：\cite{ch02riemannweb}
+
+\[
+|\mathrm{system}|+|\mathrm{history}|+|\mathrm{tools}|+|\mathrm{reminders}|+|\mathrm{output\ reserve}|\leq W.
+\]
+
+系统说明和工具 Schema 多半是固定开销，最容易膨胀的是任务历史。窗口再大，也不能把每份旧推导、完整命令输出和整篇参考论文原样带进下一轮；从最早处开删，又可能丢掉被否决的路线、关键反例和仍未补上的证明缺口。\cite{ch02prompt,ch02compact}
+
+先从源头减量。数值脚本不必回传每一行中间量，只需留下关键统计、失败参数和完整日志的位置；文献检索先按命题与关键词收窄，再读取真正相关的段落。少生成一段无用 Tool Result，后面的压缩机制就少善后一次。
+
+历史还是继续增长时，Claude Code 才逐级处理。所据快照把机制整理成五层。第一层 Microcompact 只调整消息位置，目的是保护稳定前缀的缓存命中，\emph{不会}释放上下文空间；第二层开始归档较旧内容。压力继续上升时，系统逐段摘要；接近窗口上限后，用压缩子 Agent 生成结构化交接；若请求仍因过长被 API 拒绝，再进行一次更激进、而且有次数限制的应急压缩。越靠后，释放的空间越多，信息损失和额外成本也越大。\cite{ch02compact}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=green!14,minimum width=2.05cm] (t1) at (-4.65,0.65) {Microcompact\\只重排，不缩短};
+  \node[ccbox,fill=cyan!14,minimum width=2.05cm] (t2) at (-2.32,0.65) {Snip\\归档旧消息};
+  \node[ccbox,fill=yellow!22,minimum width=2.05cm] (t3) at (0,0.65) {Collapse\\分段摘要};
+  \node[ccbox,fill=orange!18,minimum width=2.05cm] (t4) at (2.32,0.65) {Auto Compact\\完整摘要};
+  \node[ccbox,fill=red!11,minimum width=2.05cm] (t5) at (4.65,0.65) {Reactive\\溢出兜底};
+  \draw[ccflow] (t1) -- (t2);
+  \draw[ccflow] (t2) -- (t3);
+  \draw[ccflow] (t3) -- (t4);
+  \draw[ccflow] (t4) -- (t5);
+  \draw[decorate,decoration={brace,amplitude=5pt},draw=primary]
+    (-3.30,-0.15) -- (5.65,-0.15)
+    node[midway,below=6pt,ccnote] {从 Snip 开始释放空间；越往后信息损失越大};
+\end{tikzpicture}
+\caption{上下文管理按代价逐级推进。第一层只保护缓存，第二层以后才真正回收空间。}
+\label{fig:ch02-compaction}
+\end{figure}
+
+压缩不可能把旧消息变成完全等价的短文本。数学研究若要中途交接，至少要留下：原始目标、当前最强结论、已经排除的路线、关键反例、待证明引理、引用来源，以及证据文件的位置。每一次失败尝试的完整对话不必幸存，曾经改变研究方向的理由却不能丢。
+
+关键状态要分层存放：当前对话留近期推导，会话摘要负责交接，跨任务沿用的研究纪律写进 \texttt{CLAUDE.md}，路线台账、实验日志和证明源码则留在外部文件。即使聊天被压短，“这条路线为什么失败”和“哪项引理仍未证明”也不必只靠模型记忆。
+
+System Reminder 还会在对话中途补入易变状态。例如，一个子 Agent 刚刚退回候选证明，或新的实验结果已经推翻旧假设，Harness 可以把“这条路线不再有效”重新摆回当前对话。Reminder 不是凭空发现变化，它只是把系统已经观察到的新事实及时送到模型眼前。\cite{ch02compact,ch02hooks}
+
+\FloatBarrier
+
+\section{大模型如何解决复杂问题}
+
+到这里，可以回答千奈最初的问题了。Claude Code 处理复杂任务，不是先在模型里生成一份完整解法，再照着执行。它先把大目标缩成下一项可检验的动作，让实验结果、文献与审稿意见不断修改计划。复杂性也不是一种东西：
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{L{0.20\textwidth}L{0.34\textwidth}L{0.36\textwidth}}
+\toprule
+复杂性 & 黎曼案例中的表现 & 系统怎样处理 \\
+\midrule
+路线不确定 & 事前不知道哪种估计能够成立 & 用反例与推导结果改写计划 \\
+信息过量 & 数百条路线、脚本和论文争用上下文 & 收窄结果，外部记录，摘要旧历史 \\
+工具风险 & Shell、联网与写文件触及真实环境 & 权限、Hook 与沙箱共同限制 \\
+独立分支 & 推导、反驳、查重和形式化可以拆开 & 为边界清楚的任务创建子 Agent \\
+\bottomrule
+\end{tabular}
+\caption{不同复杂性需要不同处理方式；并行只解决其中一部分。}
+\label{tab:ch02-complexity}
+\end{table}
+
+表里最后一行，才是子 Agent 出场的地方。一次模型调用只能沿一条轨迹向前走。若几十种数学路线彼此相对独立，让主 Agent 逐条尝试，会把大量失败细节都压进同一份上下文。子 Agent 则各自获得一份任务说明，在独立上下文里运行自己的 Loop，最后把结论、证据与未解决处交回协调者。主上下文不必吞下每条支线的完整转录，却要承担摘要可能遗漏关键细节的风险。
+
+公开报告把约六十个子 Agent 的工作分成了几类：两个形成关键数学思路，十三个向这些路线提供材料，三十个尝试提出新方向但没有成功，十三个负责验证，最后两个协助起草论文。这个分布很重要。多智能体系统的大部分产物本来就是失败与复核；若只展示两个成功者，读者会误以为并行的作用只是同时猜更多答案。\cite{ch02riemannweb}
+
+真正的转折来自一个编号为 E2 的支线。它原本受命研究某个“负指标”的上界，希望借此限制不在临界线上的零点。计算以后，它发现这条上界路线是空的，什么也限制不了。到这里，任务按原目标已经失败。E2 却注意到，同一套记账若反过来数“正方向”，似乎可以无条件保证至少一半的零点在临界线上。问题从“能否证明黎曼猜想”侧移成了“能否证明一个更强的比例下界”。\cite{ch02riemannpaper,ch02riemanntranscript}
+
+协调者没有直接采用这个结论。三个彼此隔离的审稿 Agent 分别攻击局部化、素数一侧的估计和线性代数结构；另一个审稿者专查近似误差。还有 Agent 在联网环境中查找已有文献，并让一名看不到此前文件的 Agent 从命题出发独立重证。半数下界通过这些检查后，用户明确追问能否继续推到三分之二；协调者再派出两条路线，其中一名新 Agent 利用更细的秩--迹不等式，把结果推进到超过三分之二。人类没有提供这条不等式，却参与了目标选择和继续搜索的决定。\cite{ch02riemannpaper,ch02riemanntranscript}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=blue!12,minimum width=3.00cm] (lead) at (0,2.25)
+    {协调者\\拆题、续派与汇总};
+  \node[ccbox,fill=yellow!20,minimum width=2.35cm] (explore) at (-4.35,0.85)
+    {探索 Agent\\提出不同路线};
+  \node[ccbox,fill=red!10,minimum width=2.35cm] (attack) at (-1.45,0.85)
+    {反驳 Agent\\寻找首个漏洞};
+  \node[ccbox,fill=cyan!13,minimum width=2.35cm] (literature) at (1.45,0.85)
+    {文献 Agent\\核对已有结果};
+  \node[ccbox,fill=green!13,minimum width=2.35cm] (verify) at (4.35,0.85)
+    {验证 Agent\\复算、重证、形式化};
+  \node[ccbox,fill=purple!12,minimum width=3.80cm] (synth) at (0,-0.65)
+    {比较证据\\淘汰、修补或继续委派};
+  \node[ccbox,fill=codebg,minimum width=3.80cm] (human) at (0,-1.85)
+    {交给数学家复核};
+  \draw[ccflow] (lead.south) -- (explore.north);
+  \draw[ccflow] (lead.south) -- (attack.north);
+  \draw[ccflow] (lead.south) -- (literature.north);
+  \draw[ccflow] (lead.south) -- (verify.north);
+  \draw[ccflow] (explore.south) -- (synth.north);
+  \draw[ccflow] (attack.south) -- (synth.north);
+  \draw[ccflow] (literature.south) -- (synth.north);
+  \draw[ccflow] (verify.south) -- (synth.north);
+  \draw[ccflow] (synth) -- (human);
+\end{tikzpicture}
+\caption{多 Agent 的价值不只在“多猜几条路”，还在于把提出、反驳、查重与验证分开。}
+\label{fig:ch02-multi-agent-review}
+\end{figure}
+
+这组公开材料把执行者统称为 Claude subagents；它没有证明每个支线都对应当前产品里某一种固定的 Agent Teams 配置。产品层面的 Subagent、Agent Teams、通信和 Worktree 仍要分开理解，下一章再展开。这里先记住一个判断：子 Agent 增加的是探索宽度，不自动增加正确性。让不同角色沿不同证据路径互相找错，才把并行计算变成了可用的研究过程。
+
+\FloatBarrier
+
+\section{完成不是模型说“完成”}
+
+模型生成“证明完成”，只表示它准备结束这一轮。\texttt{end\_turn} 是退出申请，不是验收报告。对这项意外得到的比例下界，至少还要追问：命题是否写得精确，推导是否完整，控制对象会不会产生荒谬结论，数值程序能否复现，引用是否真的支持所用前提，以及独立审阅者能否从头重建关键步骤。
+
+这些问题不能交给同一个上下文用一句“我再检查过了”解决。公开记录显示，Claude 为不同薄弱点安排了相互隔离的审稿 Agent，又下载五十四篇 arXiv 论文核对新颖性，并让新的 Agent 在看不到原推导的情况下独立重证。经过十次独立检查后，系统判断继续增加相同实例已经很难带来新信息，下一步应交给人类解析数论专家。\cite{ch02riemannweb,ch02riemannpaper}
+
+Claude Code 的 Stop Hook 可以给这条验证链加上一道机器可读的门：例如检查数值脚本是否正常退出、Lean 项目是否通过、证明稿是否还留有占位符、要求的附件是否齐全。若缺少产物，Hook 可以把缺口送回 Agent Loop。它却不能判定一个新定理在数学上必然正确，也不能证明文献检索没有漏网。公开材料没有声称本次研究使用了下面这项自定义 Hook；图中画的是 Claude Code 可采用的验收机制，而不是对历史会话的复刻。\cite{ch02loop,ch02hooks,ch02officialhooks}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[ccbox,fill=blue!12,minimum width=2.60cm] (end) at (-4.15,0.70)
+    {模型请求结束\\\texttt{end\_turn}};
+  \node[ccbox,fill=yellow!22,minimum width=2.60cm] (hook) at (-1.20,0.70)
+    {Stop Hook\\检查机器可读产物};
+  \node[ccbox,fill=green!13,minimum width=2.60cm] (pass) at (1.75,1.25)
+    {脚本、构建、附件齐全\\允许流程结束};
+  \node[ccbox,fill=red!10,minimum width=2.60cm] (fail) at (1.75,0.05)
+    {产物仍有缺口\\注入失败原因};
+  \node[ccbox,fill=purple!12,minimum width=2.60cm] (loop) at (4.70,0.05)
+    {返回 Agent Loop\\重新观察或继续};
+  \draw[ccflow] (end.east) -- (hook.west);
+  \draw[ccflow] (hook.north east) -- node[ccnote,above left] {通过} (pass.west);
+  \draw[ccflow] (hook.south east) -- node[ccnote,below left] {未通过} (fail.west);
+  \draw[ccflow] (fail.east) -- (loop.west);
+  \draw[ccdash,rounded corners=5pt]
+    (loop.south) -- ++(0,-0.50) -| node[ccnote,below,pos=0.30] {修正后再申请结束} (end.south);
+\end{tikzpicture}
+\caption{Stop Hook 能检查约定的产物，却不能代替数学审稿。}
+\label{fig:ch02-stop-hook}
+\end{figure}
+
+验证也有层级。数值实验擅长找反例，不负责覆盖无限情形；Lean 核对的是已经被准确形式化进去的命题，不负责判断研究是否新颖；数学家的详细复核仍不等于期刊同行评审已经结束。官方材料称，两位 Anthropic 数学家检查了论文，Brian Conrey 与 Daniel Goldston 也阅读了稿件并提出意见；截至本章写作时，这项刚公开的结果仍应以研究论文而非既成教科书结论来引用。\cite{ch02riemannweb,ch02riemannlean}
+
+在所据版本的端到端流程里，通过机器侧检查后还会保存会话、整理需要延续的记忆，再把结果显示给用户。这段流程留下的核心是顺序：先拿到能拿到的证据，再允许循环退出，最后才写总结。若把顺序倒过来，一段流畅文字很容易替尚未完成的证明作证。\cite{ch02e2e}
+
+\section{把证据送回最初的问题}
+
+屏幕上的 $67.2\%$ 现在有了完整的来路：一条意外支线先得到二分之一，经过敌对审查后继续推进，再由论文、程序、形式化材料与数学家复核共同托住。六百五十条首轮失败和第二轮的大部分分支也没有被改写成成功故事。它们负责标出哪些路已经撞墙。
+
+\begin{quote}
+\textbf{千奈：}所以，它证明黎曼猜想了？
+
+\textbf{广：}没有。
+
+\textbf{千奈：}那就是还差 $32.8\%$？
+
+\textbf{广：}不能这样减。剩下的部分，不保证能沿同一条路继续推进。
+
+\textbf{佑芽：}前面这一段跑得通，不代表照着跑下去就能到终点。也许从这里开始，就要换一种跑法。
+
+\textbf{千奈：}那六百五十条失败路线呢？
+
+\textbf{广：}留下来。下一条路就不用假装没走过。
+\end{quote}
+
+广把黑板上的最后一支箭头，从“交给数学家复核”接回最初那句不合理的要求。
+
+复杂问题并不是被模型在开头一次想完的。Prompt 把当前问题和规则摆到眼前；Agent Loop 让想法接受程序与材料的反馈；外部文件保存会被上下文遗忘的失败；子 Agent 扩大探索宽度，也承担彼此挑错；权限约束动作边界，验证链则约束结论边界。到最后，系统交付的不只是一句答案，还包括答案是怎样幸存下来的，以及它没有回答什么。
+
+\begin{quote}
+\textbf{千奈：}最开始的任务，还是没有完成。
+
+\textbf{广：}嗯。
+
+\textbf{佑芽：}可是已经走得比以前远了。而且哪里会摔倒，也都记下来了。
+
+\textbf{千奈：}花海同学已经完全把它当成跑步了呢。
+
+\textbf{佑芽：}因为这样最好懂！
+
+\textbf{广：}嗯。道理没错。失败以后，没有假装成功，还留下了下一步。
+\end{quote}
+
+\section*{资料与版本边界}
+\phantomsection
+\addcontentsline{toc}{section}{资料与版本边界}
+
+本文以 Anthropic 于 2026 年 8 月 10 日公开的说明、研究论文、子 Agent 记录与 Lean 仓库为案例来源。$67.2\%$ 指“临界线上零点比例”的新无条件下界，不是黎曼猜想已经完成了 $67.2\%$，更不是黎曼猜想的证明。公开材料记录了两次 Claude Code 会话的总体规模与若干关键支线；正文中的简化工具轨迹和结构图用于解释机制，不是假装逐条还原完整会话。
+
+Claude Code 的技术部分主要参考 Zhuoran Yang 的 \textit{Inside Claude Code} 系列与 Avi Chawla 的第三方架构图解。相关源码分析基于 Claude Code v2.1.88 的 Source Map；工具数量、权限模式、压缩层级和内部名称都属于该快照，不应直接外推到其他版本。Hook 的能力边界另以 Anthropic 官方文档核对。研究案例使用的未发布 Claude 模型，也不能与这个源码快照或读者当前可用的模型版本画等号。
+
+\begin{thebibliography}{99}
+\bibitem{ch02riemannweb}
+Anthropic. \textit{Learning more about Claude's mathematical capabilities}. August 10, 2026. \url{https://www.anthropic.com/research/riemann-zeta}
+
+\bibitem{ch02riemannpaper}
+Claude. \textit{More Than Two Thirds of the Zeros of the Riemann Zeta Function Lie on the Critical Line}. 2026. \url{https://www-cdn.anthropic.com/564f962e60643842f5fcb4a17c9dbc8f608f1c37.pdf}
+
+\bibitem{ch02riemanntranscript}
+Anthropic. \textit{Transcripts of Claude sub-agents E2 and E2-pairs, typeset and annotated}. 2026. \url{https://www-cdn.anthropic.com/8a0d1add3c637b858a9a181e98c40e9548c3f44f.pdf}
+
+\bibitem{ch02riemannlean}
+Anthropic. \textit{zeta-23-lean: Formal verification artifacts}. GitHub, 2026. \url{https://github.com/anthropics/zeta-23-lean}
+
+\bibitem{ch02e2e}
+Zhuoran Yang. \textit{End-to-End Workflow}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/01-end-to-end-workflow.html}
+
+\bibitem{ch02visual}
+Avi Chawla. \textit{Claude Code's Architecture, Explained Visually}. Daily Dose of Data Science, 2026. \url{https://blog.dailydoseofds.com/p/claude-codes-architecture-explained}
+
+\bibitem{ch02loop}
+Zhuoran Yang. \textit{Agent Loop \& Query Engine}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/02-agent-loop-query-engine.html}
+
+\bibitem{ch02prompt}
+Zhuoran Yang. \textit{Prompt Assembly Pipeline}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/03-prompt-assembly.html}
+
+\bibitem{ch02compact}
+Zhuoran Yang. \textit{Context Compaction}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/04-context-compaction.html}
+
+\bibitem{ch02tools}
+Zhuoran Yang. \textit{Tool System \& Registry}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/05-tool-system.html}
+
+\bibitem{ch02safety}
+Zhuoran Yang. \textit{Safety \& Sandboxing}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/06-safety-sandbox.html}
+
+\bibitem{ch02hooks}
+Zhuoran Yang. \textit{Hooks \& Lifecycle}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/11-hooks-lifecycle.html}
+
+\bibitem{ch02officialhooks}
+Anthropic. \textit{Hooks reference}. Claude Code Docs, accessed 2026-08-13. \url{https://code.claude.com/docs/en/hooks}
 \end{thebibliography}
