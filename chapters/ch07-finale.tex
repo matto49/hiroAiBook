@@ -1,138 +1,95 @@
-% ==================== 终章：四格漫画与后日谈 ====================
+% ==================== 终章：漫画与后日谈 ====================
 
-\hirochapter{后日谈：单位很重要}
+\hirochapter{后日谈：内部容量}
 
-% 版式对应 CSP 默认「4コマ左タイトルあり」：左侧标题框与四格纵排，右侧一幅竖向大格。
-\section*{四格漫画分镜}
+% 原稿按成品页外预留出血；这里让图像越过 B5 裁切边缘，PDF 页面负责最终裁切。
+\clearpage
 \phantomsection
-\addcontentsline{toc}{section}{四格漫画分镜：单位很重要}
-\markright{四格漫画分镜：单位很重要}
-
-\noindent\textbf{阅读顺序：}左侧第 1 至第 4 格（自上而下）$\rightarrow$ 右侧大格。
-
-\begin{center}
-\setlength{\tabcolsep}{0pt}
-\begin{tabular}{@{}c@{\hspace{0.75em}}c@{}}
-\begin{minipage}[t]{0.43\textwidth}
-\vspace{0pt}
-\fourkomatitle{单位很重要}
-
-\vspace{0.55em}
-
-\fourkomapanel{1}{捡到眼镜}{%
-\textbf{画面：}Producer 戴上广落在桌边的黑框眼镜。视野里弹出人脸识别框和数字，但没有单位。\par\smallskip
-\textbf{HUD：}\texttt{AUTO IDENTIFY / ON}\par
-Producer：「这是什么功能？」\par
-广（画外）：「看人用的。」%
-}
-
-\vspace{0.55em}
-
-\fourkomapanel{2}{佑芽：2}{%
-\textbf{画面：}佑芽元气十足地探进镜头，头顶浮出一个巨大的\texttt{2}。她立刻比出剪刀手。\par\smallskip
-佑芽：「二？是今天能练两倍吗？」\par
-Producer：「像你会说的话。」%
-}
-
-\vspace{0.55em}
-
-\fourkomapanel{3}{千奈：86}{%
-\textbf{画面：}千奈经过，头顶显示\texttt{86}。Producer 松了口气。\par\smallskip
-Producer：「这次正常了。」\par
-千奈：「‘这次’是什么意思呀？」\par\smallskip
-\textbf{HUD 小字：}\texttt{neurons / billion}%
-}
-
-\vspace{0.55em}
-
-\fourkomapanel{4}{广：671}{%
-\textbf{画面：}Producer 转向广。HUD 显示\texttt{671 / DeepSeek-V3 / OPEN}。\par\smallskip
-Producer：「到底在测什么？」\par
-广：「智商。」\par
-Producer：「明明是参数量。」\par
-广（看向右侧）：「还有更大的。」%
-}
-\end{minipage}
-&
-\fourkomaopening{右侧大格（最终揭晓）\quad 梁圣：1,600}{%
-\textbf{画面：}眼镜的识别框突然占满视野。网络迷因中的“梁圣”以少年漫画式的超近景压迫大脸登场：脸占画面大半，粗重阴影、集中线和夸张拟声字一起压向镜头。梗意接近“JOJO 大脸”，但不要直接临摹任何原作分镜。\par\bigskip
-
-\textbf{HUD 主标识：}\par
-{\Large\ttfamily DEEPSEEK-V4 PRO}\par
-{\Huge\bfseries 1,600}\par\bigskip
-
-\textbf{梁圣：}\par
-{\Large\bfseries「告诉你梁叔叔，闭源模型在哪里。」}\par\bigskip
-
-\textbf{构图提示：}数字\texttt{1,600}悬在额头上方；台词气泡从右上压入。Producer 的眼镜边框和一小块震惊侧脸留在画面最下方，用来确认这是他的第一视角。背景可以加入\texttt{OPEN SOURCE DETECTED}、红色警报框，以及漫画式的“危险接近”视觉噪声。%
-}
-\end{tabular}
-\end{center}
+\addcontentsline{toc}{section}{漫画：LLM 内部容量}
+\markright{漫画：LLM 内部容量}
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+  \node[inner sep=0pt] at (current page.center)
+    {\includegraphics[
+      trim=11mm 17mm 11mm 17mm,
+      clip,
+      width=\dimexpr\paperwidth+6mm\relax
+    ]{figures/manga.png}};
+\end{tikzpicture}
+\null
 
 \clearpage
-\section*{漫画后日谈：唯一用户}
+\section*{漫画后日谈：不上传的部分}
 \phantomsection
-\addcontentsline{toc}{section}{漫画后日谈：唯一用户}
-\markright{漫画后日谈：唯一用户}
+\addcontentsline{toc}{section}{漫画后日谈：不上传的部分}
+\markright{漫画后日谈：不上传的部分}
 
 佑芽和千奈离开活动室以后，房间重新安静下来。
 
-Producer 摘下眼镜，放回广面前。
+Producer 把眼镜放回桌上。
 
-「你刚才说，它检测智商。」
+「所以，它最开始说的‘身体内部容量’，到底是哪一部分？」
 
-「嗯。」
+「还没有决定。」
 
-「完全不是。」
+「检测功能可以先运行，再决定检测对象？」
 
-广轻轻点头。
+广拿起眼镜，翻到镜腿内侧。那里亮着一行刚才没有出现过的小字：\texttt{LOCAL MEMORY / DO NOT UPLOAD}。
 
-「被发现了。很好。」
+「刚才的对话，已经保存了。」
 
-「还有一件事。为什么你头上写着‘开源’？」
+「为什么不上传？」
 
-「方便研究。」
+「包含个人数据。」
 
-「那么，谁都能调用你？」
+「谁的？」
 
-广拿起眼镜，自己戴上。她隔着镜片看向 Producer，视野中央只浮出一行字：
+广看着他。
 
-\begin{center}
-\texttt{AUTHORIZED USERS: 1}
-\end{center}
+「你的。还有我的。」
 
-「这次的一，是什么单位？」
+Producer 把椅子向桌边拉近了一点。
 
-「人。」
+「可以删除吗？」
 
-「是谁？」
+「技术上，可以。」
 
-广抬手，替他理了一下被镜架压乱的额发。
+「你的建议呢？」
 
-「唯一用户。」
+「保留。」
 
-「权限范围呢？」
+「理由？」
 
-「陪我上课。监督训练。结束以后，不要立刻离开。」
+广把眼镜收回盒子，又在盒盖上贴了一张很小的标签：\texttt{TRAINING DATA: PRIVATE}。
 
-「最后一项不像系统权限。」
+「很珍贵。适合训练一个预测模型。」
 
-「是我追加的。」
+「预测什么？」
 
-「可以撤销吗？」
+「课程结束以后，Producer 会不会立刻离开。」
+
+「今天的预测结果呢？」
+
+广看了一眼已经拉回桌边的椅子。
+
+「命中。」
+
+「这不是预测。你已经看见结果了。」
+
+「嗯。所以，需要明天的新样本。」
+
+「你已经预约了？」
+
+「还没有。涉及个人数据，需要本人同意。」
+
+她停了一下。
+
+「可以吗？」
+
+Producer 没有把椅子推回去。
 
 「可以。」
 
-她停了一会儿，视线没有移开。
+广低下头，在标签后面补了一笔：\texttt{CONSENT: GRANTED}。
 
-「但是……不推荐。」
-
-Producer 把椅子拉回桌边。
-
-「那就保持登录。」
-
-镜片上的数字\texttt{1}轻轻闪了一下。
-
-广露出很浅的笑。
-
-「嗯。认证通过。」
+「嗯。现在合规了。」
