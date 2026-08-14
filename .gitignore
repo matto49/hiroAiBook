@@ -6,6 +6,7 @@
 *.lof
 *.lot
 *.synctex.gz
+*.synctex(busy)
 *.bbl
 *.blg
 *.fdb_latexmk
