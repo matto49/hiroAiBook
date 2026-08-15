@@ -304,6 +304,20 @@
 % --- 附录 & 结语 ---
 \input{chapters/backmatter}
 
+% --- 封底（从含 3 mm 出血的成品中裁切到 JIS B5） ---
+\clearpage
+{\thispagestyle{empty}%
+\begin{tikzpicture}[remember picture,overlay]
+  \node[inner sep=0pt] at (current page.center)
+    {\includegraphics[
+      trim=3mm 3mm 3mm 3mm,
+      clip,
+      width=\paperwidth,
+      height=\paperheight
+    ]{figures/back-cover/hiro-back-cover-minimal-v1-300dpi.png}};
+\end{tikzpicture}}
+\clearpage
+
 \fi
 
 \end{document}
