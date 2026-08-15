@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Multi-Agent Orchestration – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./19-plan-mode.html" rel="next">
+<link href="./15-agent-sdk-structured-io.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II. Agent Harness</a></li><li class="breadcrumb-item"><a href="./07-multi-agent-orchestration.html">II.3 — Multi-Agent Orchestration</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#why-multi-agent" id="toc-why-multi-agent" class="nav-link active" data-scroll-target="#why-multi-agent">Why Multi-Agent?</a></li>
+  <li><a href="#the-fork-analogy" id="toc-the-fork-analogy" class="nav-link" data-scroll-target="#the-fork-analogy">The fork() Analogy</a>
+  <ul class="collapse">
+  <li><a href="#two-spawn-paths-fork-vs.-fresh-agent" id="toc-two-spawn-paths-fork-vs.-fresh-agent" class="nav-link" data-scroll-target="#two-spawn-paths-fork-vs.-fresh-agent">Two Spawn Paths – Fork vs.&nbsp;Fresh Agent</a></li>
+  </ul></li>
+  <li><a href="#five-agent-types-a-cost-capability-spectrum" id="toc-five-agent-types-a-cost-capability-spectrum" class="nav-link" data-scroll-target="#five-agent-types-a-cost-capability-spectrum">Five Agent Types – A Cost-Capability Spectrum</a>
+  <ul class="collapse">
+  <li><a href="#explore" id="toc-explore" class="nav-link" data-scroll-target="#explore">Explore</a></li>
+  <li><a href="#plan" id="toc-plan" class="nav-link" data-scroll-target="#plan">Plan</a></li>
+  <li><a href="#custom" id="toc-custom" class="nav-link" data-scroll-target="#custom">Custom</a></li>
+  <li><a href="#subagent" id="toc-subagent" class="nav-link" data-scroll-target="#subagent">Subagent</a></li>
+  <li><a href="#teammate" id="toc-teammate" class="nav-link" data-scroll-target="#teammate">Teammate</a></li>
+  </ul></li>
+  <li><a href="#subagent-prompt-assembly-what-each-type-receives" id="toc-subagent-prompt-assembly-what-each-type-receives" class="nav-link" data-scroll-target="#subagent-prompt-assembly-what-each-type-receives">Subagent Prompt Assembly – What Each Type Receives</a></li>
+  <li><a href="#worktree-isolation-process-isolation-for-code-changes" id="toc-worktree-isolation-process-isolation-for-code-changes" class="nav-link" data-scroll-target="#worktree-isolation-process-isolation-for-code-changes">Worktree Isolation – Process Isolation for Code Changes</a></li>
+  <li><a href="#the-teammate-protocol-persistent-peer-collaboration" id="toc-the-teammate-protocol-persistent-peer-collaboration" class="nav-link" data-scroll-target="#the-teammate-protocol-persistent-peer-collaboration">The Teammate Protocol – Persistent Peer Collaboration</a></li>
+  <li><a href="#swarm-coordination-coordinator-mode" id="toc-swarm-coordination-coordinator-mode" class="nav-link" data-scroll-target="#swarm-coordination-coordinator-mode">Swarm Coordination – Coordinator Mode</a>
+  <ul class="collapse">
+  <li><a href="#coordinator-vs.-teammates" id="toc-coordinator-vs.-teammates" class="nav-link" data-scroll-target="#coordinator-vs.-teammates">Coordinator vs.&nbsp;Teammates</a></li>
+  </ul></li>
+  <li><a href="#resource-management-token-budgets-models-and-cleanup" id="toc-resource-management-token-budgets-models-and-cleanup" class="nav-link" data-scroll-target="#resource-management-token-budgets-models-and-cleanup">Resource Management – Token Budgets, Models, and Cleanup</a></li>
+  <li><a href="#memory-hierarchy-what-is-shared-what-is-private" id="toc-memory-hierarchy-what-is-shared-what-is-private" class="nav-link" data-scroll-target="#memory-hierarchy-what-is-shared-what-is-private">Memory Hierarchy – What Is Shared, What Is Private</a></li>
+  <li><a href="#when-to-spawn-the-agent-selection-decision" id="toc-when-to-spawn-the-agent-selection-decision" class="nav-link" data-scroll-target="#when-to-spawn-the-agent-selection-decision">When to Spawn – The Agent Selection Decision</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II. Agent Harness</a></li><li class="breadcrumb-item"><a href="./07-multi-agent-orchestration.html">II.3 — Multi-Agent Orchestration</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Multi-Agent Orchestration</h1>
+<p class="subtitle lead">fork() for AI – five agent types, worktree isolation, and swarm coordination</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">multi-agent</div>
+    <div class="quarto-category">orchestration</div>
+    <div class="quarto-category">subagents</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="why-multi-agent" class="level2">
+<h2 class="anchored" data-anchor-id="why-multi-agent">Why Multi-Agent?</h2>
+<p>In Unix, when a process needs to do two things at once, it calls <code>fork()</code>. The kernel copies the process – same binary, same memory layout, same file descriptors – and the child runs independently. The parent can wait for the result, or carry on with its own work. This is the fundamental primitive of parallel computation in operating systems: clone yourself, diverge, reconverge.</p>
+<p>Claude Code does the same thing with AI agents.</p>
+<p>When a task is too large for a single context window, or when multiple pieces of work can proceed independently, the main agent spawns sub-agents – each with its own context, tools, and working directory. The sub-agent executes, reports back, and terminates. The parent synthesizes results. This is not an analogy stretched for rhetorical effect. The code literally calls it “fork.” The feature flag is <code>FORK_SUBAGENT</code>. The function is <code>buildForkedMessages</code>. The child’s system prompt begins: <em>“STOP. READ THIS FIRST. You are a forked worker process. You are NOT the main agent.”</em></p>
+<p>This post covers how Claude Code decomposes tasks across multiple agents, isolates their work in git worktrees, manages their budgets, and synthesizes their results – the same decompose-execute-aggregate pattern that appears as MapReduce, fork-join parallelism, and actor-model concurrency in systems programming. The agent loop that each sub-agent runs is described in <a href="./02-agent-loop-query-engine.html">Part II.1</a>; the tool system through which agents are dispatched is in <a href="./05-tool-system.html">Part IV.1</a>; the safety layer that constrains their actions is in <a href="./06-safety-sandbox.html">Part IV.2</a>.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-post-territory" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-post-territory-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-post-territory">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  A["Five Agent&lt;br&gt;Types"] --&gt; E["Result Synthesis&lt;br&gt;and Merge"]
+  B["Worktree&lt;br&gt;Isolation"] --&gt; E
+  C["Coordination&lt;br&gt;Models"] --&gt; E
+  D["Resource&lt;br&gt;Management"] --&gt; E
+
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style B fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style E fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-post-territory-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The four pillars of multi-agent orchestration covered in this post – five agent types, git worktree isolation, coordination models (Coordinator vs.&nbsp;Teammate), and resource management (token budgets, model selection, cleanup) – all feed into a final result synthesis and merge step where the parent agent integrates child outputs.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start from the four boxes on the left – Five Agent Types, Worktree Isolation, Coordination Models, and Resource Management – each representing a major section of this post. All four arrows converge on the Result Synthesis and Merge box on the right, showing that these pillars are independent concerns that combine at the end when the parent agent integrates child outputs.</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/tools/AgentTool/AgentTool.tsx</code></td>
+<td>AgentTool entry point and UI</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/tools/AgentTool/runAgent.ts</code></td>
+<td>Agent execution with cleanup</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/tools/AgentTool/forkSubagent.ts</code></td>
+<td>Fork-based async workers</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/tools/AgentTool/loadAgentsDir.ts</code></td>
+<td>Agent discovery and YAML frontmatter parsing</td>
+<td>~756 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/tools/AgentTool/builtInAgents.ts</code></td>
+<td>Built-in agent definitions (Explore, Plan, etc.)</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/tools/AgentTool/prompt.ts</code></td>
+<td>Sub-agent system prompt assembly</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/tools/AgentTool/agentMemory.ts</code></td>
+<td>Agent-scoped memory management</td>
+<td>~150 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/teamMemorySync/</code></td>
+<td>Team memory synchronization protocol</td>
+<td>5 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/coordinator/</code></td>
+<td>Swarm coordinator mode</td>
+<td>~3 files</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="the-fork-analogy" class="level2">
+<h2 class="anchored" data-anchor-id="the-fork-analogy">The fork() Analogy</h2>
+<p>The connection between sub-agents and Unix processes is not metaphorical – it is structural. A Unix <code>fork()</code> creates a child process with a copy of the parent’s memory; Claude Code’s <span class="kw-sage">fork path</span> creates a child agent with a copy of the parent’s conversation history and system prompt. A Unix child inherits file descriptors; a fork child inherits the parent’s exact tool pool. A Unix child runs in its own virtual address space; a fork child runs in its own <span class="kw-terra">git worktree</span>. The isolation boundaries, the communication primitives, and the lifecycle management all map directly.</p>
+<p>The <span class="kw-terra">AgentTool</span> implementation – spanning <span class="kw-slate">14 files and over 6,000 lines</span> of TypeScript in <code>tools/AgentTool/</code> – is the single entry point for all delegation. Every sub-agent in Claude Code, whether a cheap read-only explorer or a persistent teammate running for hours, is spawned through this one tool:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">interface</span> AgentInput {</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  prompt<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>             <span class="co">// Full task description</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  description<span class="op">:</span> <span class="dt">string</span><span class="op">;</span>        <span class="co">// 3-5 word summary (for task lists)</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  subagent_type<span class="op">?:</span> <span class="dt">string</span><span class="op">;</span>     <span class="co">// "Explore" | "Plan" | "subagent" | "teammate" | "custom"</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  model<span class="op">?:</span> <span class="st">"sonnet"</span> <span class="op">|</span> <span class="st">"opus"</span> <span class="op">|</span> <span class="st">"haiku"</span><span class="op">;</span>  <span class="co">// Per-agent model override</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  run_in_background<span class="op">?:</span> <span class="dt">boolean</span><span class="op">;</span>  <span class="co">// Async execution (returns task_id)</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  name<span class="op">?:</span> <span class="dt">string</span><span class="op">;</span>              <span class="co">// Makes agent addressable via SendMessage</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  isolation<span class="op">?:</span> <span class="st">"worktree"</span><span class="op">;</span>     <span class="co">// Git worktree isolation</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every field is a lever the orchestrating agent pulls. The <code>model</code> field enables per-agent cost optimization: an Explore agent doing simple searches runs on <code>haiku</code> (cheapest), while a Subagent implementing complex logic uses <code>opus</code> (most capable). The <code>run_in_background</code> flag determines whether the parent blocks (synchronous delegation) or continues working (asynchronous execution). And <code>name</code> makes the agent addressable for follow-up messages via <code>SendMessage</code>, enabling multi-turn collaboration.</p>
+<p>The crucial detail is what happens when <code>subagent_type</code> is omitted. When the <code>FORK_SUBAGENT</code> feature flag is active, omitting the type triggers implicit forking – the child inherits the parent’s full conversation context and system prompt. When the flag is off, the system defaults to the <code>general-purpose</code> agent type. This single conditional branch is the difference between two entirely different spawning strategies: fresh-start delegation versus context-inheriting forking.</p>
+<section id="two-spawn-paths-fork-vs.-fresh-agent" class="level3">
+<h3 class="anchored" data-anchor-id="two-spawn-paths-fork-vs.-fresh-agent">Two Spawn Paths – Fork vs.&nbsp;Fresh Agent</h3>
+<p>The codebase implements two distinct spawn paths, and the context each child receives differs dramatically between them.</p>
+<p><strong>Path A: Fork.</strong> Triggered when the model calls the Agent tool <em>without</em> specifying a <code>subagent_type</code>. The child receives the parent’s <strong>full conversation history</strong>, the <strong>identical system prompt</strong>, and the parent’s <strong>exact tool pool</strong> (byte-identical, for prompt cache sharing). The function <code>buildForkedMessages()</code> constructs exactly two messages to append after the parent’s conversation:</p>
+<ol type="1">
+<li>A clone of the parent’s last assistant message (all <code>tool_use</code> blocks, thinking blocks, text blocks).</li>
+<li>A single user message containing placeholder <code>tool_result</code> blocks (identical text across all forks, again for cache sharing) plus the child’s specific task directive. The directive enforces 10 non-negotiable rules: do not re-delegate, do not converse, do not editorialize, use tools directly, stay in scope, keep the report under 500 words, begin with “Scope:”, report structured facts, then stop.</li>
+</ol>
+<p>Because the system prompt, tools, and conversation prefix are byte-identical between parent and all fork children, the LLM API’s prompt cache treats all but the first child as a cache hit. Only the final directive message differs per child.</p>
+<p><strong>Path B: Fresh agent.</strong> Triggered when the model <em>specifies</em> a <code>subagent_type</code> (Explore, Plan, subagent, teammate, or custom). The child starts with <strong>zero conversation context</strong>. It receives only a single user message containing the task prompt. It gets its own system prompt assembled from the agent type definition, its own freshly assembled tool pool, and a fresh file state cache. It has no knowledge of what the parent discussed, what files were read, or what decisions were made.</p>
+<p>All five named agent types use Path B. The fork path (Path A) is a separate mechanism that fires only when the type is omitted.</p>
+<p>This is the fundamental context trade-off: fork children see everything the parent knows (expensive, high-context) while typed agents see only the task description (cheap, focused). The fork path is for tasks that require the parent’s accumulated understanding. The typed agent path is for tasks where a clean slate and a specialized role are more valuable than shared history.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The Agent tool is not just a tool – it is a meta-tool that creates new agents. From the parent’s perspective, it is a function call that returns a result. From the child’s perspective, it is the beginning of an entire agent lifecycle. This duality – tool from above, agent from within – is what makes the system recursive. See <a href="./05-tool-system.html">Part IV.1</a> for how this fits into the broader tool dispatch pipeline.</p>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="five-agent-types-a-cost-capability-spectrum" class="level2">
+<h2 class="anchored" data-anchor-id="five-agent-types-a-cost-capability-spectrum">Five Agent Types – A Cost-Capability Spectrum</h2>
+<p>Claude Code does not have one type of sub-agent. It has five, arranged along a spectrum from cheap-and-constrained to expensive-and-capable. Choosing the right type for a task is the multi-agent equivalent of choosing the right data structure: the cheapest option that meets the requirements wins.</p>
+<p>Think of it like hiring for a project. You would not pay a senior architect to do a grep search, and you would not ask an intern to design the system architecture. Each role has a cost, a capability set, and an appropriate scope of work.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-agent-types" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-agent-types-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-agent-types">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  E["&lt;b&gt;Explore&lt;/b&gt;&lt;br&gt;Read-only&lt;br&gt;Haiku model&lt;br&gt;Fire-and-forget"] --&gt; P["&lt;b&gt;Plan&lt;/b&gt;&lt;br&gt;Read-only&lt;br&gt;Inherited model&lt;br&gt;Strategy output"]
+  P --&gt; C["&lt;b&gt;Custom&lt;/b&gt;&lt;br&gt;YAML-defined&lt;br&gt;Configurable model&lt;br&gt;Any tool subset"]
+  C --&gt; S["&lt;b&gt;Subagent&lt;/b&gt;&lt;br&gt;All tools&lt;br&gt;Full capability&lt;br&gt;Fire-and-forget"]
+  S --&gt; T["&lt;b&gt;Teammate&lt;/b&gt;&lt;br&gt;All tools + SendMessage&lt;br&gt;Persistent, named&lt;br&gt;Peer messaging"]
+
+  style E fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style P fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style S fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style T fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-agent-types-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Five agent types arranged along a cost-capability spectrum. Explore agents are read-only with the cheapest Haiku model and fire-and-forget semantics. Plan agents are also read-only but produce structured implementation strategies. Custom agents are YAML-defined with configurable tool subsets. Subagents get full tool access for self-contained tasks. Teammates are persistent, named agents with bidirectional messaging via SendMessage. Cost and capability increase left to right.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Read left to right along the cost-capability spectrum. Explore (leftmost) is the cheapest and most constrained agent type – read-only, Haiku model, fire-and-forget. Each step rightward adds capability and cost, culminating in Teammate (rightmost), which has full tools, persistence, and peer messaging. The arrows represent increasing investment: choose the leftmost type that satisfies your task’s requirements.</p>
+<section id="explore" class="level3">
+<h3 class="anchored" data-anchor-id="explore">Explore</h3>
+<p>Explore agents are the cheapest option. Their system prompt opens with a bold block you cannot miss:</p>
+<blockquote class="blockquote">
+<p><em>“=== CRITICAL: READ-ONLY MODE ===”</em></p>
+</blockquote>
+<p>This is not a polite suggestion. The prompt includes a prominent <strong>READ-ONLY MODE</strong> block that explicitly prohibits all file writes, creates, deletes, moves, and redirects. Tools are restricted at the registry level to <code>Read</code>, <code>Glob</code>, <code>Grep</code>, <code>WebFetch</code>, and a <code>Bash</code> that rejects any write command. Even if the model attempts to call <code>Write</code>, the call is rejected before execution. The model is set to <code>haiku</code> – the cheapest available – because search does not require frontier reasoning.</p>
+<p>An important cost optimization: Explore agents have <code>omitClaudeMd: true</code>, which strips the CLAUDE.md instruction hierarchy from their context. Critically, git status is also omitted – another token-saving measure that compounds at scale. The code comment notes this <em>“saves <span class="kw-slate">~5-15 Gtok/week across 34M+ Explore spawns</span>.”</em> That is an extraordinary number – 34 million Explore agents per week – and explains why shaving even a few hundred tokens per spawn matters at fleet scale. Explore agents are fire-and-forget: spawn, search, return findings, terminate.</p>
+</section>
+<section id="plan" class="level3">
+<h3 class="anchored" data-anchor-id="plan">Plan</h3>
+<p>Plan agents share Explore’s read-only tool restriction but serve a fundamentally different purpose: they produce structured implementation plans. The <span class="kw-sage">separation of planning from execution</span> is deliberate. Planning requires broad context (reading many files to understand architecture) but minimal capability (no writing). Execution requires deep capability but narrower context (working on one file at a time). Splitting these avoids the context window pressure of doing both in one agent.</p>
+<p>The Plan agent’s prompt enforces a structured four-phase reasoning process with named stages: (i) <strong>Understand Requirements</strong>, (ii) <strong>Explore Thoroughly</strong>, (iii) <strong>Design Solution</strong>, and (iv) <strong>Detail the Plan</strong>. The required output includes a <strong>“Critical Files for Implementation”</strong> section listing 3 to 5 files that are central to the planned changes. This structured output ensures that plans are actionable rather than abstract.</p>
+<p>Plan agents also carry <code>omitClaudeMd: true</code> and omit git status, matching the same cost optimizations as Explore – they can read CLAUDE.md directly if needed, but carrying it in every spawn’s context is wasted tokens.</p>
+</section>
+<section id="custom" class="level3">
+<h3 class="anchored" data-anchor-id="custom">Custom</h3>
+<p>Custom agents are defined by markdown files in <code>.claude/agents/</code> with YAML frontmatter specifying name, description, tool allowlist/denylist, model, permission mode, hooks, MCP servers, skills, memory scope, and isolation mode. The <code>loadAgentsDir.ts</code> file (756 LOC) discovers and parses these definitions, supporting agents from five sources: built-in, plugin, user settings, project settings, and managed policy settings. When sources conflict, later sources override earlier ones – project overrides user, managed overrides project. A “security-reviewer” agent can be restricted to read-only tools while an “api-doc-writer” gets <code>Write</code> access but no <code>Bash</code>. This fine-grained capability control is the extension point for team workflows.</p>
+</section>
+<section id="subagent" class="level3">
+<h3 class="anchored" data-anchor-id="subagent">Subagent</h3>
+<p>Subagents (also referred to as the “general-purpose” type) get full tool access (<code>tools: ['*']</code>) and operate fire-and-forget. The parent spawns a subagent with a self-contained task (“Implement the <code>UserService</code> class”), it executes, and returns. Its system prompt is spare:</p>
+<blockquote class="blockquote">
+<p><em>“Complete the task fully – don’t gold-plate, but don’t leave it half-done.”</em></p>
+</blockquote>
+<p>Unlike Explore and Plan, the general-purpose subagent <strong>includes the full CLAUDE.md instruction hierarchy and git status</strong> in its context. This is a deliberate trade-off: subagents perform write operations and need project conventions, coding standards, and repository state to produce correct output. The additional prompt cost is justified because subagents are spawned far less frequently than Explore agents, and their tasks require the richer context.</p>
+<p>Subagents are appropriate when the task is well-defined and needs full capability but no follow-up interaction.</p>
+</section>
+<section id="teammate" class="level3">
+<h3 class="anchored" data-anchor-id="teammate">Teammate</h3>
+<p>Teammates are the most sophisticated type. Unlike all others, they are persistent and named. They do not terminate after returning a result – they go <span class="kw-sage">idle</span>, consuming zero compute, waiting for new messages via <span class="kw-terra">SendMessage</span>. Teammates get the full tool set plus coordination tools (<code>TaskCreate</code>, <code>TaskGet</code>, <code>TaskList</code>, <code>TaskUpdate</code>, <code>SendMessage</code>). Their system prompt is the most expensive: the full main agent prompt, custom instructions, and team memory.</p>
+<p>The idle-wake cycle is key to teammate economics. When a new message arrives, the teammate wakes with full context from its previous work, processes the message, and either responds or goes idle again. This is the coroutine pattern applied to agents: suspend at yield points, resume with state intact.</p>
+<hr>
+</section>
+</section>
+<section id="subagent-prompt-assembly-what-each-type-receives" class="level2">
+<h2 class="anchored" data-anchor-id="subagent-prompt-assembly-what-each-type-receives">Subagent Prompt Assembly – What Each Type Receives</h2>
+<p><strong>Each agent type receives a fundamentally different system prompt, assembled by a dedicated function (<code>dQ6()</code>) that composes three parts: an agent-specific prompt, thread notes, and environment info. The cost difference between types is not just about model selection – it is about prompt size.</strong></p>
+<p>The main agent’s system prompt (<code>DX()</code>) runs approximately 20 KB across 17 sections. Sub-agents receive dramatically smaller prompts – the Explore agent’s prompt is roughly 3 KB, a 7x reduction. This size difference is a direct cost optimization: at 34 million Explore spawns per week, every kilobyte matters.</p>
+<p>The <code>dQ6()</code> assembly function constructs every sub-agent prompt from three parts:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-subagent-prompt" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-subagent-prompt-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-subagent-prompt">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  P1["&lt;b&gt;Part I&lt;/b&gt;&lt;br&gt;Agent-Specific Prompt&lt;br&gt;&lt;i&gt;3 KB to 20 KB&lt;/i&gt;"] --&gt; ASM["&lt;b&gt;dQ6()&lt;/b&gt;&lt;br&gt;Assembled Prompt"]
+  P2["&lt;b&gt;Part II&lt;/b&gt;&lt;br&gt;Thread Notes&lt;br&gt;&lt;i&gt;Absolute paths, no emojis&lt;/i&gt;"] --&gt; ASM
+  P3["&lt;b&gt;Part III&lt;/b&gt;&lt;br&gt;Environment Info&lt;br&gt;&lt;i&gt;CWD, git, platform&lt;/i&gt;"] --&gt; ASM
+  ASM --&gt; TE["Explore: ~3 KB"]
+  ASM --&gt; TP["Plan: ~3 KB"]
+  ASM --&gt; TC["Custom: varies"]
+  ASM --&gt; TS["Subagent: ~5 KB"]
+  ASM --&gt; TT["Teammate: ~20 KB"]
+
+  style P1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style P2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style P3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style ASM fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style TE fill:#C4A882,color:#fff,stroke:#A08562
+  style TP fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style TC fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style TS fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style TT fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-subagent-prompt-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Subagent prompt assembly via the dQ6() function. Three parts compose into a type-specific system prompt: Part I is the agent-specific prompt (varying from 3 KB for Explore to 20 KB for Teammate), Part II contains thread notes with behavioral constraints (absolute paths, no emojis), and Part III provides runtime environment info (CWD, git status, platform). The 7x size difference between Explore and Teammate prompts is a primary lever for cost control at fleet scale.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start from the three input boxes on the left (Part I: Agent-Specific Prompt, Part II: Thread Notes, Part III: Environment Info), which all feed into the central dQ6() assembly function. From there, follow the arrows right to see the five output variants, each labeled with its approximate prompt size. The key takeaway is the 7x size difference between Explore (~3 KB) and Teammate (~20 KB), which is the primary lever for cost control at fleet scale.</p>
+<p><strong>Part I.2: Agent-Specific Prompt.</strong> This is where the types diverge. Each type receives a prompt tuned to its role:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 37%">
+<col style="width: 45%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Opening Line</th>
+<th>Key Directives</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Explore</strong></td>
+<td><em>“You are a file search specialist for Claude Code”</em></td>
+<td><code>=== CRITICAL: READ-ONLY MODE ===</code>; restricted to Glob, Grep, Read, WebFetch, Bash (read-only)</td>
+</tr>
+<tr class="even">
+<td><strong>Plan</strong></td>
+<td><em>“You are a software architect and planning specialist”</em></td>
+<td>Read-only; four phases: Understand, Explore, Design, Detail</td>
+</tr>
+<tr class="odd">
+<td><strong>General-purpose</strong></td>
+<td><em>“You are an agent for Claude Code. Given the user’s message, use tools to complete”</em></td>
+<td>Full tool access; no restrictions</td>
+</tr>
+<tr class="even">
+<td><strong>Custom</strong></td>
+<td>User-defined in <code>.claude/agents/*.md</code></td>
+<td>YAML frontmatter specifies tool allowlist/denylist, model, permissions</td>
+</tr>
+<tr class="odd">
+<td><strong>Teammate</strong></td>
+<td>Full main agent <code>DX()</code> prompt + custom instructions + team memory</td>
+<td>All tools + <code>SendMessage</code> + <code>TaskCreate/Get/List/Update</code>; persistent, named</td>
+</tr>
+</tbody>
+</table>
+<p>The Explore and Plan prompts share a critical optimization: <code>omitClaudeMd: true</code>. This strips the CLAUDE.md instruction hierarchy – which can be 5–15 KB of project-specific instructions – from the sub-agent’s context. The code comment notes this saves <em>“~5–15 Gtok/week across 34M+ Explore spawns.”</em> The sub-agent can always <code>Read</code> the CLAUDE.md file directly if needed, but carrying it in every spawn’s system prompt is wasted tokens at fleet scale.</p>
+<p><strong>Part II.1: Thread Notes.</strong> A set of behavioral constraints shared across all sub-agent types. All agent types share four specific thread notes appended to their prompt: (1) use absolute file paths (because the child’s working directory resets between Bash calls), (2) no emojis, (3) no colons before tool calls, and (4) include code snippets only when the exact text is load-bearing (e.g., a bug found, a function signature requested). These are the “house rules” that prevent sub-agents from producing output that confuses the parent.</p>
+<p><strong>Part III.1: Environment Info.</strong> Runtime context injected into every sub-agent: current working directory, git status snapshot, platform (darwin/linux), shell type, OS version, model ID, and knowledge cutoff date. This ensures every sub-agent knows where it is and what it is running on without needing to discover this information via tool calls.</p>
+<p>The Teammate type deserves special attention. Its Part I.2 includes the <em>entire</em> main agent prompt (<code>DX()</code>) – all 17 sections, all behavioral rules – plus custom agent instructions and synchronized team memory. This is why Teammates are the most expensive type: their prompt alone costs as much as the main agent’s. The justification is that Teammates are persistent and long-running; they amortize this startup cost over many interactions, unlike fire-and-forget types that pay it once and terminate.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The prompt size spectrum – 3 KB for Explore, 20 KB for Teammate – is not incidental. It is the primary lever for cost control in a system that spawns millions of sub-agents per week. Every fragment included in a sub-agent’s prompt is a deliberate choice: worth the tokens for the capability it provides, or stripped to save budget. This is the same principle as the <a href="./03-prompt-assembly.html">prompt assembly pipeline</a>’s conditional inclusion – but applied at the agent level rather than the fragment level.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="worktree-isolation-process-isolation-for-code-changes" class="level2">
+<h2 class="anchored" data-anchor-id="worktree-isolation-process-isolation-for-code-changes">Worktree Isolation – Process Isolation for Code Changes</h2>
+<p>When two agents edit the same file in parallel, they clobber each other’s changes. <span class="kw-terra">Git worktrees</span> solve this by giving each agent its own working copy of the repository – <span class="kw-sage">process isolation</span> applied to the filesystem. This is the most operationally important feature in the multi-agent system.</p>
+<p>Setting <code>isolation: "worktree"</code> in the Agent tool input creates a separate git worktree for the child agent. A git worktree is an independent working directory linked to the same <code>.git</code> object database. Each worktree can be on a different branch, with different uncommitted changes, without interference.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-worktree" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-worktree-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-worktree">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph MAIN ["Main: /project/"]
+    MA["auth.ts"]
+    MB["api.ts"]
+    GIT[".git/ (objects)"]
+  end
+
+  subgraph WTA ["Worktree A"]
+    AA["&lt;b&gt;auth.ts (mod)&lt;/b&gt;"]
+    AB["api.ts"]
+  end
+
+  subgraph WTB ["Worktree B"]
+    BA["auth.ts"]
+    BB["&lt;b&gt;api.ts (mod)&lt;/b&gt;"]
+  end
+
+  GIT -.-&gt;|"shared objects"| WTA
+  GIT -.-&gt;|"shared objects"| WTB
+
+  style MA fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style MB fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style GIT fill:#C2856E,color:#fff,stroke:#A06A54
+  style AA fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style AB fill:#C4A882,color:#fff,stroke:#A08562
+  style BA fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style BB fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-worktree-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Git worktree isolation for parallel agent work. The main repository and two worktrees (A and B) share the same .git object database but maintain independent working directories. Agent A modifies auth.ts while Agent B modifies api.ts, with no interference – analogous to copy-on-write virtual memory where pages are shared until written. Conflict resolution defers to merge time, mirroring how human developers use branches.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The center subgraph (Main) contains the shared .git object database, while Worktree A and Worktree B on either side are independent working directories. Dashed arrows from .git to each worktree indicate shared objects. Notice that auth.ts is bold/modified in Worktree A while api.ts is bold/modified in Worktree B – each agent edits different files in its own copy with no interference, and conflicts are deferred to merge time.</p>
+<p>The analogy to process isolation is precise. In an OS, each process gets its own virtual address space. Writing to address <code>0x1000</code> in process A does not affect address <code>0x1000</code> in process B. Similarly, editing <code>auth.ts</code> in Worktree A has no effect on <code>auth.ts</code> in Worktree B or in the main directory. Conflict resolution happens at merge time, not at write time – the same as IPC versus shared memory.</p>
+<p>When a fork child runs in a worktree, it receives a special notice via <code>buildWorktreeNotice()</code>:</p>
+<blockquote class="blockquote">
+<p><em>“You’ve inherited the conversation context above from a parent agent working in [parentCwd]. You are operating in an isolated git worktree at [worktreeCwd] – same repository, same relative file structure, separate working copy. Paths in the inherited context refer to the parent’s working directory; translate them to your worktree root.”</em></p>
+</blockquote>
+<p>The lifecycle is carefully managed. The <code>createAgentWorktree</code> utility creates the worktree. If the agent completes without changes (checked by <code>hasWorktreeChanges</code>), the worktree is cleaned up automatically by <code>removeAgentWorktree</code>. If changes persist, the worktree path and branch are returned in the agent’s result for the parent to review, merge, or discard. This mirrors how human developers work: branch, make changes, open a PR, merge or close. No stale directories accumulate.</p>
+<hr>
+</section>
+<section id="the-teammate-protocol-persistent-peer-collaboration" class="level2">
+<h2 class="anchored" data-anchor-id="the-teammate-protocol-persistent-peer-collaboration">The Teammate Protocol – Persistent Peer Collaboration</h2>
+<p>Where all other agent types are fire-and-forget, the Teammate system introduces persistence, naming, and bidirectional messaging. Teammates differ from other types in three fundamental ways.</p>
+<p>First, they are <strong>persistent and named</strong> – they do not terminate after returning a result. Instead, they go idle, consuming zero compute, waiting for a new message via <code>SendMessage</code>. Second, they communicate <strong>bidirectionally</strong> – any teammate can message any other teammate directly, forming a mesh topology rather than a star. Third, they share <strong>team memory</strong> – a synchronized knowledge base that persists across sessions and is invisible to agents outside the team.</p>
+<p>The <code>SendMessage</code> tool enables peer-to-peer communication. When teammate <code>backend-dev</code> needs to tell <code>frontend-dev</code> about an API contract change, it calls <code>SendMessage({ to: "frontend-dev", message: "..." })</code>. The message arrives as a user-role message in the target’s conversation, waking it from idle if necessary. This enables emergent coordination: the backend developer can negotiate an API contract with the frontend developer without routing every message through the main agent. The test writer can ask the backend developer to clarify an edge case. The main agent need not be the bottleneck for every inter-agent communication.</p>
+<p>In-process teammates (checked via <code>isInProcessTeammate()</code>) share the terminal with the parent and can show permission prompts. Remote and background teammates cannot. The system tracks this distinction through the <code>canShowPermissionPrompts</code> parameter, which determines whether the agent’s permission mode should auto-deny prompts or bubble them to the user.</p>
+<p>Team memory is synchronized through <code>services/teamMemorySync/</code>, which implements a full sync protocol with an Anthropic backend server. The data model is flat key-value storage: keys are file paths relative to the team memory directory (like <code>MEMORY.md</code>, <code>patterns.md</code>), values are UTF-8 string content. The sync protocol handles conflicts via version numbers and ETags, with per-key checksums for efficient diff detection. A secret scanner (<code>secretScanner.ts</code>) and <code>teamMemSecretGuard.ts</code> prevent accidental leakage of credentials into team memory.</p>
+<hr>
+</section>
+<section id="swarm-coordination-coordinator-mode" class="level2">
+<h2 class="anchored" data-anchor-id="swarm-coordination-coordinator-mode">Swarm Coordination – Coordinator Mode</h2>
+<p><span class="kw-terra">Coordinator Mode</span> replaces the normal agent loop with a <span class="kw-sage">hub-and-spoke</span> delegation model. Feature-flagged under <code>COORDINATOR_MODE</code>, this mode is activated by the <code>CLAUDE_CODE_COORDINATOR_MODE</code> environment variable and is mutually exclusive with fork-based spawning. The coordinator plans and delegates; workers execute and report. Workers cannot see each other and cannot communicate directly.</p>
+<p>The coordinator’s system prompt is a 369-line document that defines the entire orchestration protocol, organized into four phases:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-coordinator" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-coordinator-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-coordinator">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph PHASES ["Four-Phase Workflow"]
+    direction LR
+    R["&lt;b&gt;Research&lt;/b&gt;&lt;br&gt;&lt;i&gt;Workers investigate&lt;br&gt;codebase in parallel&lt;/i&gt;"] --&gt; S["&lt;b&gt;Synthesis&lt;/b&gt;&lt;br&gt;&lt;i&gt;Coordinator crafts&lt;br&gt;implementation specs&lt;/i&gt;"]
+    S --&gt; I["&lt;b&gt;Implementation&lt;/b&gt;&lt;br&gt;&lt;i&gt;Workers make&lt;br&gt;targeted changes&lt;/i&gt;"]
+    I --&gt; V["&lt;b&gt;Verification&lt;/b&gt;&lt;br&gt;&lt;i&gt;Workers test&lt;br&gt;changes work&lt;/i&gt;"]
+  end
+
+  subgraph HUB ["Hub-and-Spoke Topology"]
+    COORD["&lt;b&gt;Coordinator&lt;/b&gt;"] --&gt; W1(("W1"))
+    COORD --&gt; W2(("W2"))
+    COORD --&gt; W3(("W3"))
+  end
+
+  PHASES --&gt; HUB
+
+  style R fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style I fill:#C2856E,color:#fff,stroke:#A06A54
+  style V fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style COORD fill:#C4A882,color:#fff,stroke:#A08562
+  style W1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style W2 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style W3 fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-coordinator-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Coordinator Mode’s four-phase workflow (Research, Synthesis, Implementation, Verification) paired with its hub-and-spoke topology. Workers investigate the codebase in parallel during Research, the Coordinator synthesizes findings into implementation specs, workers make targeted changes, then workers verify the changes compile and pass tests. Workers are invisible to each other – all communication routes through the central Coordinator, making this a MapReduce-style orchestration pattern.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The top subgraph shows the four-phase workflow reading left to right: Research, Synthesis, Implementation, Verification. Below it, the Hub-and-Spoke subgraph shows the Coordinator at the center with arrows fanning out to three workers (W1, W2, W3). Workers cannot see or message each other – all communication routes through the Coordinator, making this a centralized MapReduce-style orchestration pattern where the coordinator is both planner and bottleneck.</p>
+<p>The coordinator prompt contains two striking anti-patterns that are explicitly forbidden:</p>
+<blockquote class="blockquote">
+<p><em>“Never write ‘based on your findings, fix the bug’ or ‘based on the research, implement it.’ Those phrases push synthesis onto the agent instead of doing it yourself.”</em></p>
+</blockquote>
+<p>This forces the coordinator to actually understand research results before delegating implementation.</p>
+<blockquote class="blockquote">
+<p><em>“After launching agents, briefly tell the user what you launched and end your response. Never fabricate or predict agent results in any format.”</em></p>
+</blockquote>
+<p>This prevents the coordinator from hallucinating results it has not received.</p>
+<p>Worker results arrive as <code>&lt;task-notification&gt;</code> XML in user-role messages. The coordinator parses the notification, extracts the result, and decides the next action: continue the worker (via <code>SendMessage</code> with the agent ID), spawn a fresh one, or report to the user. The decision of continue vs.&nbsp;spawn is governed by context overlap:</p>
+<blockquote class="blockquote">
+<p><em>“High overlap – continue. Low overlap – spawn fresh.”</em></p>
+</blockquote>
+<section id="coordinator-vs.-teammates" class="level3">
+<h3 class="anchored" data-anchor-id="coordinator-vs.-teammates">Coordinator vs.&nbsp;Teammates</h3>
+<p>The two orchestration models represent a classic systems trade-off:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 24%">
+<col style="width: 37%">
+<col style="width: 37%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimension</th>
+<th>Coordinator Mode</th>
+<th>Teammate System</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Topology</strong></td>
+<td>Hub-and-spoke (star)</td>
+<td>Mesh (peer-to-peer)</td>
+</tr>
+<tr class="even">
+<td><strong>Worker lifecycle</strong></td>
+<td>Fire-and-forget, stateless</td>
+<td>Persistent, named, idle/wake</td>
+</tr>
+<tr class="odd">
+<td><strong>Communication</strong></td>
+<td>One-way delegation</td>
+<td>Bidirectional messaging</td>
+</tr>
+<tr class="even">
+<td><strong>State management</strong></td>
+<td>All state in coordinator</td>
+<td>Distributed + shared team memory</td>
+</tr>
+<tr class="odd">
+<td><strong>Inter-worker visibility</strong></td>
+<td>Workers cannot see each other</td>
+<td>Teammates can DM peers</td>
+</tr>
+<tr class="even">
+<td><strong>Best for</strong></td>
+<td>Parallel batch processing</td>
+<td>Collaborative, interdependent work</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="resource-management-token-budgets-models-and-cleanup" class="level2">
+<h2 class="anchored" data-anchor-id="resource-management-token-budgets-models-and-cleanup">Resource Management – Token Budgets, Models, and Cleanup</h2>
+<p>Sub-agents need resource limits for the same reason OS processes do: without them, one runaway agent consumes the entire budget. Claude Code enforces several constraints at multiple levels.</p>
+<p><strong>Max turns.</strong> Each agent defaults to 200 turns, configurable via frontmatter. This is the equivalent of <code>ulimit -t</code> – a hard CPU time limit that prevents infinite loops. When the limit is reached, the agent receives a <code>max_turns_reached</code> attachment message and stops.</p>
+<p><strong>Per-agent model selection.</strong> The <code>model</code> field in the Agent tool input controls per-turn cost. Explore on haiku costs a fraction of Subagent on opus. The <code>getAgentModel()</code> function resolves the effective model through a cascade: explicit tool input overrides agent definition, which overrides parent model, which overrides the default. Custom agents can specify <code>model: 'inherit'</code> to match the parent.</p>
+<p><strong>Permission bubbling.</strong> Fork agents use <code>permissionMode: 'bubble'</code> – permission prompts surface to the parent terminal rather than being silently denied or independently handled. This prevents 10 concurrent agents from each prompting the user simultaneously.</p>
+<p><strong>Cache-aware forking.</strong> The fork path is not just another spawning strategy – it is a <span class="kw-sage">cache optimization</span> that transforms the cost of multi-agent work from linear to near-constant. The function <code>buildForkedMessages</code> ensures that all fork children start with byte-identical prompt prefixes. LLM APIs cache prompt prefixes; if two requests share the same prefix, the second gets a cache hit. By making fork children byte-identical up to the fork point, Claude Code pays full prompt cost once and gets cache hits for all subsequent children.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-cache-forking" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cache-forking-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-cache-forking">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  PREFIX["&lt;b&gt;Shared Prefix&lt;/b&gt; (byte-identical)&lt;br&gt;&lt;i&gt;System prompt + tool descriptions +&lt;br&gt;conversation history + fork boilerplate&lt;/i&gt;"] --&gt; C1
+  PREFIX --&gt; C2
+  PREFIX --&gt; C3
+
+  C1["Child 1: &lt;b&gt;FULL COST&lt;/b&gt; + task 1"]
+  C2["Child 2: &lt;b&gt;CACHE HIT&lt;/b&gt; + task 2"]
+  C3["Child 3: &lt;b&gt;CACHE HIT&lt;/b&gt; + task 3"]
+
+  style PREFIX fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style C1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style C3 fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cache-forking-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Cache-aware forking exploits LLM prompt caching. All fork children start with a byte-identical prefix (system prompt + tool descriptions + conversation history + fork boilerplate). Child 1 pays the full prompt cost. Children 2 through N get cache hits on the shared prefix, paying only for their unique task directive. This transforms multi-agent cost from O(N x M) to approximately O(M + N x delta), yielding 70-85% cost reduction at scale.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top with the Shared Prefix box, which represents the byte-identical portion (system prompt, tool descriptions, conversation history, fork boilerplate) common to all children. Follow the three arrows down to the children: Child 1 pays full cost because it is the first to process the prefix, while Children 2 and 3 get cache hits on the shared prefix and pay only for their unique task directives. This transforms multi-agent cost from linear to near-constant.</p>
+<p>The cost savings are dramatic. For 5 fork agents, the first child pays full cost for the shared prefix. Children 2 through 5 get cache hits on that prefix, paying only for their unique directive. Without forking, 5 agents at <span class="math inline">\(M\)</span> prompt tokens each costs <span class="math inline">\(5M\)</span> tokens. With forking, it costs approximately <span class="math inline">\(M + 4\delta\)</span> – about a 70% reduction.</p>
+<p><strong>State access boundaries</strong> enforce isolation through three distinct patterns:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 34%">
+<col style="width: 34%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Function</th>
+<th>Behavior</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>setAppState</code></td>
+<td>No-op for async agents</td>
+<td>Prevents race conditions in parent’s state</td>
+</tr>
+<tr class="even">
+<td><code>setAppStateForTasks</code></td>
+<td>Always reaches root agent</td>
+<td>Task progress must be globally visible</td>
+</tr>
+<tr class="odd">
+<td><code>getAppState</code></td>
+<td>Returns root agent’s state (read-only)</td>
+<td>Consistent view without mutation risk</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cleanup.</strong> When an agent terminates, <code>runAgent</code> cleans up eight distinct resources in its <code>finally</code> block: agent-specific MCP servers, session hooks, prompt cache tracking state, cloned file state cache, fork context messages, Perfetto trace entries, transcript subdirectory mappings, orphaned todo entries, and background bash tasks. In a system that spawns 34 million Explore agents per week, even tiny per-agent leaks become catastrophic at scale. This is the agent equivalent of a destructor in RAII: every resource acquired during agent startup must be released during shutdown.</p>
+<hr>
+</section>
+<section id="memory-hierarchy-what-is-shared-what-is-private" class="level2">
+<h2 class="anchored" data-anchor-id="memory-hierarchy-what-is-shared-what-is-private">Memory Hierarchy – What Is Shared, What Is Private</h2>
+<p>The multi-agent memory model has four scopes, arranged like a CPU cache hierarchy: each level is larger, slower to update, and shared more broadly.</p>
+<p><span class="kw-sage">Agent memory</span> is the innermost scope – private working state that dies when the agent terminates. It is the agent’s scratchpad: intermediate search results, partial analyses, draft plans. No other agent sees it. This is L1 cache: the fastest, most private, most volatile.</p>
+<p><span class="kw-sage">Team memory</span> is synchronized across all teammates in a team via <code>services/teamMemorySync/</code>. The sync protocol uses versioned entries with ETags for conflict detection. Team memory is invisible to agents outside the team. This is L2 cache: shared within a group, with coherence protocols.</p>
+<p><strong>Session memory</strong> survives context compaction – the process where older messages are summarized to free context space (see <a href="./03-prompt-assembly.html">Part III.1</a>). Session memory entries are preserved across compaction and re-injected into the context. This is L3 cache: survives local eviction, re-filled after capacity events.</p>
+<p><strong>MEMORY.md</strong> is the outermost scope – global project memory, persisted to disk, readable by all agents across all sessions. It lives in <code>.claude/</code> at the project root, with three sub-scopes: user-level, project-level, and local (not checked into version control). This is main memory: persistent, globally accessible, the authoritative record.</p>
+<p>The layered approach prevents the “noisy neighbor” problem. One agent’s intermediate findings do not pollute another’s context window. Global decisions flow down (all agents read MEMORY.md). Team decisions stay within teams. Working state stays private. This is the same principle that makes CPU cache hierarchies work: data locality determines placement.</p>
+<hr>
+</section>
+<section id="when-to-spawn-the-agent-selection-decision" class="level2">
+<h2 class="anchored" data-anchor-id="when-to-spawn-the-agent-selection-decision">When to Spawn – The Agent Selection Decision</h2>
+<p>Not every task needs multi-agent coordination. The overhead of spawning, managing, and synthesizing across agents is only justified when the task exceeds what a single context window can handle – or when the intermediate output is not worth keeping in the parent’s context.</p>
+<p>A critical architectural point: the spawning decision is <strong>entirely model-driven</strong>. There is no programmatic heuristic that forces sub-agent creation. The model sees the Agent tool in its tool menu, listed alongside Read, Bash, Edit, and every other tool, and decides autonomously whether to invoke it. The Agent tool’s description includes guidance on when delegation is appropriate, examples of effective sub-agent prompts, and descriptions of the available agent types. From the model’s perspective, spawning a sub-agent is an ordinary tool call that returns a text result. The system imposes no rule like “if task complexity exceeds threshold X, spawn a child.” The model reads the context, evaluates its own capacity, and makes the call.</p>
+<p>The fork prompt captures this decision criterion directly:</p>
+<blockquote class="blockquote">
+<p><em>“Fork yourself when the intermediate tool output isn’t worth keeping in your context. The criterion is qualitative – ‘will I need this output again’ – not task size.”</em></p>
+</blockquote>
+<p>The prompt also warns against two failure modes:</p>
+<blockquote class="blockquote">
+<p><em>“Don’t peek”</em>: do not read the fork’s output file mid-execution – it pulls tool noise into the parent’s context, defeating the purpose.</p>
+<p><em>“Don’t race”</em>: do not fabricate or predict results before the notification arrives.</p>
+</blockquote>
+<p>The principle is straightforward: the cheapest agent type that can do the job is the right choice. Using Teammates for tasks that could be handled by Subagents wastes tokens on idle management overhead. Using Subagents for tasks that only need a search wastes tokens on unnecessary tool capabilities in the system prompt. Using Explore for tasks that need file edits wastes the agent’s time on rejected tool calls.</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>Several design principles emerge from Claude Code’s multi-agent architecture that generalize beyond this specific system.</p>
+<p><strong>Sub-agents are fork() for AI.</strong> Same binary, different context, isolated working directory. The mental model from OS process management – fork, exec, wait, collect – transfers directly. The coordination complexity is also the same: shared state is dangerous, message passing is safe, and every child needs resource limits. The code does not hide this connection; it embraces it with function names like <code>buildForkedMessages</code>, <code>isInForkChild</code>, and <code>FORK_SUBAGENT</code>.</p>
+<p><strong>Five agent types exist because different tasks have different requirements.</strong> Explore at one end is cheap and constrained. Teammates at the other end are expensive and maximally capable. The implementation chooses the cheapest type that satisfies the task’s requirements — the same reasoning behind choosing the right data structure.</p>
+<p><strong>Git worktrees are process isolation for code changes.</strong> The same way virtual memory prevents processes from corrupting each other’s state, worktrees prevent agents from clobbering each other’s files. Conflict resolution happens at merge time, just like with human developers on separate branches. The alternatives – file locking, operational transforms, or restricting agents to non-overlapping files – all have worse trade-offs.</p>
+<p><strong>Cache-aware forking transforms linear cost into near-constant cost.</strong> By ensuring byte-identical prompt prefixes across children, the system pays once and caches N-1 times. At 34 million Explore spawns per week, the fleet-scale savings are measured in billions of tokens. This is the COW fork analogy made concrete: share everything, copy only what diverges.</p>
+<p><strong>Centralized vs.&nbsp;decentralized orchestration is a classic systems trade-off.</strong> Coordinator Mode (MapReduce-style, coordinator is the bottleneck) vs.&nbsp;Teammates (actor model, more complex but higher throughput). Neither is universally better – the task structure determines the choice. Independent parallel tasks want a coordinator. Interdependent collaborative tasks want teammates.</p>
+<p><strong>Context is the bottleneck, not compute.</strong> Every design decision in the sub-agent system traces back to the scarce context window. Fork children keep intermediate outputs out of the parent’s context. Explore agents strip CLAUDE.md to save tokens. One-shot agents skip the SendMessage trailer. The 500-word report limit on forks. Everything is token economics – the same constraint that drives the prompt assembly pipeline described in <a href="./03-prompt-assembly.html">Part III.1</a> and the architecture overview in <a href="./00-birds-eye-architecture.html">Part I.1</a>.</p>
+<hr>
+<p><em>For the CLI interface through which users interact with multi-agent sessions, see <a href="./08-cli-commands-ui.html">Part V.1 – CLI, Commands &amp; UI</a>. For the end-to-end workflow that ties the agent loop, tools, and orchestration together, see <a href="./01-end-to-end-workflow.html">Part I.2 – End-to-End Workflow</a>.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./15-agent-sdk-structured-io.html" class="pagination-link" aria-label="II.2 — Agent SDK &amp; Structured I/O">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">II.2 — Agent SDK &amp; Structured I/O</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./19-plan-mode.html" class="pagination-link" aria-label="II.4 — Plan Mode">
+        <span class="nav-page-text">II.4 — Plan Mode</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

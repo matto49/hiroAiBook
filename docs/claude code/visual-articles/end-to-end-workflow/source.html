@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>End-to-End Workflow – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./02-agent-loop-query-engine.html" rel="next">
+<link href="./00-birds-eye-architecture.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./00-birds-eye-architecture.html">I. Overview</a></li><li class="breadcrumb-item"><a href="./01-end-to-end-workflow.html">I.2 — End-to-End Workflow</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction-one-query-seven-stages" id="toc-introduction-one-query-seven-stages" class="nav-link active" data-scroll-target="#introduction-one-query-seven-stages">Introduction: One Query, Seven Stages</a></li>
+  <li><a href="#stage-1-startup-and-input" id="toc-stage-1-startup-and-input" class="nav-link" data-scroll-target="#stage-1-startup-and-input">Stage 1: Startup and Input</a></li>
+  <li><a href="#stage-2-system-prompt-assembly" id="toc-stage-2-system-prompt-assembly" class="nav-link" data-scroll-target="#stage-2-system-prompt-assembly">Stage 2: System Prompt Assembly</a></li>
+  <li><a href="#stage-3-the-agent-loop" id="toc-stage-3-the-agent-loop" class="nav-link" data-scroll-target="#stage-3-the-agent-loop">Stage 3: The Agent Loop</a></li>
+  <li><a href="#stage-4-tool-execution" id="toc-stage-4-tool-execution" class="nav-link" data-scroll-target="#stage-4-tool-execution">Stage 4: Tool Execution</a></li>
+  <li><a href="#stage-5-permission-and-safety" id="toc-stage-5-permission-and-safety" class="nav-link" data-scroll-target="#stage-5-permission-and-safety">Stage 5: Permission and Safety</a></li>
+  <li><a href="#stage-6-streaming-output" id="toc-stage-6-streaming-output" class="nav-link" data-scroll-target="#stage-6-streaming-output">Stage 6: Streaming Output</a></li>
+  <li><a href="#stage-7-completion" id="toc-stage-7-completion" class="nav-link" data-scroll-target="#stage-7-completion">Stage 7: Completion</a></li>
+  <li><a href="#putting-it-together-the-full-trace" id="toc-putting-it-together-the-full-trace" class="nav-link" data-scroll-target="#putting-it-together-the-full-trace">Putting It Together: The Full Trace</a></li>
+  <li><a href="#series-navigation" id="toc-series-navigation" class="nav-link" data-scroll-target="#series-navigation">Series Navigation</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./00-birds-eye-architecture.html">I. Overview</a></li><li class="breadcrumb-item"><a href="./01-end-to-end-workflow.html">I.2 — End-to-End Workflow</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">End-to-End Workflow</h1>
+<p class="subtitle lead">Tracing a single query from terminal keystroke to final output through seven architectural stages</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">workflow</div>
+    <div class="quarto-category">architecture</div>
+    <div class="quarto-category">overview</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction-one-query-seven-stages" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-one-query-seven-stages">Introduction: One Query, Seven Stages</h2>
+<p>You type <code>Fix the bug in auth.ts</code> and press Enter. Twelve seconds later, Claude Code has read the file, identified the issue, applied an edit, and printed a summary. The journey passes through seven stages: (1) <strong>Startup</strong> loads credentials, config, and extensions; (2) <strong>Prompt Assembly</strong> merges 65+ fragments into a ~15K-token system prompt; (3) the <strong>Agent Loop</strong> runs the ReAct cycle of think → act → observe; (4) <strong>Tool Execution</strong> dispatches Read, Edit, Bash, and other tools; (5) the <strong>Permission Gate</strong> enforces safety rules before each tool fires; (6) <strong>Streaming Output</strong> renders the API response token-by-token in the terminal; and (7) <strong>Completion</strong> persists the session and extracts memories. Stages 3 and 4 form a loop that may cycle dozens of times before the task resolves.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-pipeline-overview" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pipeline-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-pipeline-overview">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  S1["1. Startup&lt;br&gt;&lt;i&gt;Credentials, config, extensions&lt;/i&gt;"]
+  S2["2. Prompt Assembly&lt;br&gt;&lt;i&gt;65+ fragments → 15K tokens&lt;/i&gt;"]
+  S3["3. Agent Loop&lt;br&gt;&lt;i&gt;ReAct: think → act → observe&lt;/i&gt;"]
+  S4["4. Tool Execution&lt;br&gt;&lt;i&gt;Read, Edit, Bash, …&lt;/i&gt;"]
+  S5["5. Permission Gate&lt;br&gt;&lt;i&gt;Rules → classifier → user&lt;/i&gt;"]
+  S6["6. Streaming Output&lt;br&gt;&lt;i&gt;API stream → render → terminal&lt;/i&gt;"]
+  S7["7. Completion&lt;br&gt;&lt;i&gt;Session save, memory extract&lt;/i&gt;"]
+
+  S1 --&gt; S2 --&gt; S3 --&gt; S4
+  S4 --&gt;|"loop back"| S3
+  S4 --&gt; S5 --&gt; S6 --&gt; S7
+  style S1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style S3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style S4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style S5 fill:#C4A882,color:#fff,stroke:#A08562
+  style S6 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style S7 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pipeline-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The seven stages of a query’s journey through Claude Code. Stages 3 and 4 form a loop: the model reasons, calls a tool, observes the result, and repeats until the task is complete or a termination guard fires.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at Stage 1 (top) and follow the arrows downward through the seven numbered stages. The critical feature is the loop-back arrow between Stage 4 (Tool Execution) and Stage 3 (Agent Loop) – this cycle repeats until the model finishes its task. Stages below the loop (5 through 7) execute once during the exit sequence.</p>
+<p>The seven stages divide naturally into three phases. The <span class="kw-sage">local phase</span> (Stages 1–2) runs entirely on your machine in under 200 milliseconds: parsing input, loading configuration, and assembling the system prompt. The <span class="kw-sage">loop phase</span> (Stages 3–6) cycles between the Anthropic API and local tool execution, potentially dozens of times. The <span class="kw-sage">exit phase</span> (Stage 7) persists state and renders the outcome. We trace each in turn.</p>
+<hr>
+</section>
+<section id="stage-1-startup-and-input" class="level2">
+<h2 class="anchored" data-anchor-id="stage-1-startup-and-input">Stage 1: Startup and Input</h2>
+<p><strong>Before Claude Code can process your query, it needs to authenticate you, load project-specific settings, and discover what tools are available. All of this happens in under 400 milliseconds.</strong></p>
+<p>When you run <code>claude "Fix the bug in auth.ts"</code>, the system performs three initialization tasks in parallel:</p>
+<ol type="1">
+<li><strong>Load credentials</strong> — retrieve API keys from the operating system’s secure storage</li>
+<li><strong>Read configuration</strong> — collect settings from multiple sources (environment variables, project files, user preferences), where more specific settings override general ones</li>
+<li><strong>Discover extensions</strong> — find any MCP servers (external tool providers) that the project has configured</li>
+</ol>
+<p>Running these in parallel rather than sequentially cuts startup time roughly in half (from ~800ms to ~400ms). The system also loads the feature flags described in <a href="./00-birds-eye-architecture.html">Part I.1</a> — the <span class="kw-slate">88 compile-time flags</span> and <span class="kw-slate">50+ runtime gates</span> that determine which capabilities are active.</p>
+<p>Once initialization completes, the system determines the execution mode. Our command-line query goes directly to the agent engine. Interactive commands like <code>/help</code> or <code>/clear</code> would be handled locally with zero API cost. But our natural-language prompt needs the model, so the input string <code>"Fix the bug in auth.ts"</code> is packaged as a user message and forwarded to Stage 2.</p>
+<p>See <a href="./08-cli-commands-ui.html">Part V.1</a> for the full startup sequence and <a href="./09-auth-providers-flags.html">Part V.2</a> for the configuration and feature flag system.</p>
+<hr>
+</section>
+<section id="stage-2-system-prompt-assembly" class="level2">
+<h2 class="anchored" data-anchor-id="stage-2-system-prompt-assembly">Stage 2: System Prompt Assembly</h2>
+<p><strong>Before the model sees a single token of your query, a pipeline assembles <span class="kw-slate">65+ fragments</span> into a single system prompt — the instructions that tell the model who it is, what it can do, and how it should behave. This prompt consumes approximately <span class="kw-slate">15,000 of the 200,000-token context window</span>, so every token spent on instructions is a token unavailable for reasoning.</strong></p>
+<p>A system prompt is analogous to the preamble of a research paper: it establishes context, constraints, and conventions before the actual content begins. The model reads the system prompt before every API call, so its content directly shapes the model’s behavior. The assembly pipeline layers sections in priority order, starting with a fixed identity prefix:</p>
+<pre><code>You are Claude Code, Anthropic's official CLI for Claude.</code></pre>
+<p>Then it appends sections covering safety rules, output style, tool usage conventions, and memory instructions – the <strong>static fragments</strong> that rarely change between turns. After those come <strong>dynamic fragments</strong> that vary per request: CLAUDE.md content discovered by walking up the directory tree, tool schemas for the 40 available tools, active skill definitions, git repository state, OS platform information, and agent-specific instructions.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-prompt-assembly" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-prompt-assembly-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-prompt-assembly">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph Static["Static Fragments"]
+    direction LR
+    ID["Identity&lt;br&gt;(66 tok)"] ~~~ SF["Safety&lt;br&gt;(40+ tok)"] ~~~ ST["Style"] ~~~ MEM["Memory"]
+  end
+  subgraph Dynamic["Dynamic Fragments"]
+    direction LR
+    TD2["Tool Docs&lt;br&gt;(73 schemas)"] ~~~ CMD["CLAUDE.md"] ~~~ GIT["Git Status"] ~~~ SK["Skills"]
+  end
+
+  Static --&gt; SP["System Prompt (~15K tokens)"]
+  Dynamic --&gt; SP
+  SP --&gt; C1["Cache Block 1: core instructions&lt;br&gt;&lt;i&gt;identity + safety + tools&lt;/i&gt;"]
+  C1 --&gt; C2["Cache Block 2: project config&lt;br&gt;&lt;i&gt;CLAUDE.md, per-project&lt;/i&gt;"]
+  style ID fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style SF fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style ST fill:#C2856E,color:#fff,stroke:#A06A54
+  style MEM fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style TD2 fill:#C4A882,color:#fff,stroke:#A08562
+  style CMD fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style GIT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style SK fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style SP fill:#C2856E,color:#fff,stroke:#A06A54
+  style C1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style C2 fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-prompt-assembly-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: System prompt assembly. Static fragments (identity, safety, style, memory) and dynamic fragments (tool schemas, CLAUDE.md, git status, skills) merge into a single ~15K-token system prompt. The prompt is split into two cache blocks: Block 1 holds core instructions that are identical across turns; Block 2 holds per-project configuration that changes only when the user edits CLAUDE.md.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The two subgraphs at the top represent the two sources of prompt content: Static Fragments (identity, safety, style, memory) and Dynamic Fragments (tool docs, CLAUDE.md, git status, skills). Both flow downward into the merged System Prompt node, which then splits into two Cache Blocks. The subgraph boundary separates content that is identical across turns (static) from content that varies per request (dynamic). The key takeaway is that the final prompt is layered for caching – Block 1 (core instructions) rarely changes, while Block 2 (project config) changes only when CLAUDE.md is edited.</p>
+<p>The <strong>static fragments</strong> (top row in the figure) are fixed across turns within a session: the model’s identity, safety rules, output style, and memory instructions. The <strong>dynamic fragments</strong> (bottom row) vary per request: tool schemas describing the ~40 available tools (73 schema documents total), <code>CLAUDE.md</code> project-specific instructions discovered by walking up the directory tree, current git repository status, and any active skill definitions.</p>
+<p>The ordering matters for cost. The Anthropic API supports <span class="kw-sage">prompt caching</span>: if the first <span class="math inline">\(N\)</span> tokens of the prompt are byte-identical to a recent request, the server reuses its cached internal representation instead of reprocessing them. Claude Code exploits this by splitting the assembled prompt into <span class="kw-sage">two cache blocks</span>:</p>
+<ul>
+<li><strong>Cache Block 1</strong> (core instructions): identity, safety rules, tool schemas — content that changes only across Claude Code versions. This block is identical across all turns in a session.</li>
+<li><strong>Cache Block 2</strong> (project config): <code>CLAUDE.md</code> content, which changes only when the user edits project instructions.</li>
+</ul>
+<p>Each block is marked with <code>cache_control: { type: 'ephemeral' }</code>, giving it a <span class="kw-sage">5-minute server-side time-to-live (TTL)</span>. In a 20-turn session, the first turn processes all ~15K tokens; the remaining 19 turns hit the cache, reducing system prompt cost by roughly <span class="kw-sage">85%</span>.</p>
+<p>See <a href="./03-prompt-assembly.html">Part III.1: Prompt Assembly</a> for the full fragment taxonomy and assembly pipeline.</p>
+<hr>
+</section>
+<section id="stage-3-the-agent-loop" class="level2">
+<h2 class="anchored" data-anchor-id="stage-3-the-agent-loop">Stage 3: The Agent Loop</h2>
+<p><strong>The assembled prompt, conversation history, and user message enter the ReAct loop — a cycle of reasoning and acting that repeats until the model signals completion or a guard triggers termination.</strong></p>
+<p>The heart of Claude Code is <code>query.ts</code>: a <span class="kw-slate">1,729-line asynchronous generator</span> implementing the <span class="kw-sage">ReAct (Reason + Act)</span> pattern. For our query, the loop begins by constructing the API request: the system prompt from Stage 2, plus the message array containing our user message <code>"Fix the bug in auth.ts"</code>, plus the schemas for all available tools.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-react-loop" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-react-loop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-react-loop">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  A[Call Model] --&gt; B[Parse Response]
+  B --&gt; C{Stop Reason?}
+  C -- "tool_use" --&gt; D[Execute Tools]
+  D -- "append result" --&gt; A
+  C -- "end_turn" --&gt; E[Done]
+  A -. "error" .-&gt; F[Compact / Fallback]
+  F -. "retry" .-&gt; A
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style B fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style E fill:#C4A882,color:#fff,stroke:#A08562
+  style F fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-react-loop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: The ReAct loop. Each iteration calls the model, parses its response, and either executes tools (looping back) or terminates. Error recovery handles context overflow and API failures.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the solid arrows left to right through the happy path: Call Model, Parse Response, then the Stop Reason decision diamond. If the stop reason is “tool_use,” the flow loops back through Execute Tools to Call Model for another iteration. If the stop reason is “end_turn,” the loop exits to Done. The dotted arrows show the error path: a failure during the API call routes to Compact/Fallback, which retries the model call.</p>
+<p>Each iteration of the loop sends the full conversation (system prompt + history + user message) to the Claude API and streams back the response. The response is parsed into three block types:</p>
+<ul>
+<li><strong>Text blocks</strong> — the model’s natural-language reasoning, rendered to the terminal</li>
+<li><strong>Thinking blocks</strong> — extended chain-of-thought reasoning, displayed in a collapsible section</li>
+<li><strong><code>tool_use</code> blocks</strong> — structured JSON requesting a specific tool call (e.g., “read file X” or “edit line Y”)</li>
+</ul>
+<p>For our query, the model’s first response might be: “Let me read auth.ts to understand the bug” followed by a <code>tool_use</code> block requesting the <code>Read</code> tool with <code>file_path: "auth.ts"</code>. The <code>stop_reason</code> is <code>tool_use</code>, so the loop continues to Stage 4. The tool result (the file contents) is appended to the conversation history, and the loop calls the model again — now with the file contents in context.</p>
+<p><strong>Handling long tool responses.</strong> Tool results can be large: a <code>Read</code> of a 500-line file produces ~4K tokens, a <code>Grep</code> across a monorepo can return 30K tokens. If a tool result exceeds the truncation threshold, the system truncates it and appends a note informing the model that the output was cut. The model can then request a more targeted query (e.g., reading a specific line range instead of the full file). This prevents a single tool call from consuming a disproportionate share of the context budget. See <a href="./05-tool-system.html#tool-result-truncation----protecting-the-context-budget">Part IV.1: Tool Result Truncation</a> for the full truncation mechanics.</p>
+<p><strong>Three termination guards</strong> prevent the loop from running indefinitely:</p>
+<ol type="1">
+<li><p><strong>Turn counter</strong> (divergence guard). A configurable <code>maxTurns</code> parameter sets a hard ceiling on loop iterations. This is the simplest termination guarantee — no matter how the agent misbehaves, the counter eventually fires. The default is generous (dozens of turns) but finite.</p></li>
+<li><p><strong>Stop hooks</strong> (convergence guard). When the model signals completion (<code>end_turn</code>), lifecycle callbacks inspect the final state before the loop actually exits. A stop hook might check: “Did you modify test files but never run the tests?” If the check fails, the hook injects an error message and the loop resumes — giving the model a chance to correct the oversight. A counter prevents stop hooks from firing indefinitely, avoiding the meta-problem of a termination guard that itself diverges. See <a href="./11-hooks-lifecycle.html#stop-hooks----convergence-guards-for-the-agent-loop">Part III.4: Stop Hooks Deep-Dive</a> for the implementation details.</p></li>
+<li><p><strong>Repetition detection</strong> (oscillation guard). The system tracks recent tool calls and detects cycles — the agent requesting the same file read or the same edit repeatedly without making progress. When repetition is detected, the loop injects a warning message that breaks the cycle.</p></li>
+</ol>
+<p><strong>Context budget management.</strong> Before each API call, the system checks whether the accumulated conversation history is approaching the 200K-token context window limit. If <code>|system_prompt| + |history| + |tools|</code> exceeds roughly 75% of the window, auto-compaction triggers — summarizing older conversation turns to reclaim space while preserving the most recent context. This is analogous to garbage collection: triggered by memory pressure, with progressively aggressive strategies as the budget tightens. See <a href="./04-context-compaction.html">Part III.2</a> for the full compaction cascade.</p>
+<p>See <a href="./02-agent-loop-query-engine.html">Part II.1</a> for the complete agent loop architecture.</p>
+<hr>
+</section>
+<section id="stage-4-tool-execution" class="level2">
+<h2 class="anchored" data-anchor-id="stage-4-tool-execution">Stage 4: Tool Execution</h2>
+<p><strong>The model has decided to act. Its <code>tool_use</code> block is dispatched to one of <span class="kw-terra">40 tools</span>, each implementing a <span class="kw-terra">uniform contract</span>: a name, an input schema, and an execute function. Tools run <span class="kw-sage">sequentially</span> for determinism, with one critical optimization – read-only tools may overlap via <span class="kw-sage">streaming execution</span>.</strong></p>
+<p>Every tool in Claude Code implements the same interface:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> Tool <span class="op">=</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> <span class="dt">string</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  inputSchema<span class="op">:</span> ToolInputJSONSchema</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">execute</span>(ctx<span class="op">:</span> ToolUseContext)<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;</span>ToolResult<span class="op">&gt;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>For our query’s first iteration, the model calls <code>Read</code> with <code>{ file_path: "auth.ts" }</code>. The tool executor validates the input against the JSON Schema, runs the tool, and appends the result (the file contents) to the conversation history as a <code>tool_result</code> message. The loop returns to Stage 3: the model now has the file contents in context and can reason about the bug.</p>
+<p>On the second iteration, the model identifies the issue and calls <code>Edit</code> with a <code>str_replace</code> operation specifying the old and new code. Before this tool executes, it must pass through the permission gate (Stage 5). On the third iteration, the model might call <code>Bash</code> to run <code>npm test</code>, verifying the fix.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-tool-execution" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-tool-execution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-tool-execution">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph T1["Turn 1"]
+    R["Read"] --&gt;|"auto-allow"| R1["file contents in history"]
+  end
+  subgraph T2["Turn 2"]
+    E["Edit"] --&gt;|"permission gate"| E1["str_replace applied"]
+  end
+  subgraph T3["Turn 3"]
+    B["Bash"] --&gt;|"ML classifier"| B1["test output appended"]
+  end
+
+  T1 --&gt;|"model reasons"| T2
+  T2 --&gt;|"model verifies"| T3
+  style R fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style R1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style E fill:#C2856E,color:#fff,stroke:#A06A54
+  style E1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style B fill:#C4A882,color:#fff,stroke:#A08562
+  style B1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tool-execution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Tool execution flow for a typical bug-fix query. Each turn invokes one tool with a different permission path: Read is auto-allowed (read-only), Edit triggers the permission gate (file mutation), and Bash is scored by the ML classifier (arbitrary shell command). Tool results are appended to the conversation history, giving the model new observations for the next reasoning step.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Each subgraph (Turn 1, Turn 2, Turn 3) represents one iteration of the agent loop. Inside each turn, the tool name on the left flows through its permission path (labeled on the arrow) to the result on the right. The arrows between turns show the model reasoning between iterations. Notice the three different permission paths: Read is auto-allowed (no gate), Edit triggers the full permission gate, and Bash is scored by the ML classifier – illustrating how different tools face different security scrutiny.</p>
+<p>Tools execute <strong>sequentially</strong> within a turn – a deliberate design choice. When the model edits a file and then reads it back, the read must see the edit. Parallel execution would introduce race conditions that cascade into wasted tokens and broken trust. The one exception is the <span class="kw-terra">StreamingToolExecutor</span>, which overlaps <em>read-only</em> tools (Read, Grep, Glob) in parallel while serializing side-effecting tools (Edit, Write, Bash). This is the <span class="kw-sage">readers-writers problem</span> from concurrent programming: shared reads, exclusive writes.</p>
+<p>See <a href="./05-tool-system.html">Part IV.1: Tool System</a> for the full tool registry and execution pipeline.</p>
+<hr>
+</section>
+<section id="stage-5-permission-and-safety" class="level2">
+<h2 class="anchored" data-anchor-id="stage-5-permission-and-safety">Stage 5: Permission and Safety</h2>
+<p><strong>Before any side-effecting tool executes, it passes through a <span class="kw-sage">three-tier permission gate</span>. Static rules check first, an <span class="kw-mauve">ML classifier</span> scores risk second, and interactive user approval serves as the final arbiter. An <span class="kw-terra">OS-level sandbox</span> constrains the blast radius regardless of what the permission system decides.</strong></p>
+<p>When our query’s <code>Edit</code> tool call arrives at the permission gate, three checks run in sequence:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-permission-gate" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-permission-gate-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-permission-gate">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  T1["Tier 1: Static Rules&lt;br&gt;&lt;i&gt;7 config sources, priority order&lt;/i&gt;"]
+  T2["Tier 2: ML Classifier&lt;br&gt;&lt;i&gt;Bash command risk scoring via tree-sitter AST&lt;/i&gt;"]
+  T3["Tier 3: Interactive Approval&lt;br&gt;&lt;i&gt;Terminal dialog with diff view&lt;/i&gt;"]
+  SB["OS-Level Sandbox&lt;br&gt;&lt;i&gt;Seatbelt (macOS) / Bubblewrap (Linux)&lt;/i&gt;"]
+
+  T1 --&gt;|"ask?"| T2
+  T1 --&gt;|"allow"| EX["Execute"]
+  T1 --&gt;|"deny"| ER["Error Result"]
+  T2 --&gt;|"uncertain?"| T3
+  T2 --&gt;|"safe"| EX
+  T3 --&gt;|"approved"| SB
+  SB --&gt; EX
+  style T1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style T2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style T3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style SB fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style EX fill:#C4A882,color:#fff,stroke:#A08562
+  style ER fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-permission-gate-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: The three-tier permission gate with OS-level sandbox as a containment backstop. Tier 1 checks static configuration rules; Tier 2 runs an ML classifier on shell commands; Tier 3 prompts the user for interactive approval. At each tier, a definitive verdict (allow, deny, safe) short-circuits the remaining checks. The OS-level sandbox constrains blast radius regardless of the permission outcome.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at Tier 1 (top) and follow the decision arrows downward. At each tier, a definitive verdict short-circuits the remaining checks: “allow” goes directly to Execute, “deny” goes to Error Result, and “safe” from the ML classifier also goes to Execute. Only uncertain outcomes flow to the next tier. The final path from Tier 3 passes through the OS-Level Sandbox before reaching Execute – the sandbox is a containment backstop that applies regardless of how the tool was approved.</p>
+<p><strong>Tier 1: Static rules.</strong> <span class="kw-slate">Seven configuration sources</span> (environment variables, local settings, project settings, user settings, and more) are checked in priority order. Each source can mark a tool as <code>allow</code>, <code>deny</code>, or <code>ask</code>. For our <span class="kw-terra">Edit</span> tool call, a typical configuration marks file edits as <code>ask</code> – proceed to Tier 2.</p>
+<p><strong>Tier 2: ML classifier.</strong> For <span class="kw-terra">Bash</span> tool calls, a <span class="kw-mauve">machine learning classifier</span> parses the shell command into an abstract syntax tree (AST) using <span class="kw-terra">tree-sitter</span>, a parser generator widely used for syntax highlighting and code analysis. The classifier then scores each command’s risk based on the parsed structure. Commands like <code>npm test</code> are classified as safe; commands like <code>rm -rf /</code> are classified as destructive. The classifier fires <span class="kw-sage">speculatively</span>, in parallel with the Tier 1 check, to hide ML latency behind I/O. For our <code>Edit</code> call, the classifier is not applicable (it targets shell commands), so the system proceeds to Tier 3.</p>
+<p><strong>Tier 3: Interactive approval.</strong> A modal dialog renders in the terminal, showing the proposed edit with full context – file path, old text, new text, and a diff view. The user presses <code>y</code> to approve or <code>n</code> to deny. The approved tool then executes within the OS-level sandbox.</p>
+<p>The <strong>OS-level sandbox</strong> is the final containment layer. On macOS, a <span class="kw-terra">Seatbelt</span> profile restricts filesystem access to the project directory and a handful of system paths. On Linux, <span class="kw-terra">Bubblewrap</span> provides equivalent namespace isolation. The sandbox operates independently of the permission system – even if a bug in the classifier allows a dangerous command through, the sandbox constrains its <span class="kw-sage">blast radius</span>.</p>
+<p>See <a href="./06-safety-sandbox.html">Part IV.2: Safety and Sandbox</a> for the full permission pipeline and sandbox implementation.</p>
+<hr>
+</section>
+<section id="stage-6-streaming-output" class="level2">
+<h2 class="anchored" data-anchor-id="stage-6-streaming-output">Stage 6: Streaming Output</h2>
+<p><strong>While the model generates its response, tokens stream from the Anthropic API through the agent loop’s generator to the terminal renderer. The <span class="kw-sage">pull-based generator</span> design ensures the renderer never falls behind the API’s output rate.</strong></p>
+<p>The streaming architecture connects three components: the API client, the <span class="kw-sage">AsyncGenerator</span> loop, and the terminal renderer.</p>
+<p>The API client receives the model’s response as a stream of incremental chunks over a long-lived HTTP connection. Each chunk carries a fragment — a few tokens of text, a piece of tool-call JSON, or a reasoning token. These chunks are yielded by the <code>query()</code> generator to the renderer.</p>
+<p>Because the generator is pull-based (the renderer requests each chunk when ready), <span class="kw-sage">backpressure</span> is automatic: if the terminal is busy updating the display, the generator simply pauses until the next chunk is requested. This prevents memory buildup during burst output — the producer cannot outrun the consumer.</p>
+<p>The terminal renderer updates the screen efficiently using <span class="kw-sage">double buffering</span>: it computes the new display in an off-screen buffer, diffs it against the current screen, and writes only the characters that changed. For our query, this means streaming text appears in real time, code diffs are syntax-highlighted as they arrive, and progress indicators animate without flickering.</p>
+<p>The rendering pipeline handles multiple content types: plain text flows directly to the output, code blocks receive syntax highlighting, tool results render with collapsible detail views, and <span class="kw-terra">permission dialogs</span> appear as modal prompts with keyboard navigation.</p>
+<p>See <a href="./08-cli-commands-ui.html">Part V.1: CLI and Terminal UI</a> for the full rendering architecture.</p>
+<hr>
+</section>
+<section id="stage-7-completion" class="level2">
+<h2 class="anchored" data-anchor-id="stage-7-completion">Stage 7: Completion</h2>
+<p><strong>The model returns <code>end_turn</code>. The loop runs stop hooks, persists session state, extracts memories, and renders the final output.</strong></p>
+<p>When the model’s <code>stop_reason</code> is <code>end_turn</code>, the agent loop does not immediately exit. First, <span class="kw-sage">stop hooks</span> inspect the final state. A hook might detect that the model edited source files but never ran tests, injecting a message like “You should verify your changes by running the test suite.” If a stop hook fires, the loop resumes from Stage 3 – the model sees the injected message and acts on it.</p>
+<p>Assuming all stop hooks pass, the loop enters its exit sequence:</p>
+<ol type="1">
+<li><p><strong>Session persistence.</strong> The full conversation history – system prompt, user messages, assistant responses, tool results – is serialized and stored. Sessions can be resumed later with <code>claude --resume</code>.</p></li>
+<li><p><strong>Memory extraction.</strong> The <span class="kw-sage">auto-memory system</span> (<code>services/autoDream/</code>) scans the conversation for reusable knowledge: project conventions discovered during the interaction, user preferences expressed through feedback, and domain facts that would be useful in future sessions. Extracted memories are stored in a <span class="kw-terra">SQLite database with FTS5</span> full-text search indexing.</p></li>
+<li><p><strong>Terminal rendering.</strong> The final assistant message renders to the terminal. For our query, this might be a summary: “Fixed the null check bug in auth.ts at line 42. The issue was a missing optional chain operator on the user object. Tests pass.” The message includes a formatted diff of the change and the test output.</p></li>
+</ol>
+<p>The loop phase (Stages 3–6) dominates wall-clock time, with API latency and tool execution accounting for most of the cost. A straightforward bug fix might complete in a handful of turns; a complex refactoring task can run for dozens of turns over several minutes. The local phases (Stages 1–2 and Stage 7) are fast by comparison.</p>
+<hr>
+</section>
+<section id="putting-it-together-the-full-trace" class="level2">
+<h2 class="anchored" data-anchor-id="putting-it-together-the-full-trace">Putting It Together: The Full Trace</h2>
+<p>With all seven stages examined, we can now see the complete picture. Our query <code>"Fix the bug in auth.ts"</code> touched every layer of the six-layer architecture described in <a href="./00-birds-eye-architecture.html">Part I.1</a>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 24%">
+<col style="width: 24%">
+<col style="width: 51%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Stage</th>
+<th>Layer</th>
+<th>What Happened</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1. Startup</td>
+<td>Layer 1: Entry</td>
+<td>Credentials, config, extensions loaded in parallel</td>
+</tr>
+<tr class="even">
+<td>2. Assembly</td>
+<td>Layer 5: Services</td>
+<td>65+ fragments assembled into 15K-token system prompt</td>
+</tr>
+<tr class="odd">
+<td>3. Agent Loop</td>
+<td>Layer 2: Agent Loop</td>
+<td>AsyncGenerator called API, parsed streaming response</td>
+</tr>
+<tr class="even">
+<td>4. Tool Execution</td>
+<td>Layer 3: Tools</td>
+<td>Read, Edit, Bash dispatched sequentially</td>
+</tr>
+<tr class="odd">
+<td>5. Permission</td>
+<td>Layer 4: Security</td>
+<td>Static rules, classifier, user approval for Edit</td>
+</tr>
+<tr class="even">
+<td>6. Streaming</td>
+<td>Layer 6: Terminal UI</td>
+<td>Tokens streamed and rendered incrementally</td>
+</tr>
+<tr class="odd">
+<td>7. Completion</td>
+<td>Layer 5: Services</td>
+<td>Session saved, memories extracted, output rendered</td>
+</tr>
+</tbody>
+</table>
+<p>The stages are not independent – they share a single unifying constraint. The context window budget (<span class="math inline">\(|system| + |history| + |tools| + |output| \leq 200K\)</span> tokens) shapes every design decision: why fragments are conditionally included (Stage 2), why compaction triggers at 75% capacity (Stage 3), why tool outputs are truncated (Stage 4), and why prompt caching splits the system prompt into two blocks (Stage 2). The context window is finite, and the architecture is a coordinated response to that finitude.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Key Takeaway">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Key Takeaway
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Each stage in the pipeline exists for a reason traceable to one of three constraints: <strong>time</strong> (the user expects sub-second startup), <strong>tokens</strong> (the 200K context window is a hard ceiling), or <strong>safety</strong> (an autonomous agent must not cause irreversible harm). The architecture is not a collection of independent design decisions – it is a system where each stage’s design follows from these three constraints and the stages that precede it.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="series-navigation" class="level2">
+<h2 class="anchored" data-anchor-id="series-navigation">Series Navigation</h2>
+<p>This post traced the full journey at survey depth. Each subsequent post dives into one stage:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Stage</th>
+<th>Deep-Dive</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1. Startup</td>
+<td><a href="./08-cli-commands-ui.html">Part V.1 — CLI and UI</a>, <a href="./09-auth-providers-flags.html">Part V.2 — Auth and Providers</a></td>
+</tr>
+<tr class="even">
+<td>2. Prompt Assembly</td>
+<td><a href="./03-prompt-assembly.html">Part III.1 — Prompt Assembly</a></td>
+</tr>
+<tr class="odd">
+<td>3. Agent Loop</td>
+<td><a href="./02-agent-loop-query-engine.html">Part II.1 — Agent Loop</a></td>
+</tr>
+<tr class="even">
+<td>4. Tool Execution</td>
+<td><a href="./05-tool-system.html">Part IV.1 — Tool System</a></td>
+</tr>
+<tr class="odd">
+<td>5. Permission &amp; Safety</td>
+<td><a href="./06-safety-sandbox.html">Part IV.2 — Safety and Sandbox</a></td>
+</tr>
+<tr class="even">
+<td>6. Streaming &amp; Multi-Agent</td>
+<td><a href="./07-multi-agent-orchestration.html">Part II.3 — Multi-Agent Orchestration</a></td>
+</tr>
+<tr class="odd">
+<td>7. Extensions</td>
+<td><a href="./10-model-context-protocol.html">Part VI.1 — MCP</a>, <a href="./11-hooks-lifecycle.html">Part III.4 — Hooks</a></td>
+</tr>
+</tbody>
+</table>
+<p><em>Next: <a href="./02-agent-loop-query-engine.html">Part II.1 — Agent Loop and Query Engine</a>, where we examine the generator abstraction that makes the ReAct loop composable, streamable, and resilient.</em></p>
+<hr>
+<p><em>This analysis is based on the Claude Code v2.1.88 source map, extracted and studied for educational purposes. All code snippets are reconstructed from the source map and may differ from the actual implementation. Claude Code is a product of Anthropic, PBC.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./00-birds-eye-architecture.html" class="pagination-link" aria-label="I.1 — Bird's Eye Architecture">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">I.1 — Bird’s Eye Architecture</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./02-agent-loop-query-engine.html" class="pagination-link" aria-label="II.1 — Agent Loop &amp; Query Engine">
+        <span class="nav-page-text">II.1 — Agent Loop &amp; Query Engine</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

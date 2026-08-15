@@ -1,0 +1,20 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph T1["Turn 1"]
+    R["Read"] -->|"auto-allow"| R1["file contents in history"]
+  end
+  subgraph T2["Turn 2"]
+    E["Edit"] -->|"permission gate"| E1["str_replace applied"]
+  end
+  subgraph T3["Turn 3"]
+    B["Bash"] -->|"ML classifier"| B1["test output appended"]
+  end
+
+  T1 -->|"model reasons"| T2
+  T2 -->|"model verifies"| T3
+  style R fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style R1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style E fill:#C2856E,color:#fff,stroke:#A06A54
+  style E1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style B fill:#C4A882,color:#fff,stroke:#A08562
+  style B1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A

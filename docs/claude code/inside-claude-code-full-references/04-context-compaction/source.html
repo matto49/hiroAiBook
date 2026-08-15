@@ -1,0 +1,2438 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Context Compaction – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./17-memory-hierarchy.html" rel="next">
+<link href="./03-prompt-assembly.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./04-context-compaction.html">III.2 — Context Compaction</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction-the-scarcest-resource" id="toc-introduction-the-scarcest-resource" class="nav-link active" data-scroll-target="#introduction-the-scarcest-resource">Introduction: The Scarcest Resource</a></li>
+  <li><a href="#the-budget-constraint" id="toc-the-budget-constraint" class="nav-link" data-scroll-target="#the-budget-constraint">The Budget Constraint</a></li>
+  <li><a href="#token-accounting-you-cannot-manage-what-you-cannot-measure" id="toc-token-accounting-you-cannot-manage-what-you-cannot-measure" class="nav-link" data-scroll-target="#token-accounting-you-cannot-manage-what-you-cannot-measure">Token Accounting: You Cannot Manage What You Cannot Measure</a></li>
+  <li><a href="#the-compaction-tiers-a-cascade-from-free-to-expensive" id="toc-the-compaction-tiers-a-cascade-from-free-to-expensive" class="nav-link" data-scroll-target="#the-compaction-tiers-a-cascade-from-free-to-expensive">The Compaction Tiers: A Cascade from Free to Expensive</a>
+  <ul class="collapse">
+  <li><a href="#tier-1-microcompact-rearranging-for-cache-hits" id="toc-tier-1-microcompact-rearranging-for-cache-hits" class="nav-link" data-scroll-target="#tier-1-microcompact-rearranging-for-cache-hits">Tier 1: Microcompact – Rearranging for Cache Hits</a></li>
+  <li><a href="#tier-2-snip-compact-lru-archival" id="toc-tier-2-snip-compact-lru-archival" class="nav-link" data-scroll-target="#tier-2-snip-compact-lru-archival">Tier 2: Snip Compact – LRU Archival</a></li>
+  <li><a href="#tier-3-context-collapse-staged-summarization" id="toc-tier-3-context-collapse-staged-summarization" class="nav-link" data-scroll-target="#tier-3-context-collapse-staged-summarization">Tier 3: Context Collapse – Staged Summarization</a></li>
+  <li><a href="#tier-4-auto-compact-the-full-summarizer" id="toc-tier-4-auto-compact-the-full-summarizer" class="nav-link" data-scroll-target="#tier-4-auto-compact-the-full-summarizer">Tier 4: Auto Compact – The Full Summarizer</a></li>
+  <li><a href="#tier-5-reactive-compact-the-page-fault-handler" id="toc-tier-5-reactive-compact-the-page-fault-handler" class="nav-link" data-scroll-target="#tier-5-reactive-compact-the-page-fault-handler">Tier 5: Reactive Compact – The Page Fault Handler</a></li>
+  </ul></li>
+  <li><a href="#compaction-in-action-a-two-hour-session" id="toc-compaction-in-action-a-two-hour-session" class="nav-link" data-scroll-target="#compaction-in-action-a-two-hour-session">Compaction in Action: A Two-Hour Session</a></li>
+  <li><a href="#system-reminders-50-adaptive-mid-conversation-injections" id="toc-system-reminders-50-adaptive-mid-conversation-injections" class="nav-link" data-scroll-target="#system-reminders-50-adaptive-mid-conversation-injections">System Reminders: 50 Adaptive Mid-Conversation Injections</a>
+  <ul class="collapse">
+  <li><a href="#the-reminder-taxonomy" id="toc-the-reminder-taxonomy" class="nav-link" data-scroll-target="#the-reminder-taxonomy">The Reminder Taxonomy</a></li>
+  </ul></li>
+  <li><a href="#the-hook-to-reminder-pipeline" id="toc-the-hook-to-reminder-pipeline" class="nav-link" data-scroll-target="#the-hook-to-reminder-pipeline">The Hook-to-Reminder Pipeline</a></li>
+  <li><a href="#file-state-and-resource-backpressure" id="toc-file-state-and-resource-backpressure" class="nav-link" data-scroll-target="#file-state-and-resource-backpressure">File State and Resource Backpressure</a></li>
+  <li><a href="#the-aop-analogy-cross-cutting-concerns-for-prompts" id="toc-the-aop-analogy-cross-cutting-concerns-for-prompts" class="nav-link" data-scroll-target="#the-aop-analogy-cross-cutting-concerns-for-prompts">The AOP Analogy: Cross-Cutting Concerns for Prompts</a></li>
+  <li><a href="#memory-persistence-knowledge-that-outlives-sessions" id="toc-memory-persistence-knowledge-that-outlives-sessions" class="nav-link" data-scroll-target="#memory-persistence-knowledge-that-outlives-sessions">Memory Persistence: Knowledge That Outlives Sessions</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  <li><a href="#appendix-full-list-of-system-reminder-types" id="toc-appendix-full-list-of-system-reminder-types" class="nav-link" data-scroll-target="#appendix-full-list-of-system-reminder-types">Appendix: Full List of System Reminder Types</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./04-context-compaction.html">III.2 — Context Compaction</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Context Compaction</h1>
+<p class="subtitle lead">Cache eviction policies for conversation history, plus 50 adaptive mid-conversation injections</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">context</div>
+    <div class="quarto-category">compaction</div>
+    <div class="quarto-category">memory</div>
+    <div class="quarto-category">system-reminders</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction-the-scarcest-resource" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-the-scarcest-resource">Introduction: The Scarcest Resource</h2>
+<p>A <span class="kw-slate">200K-token context window</span> sounds generous until you watch it evaporate during a real coding session. A single large source file consumes <span class="kw-slate">8,000–12,000 tokens</span>. A <code>grep</code> across a monorepo returns <span class="kw-slate">30,000 tokens</span>. Pipe test output into the conversation and you burn <span class="kw-slate">50,000 tokens</span> in one turn. A busy two-hour session easily generates 400K+ tokens of raw conversation – double the window.</p>
+<p>The naive solution is truncation: chop the oldest messages. This is what most open-source agents do, and it is catastrophically bad for coding tasks – the agent forgets the user’s original intent, drops the mental model it built over dozens of turns, and starts making changes that conflict with earlier decisions.</p>
+<p>Claude Code treats context management as an <span class="kw-sage">optimization problem</span>: minimize information loss subject to a token budget constraint. The result is a <span class="kw-sage">multi-tier compaction cascade</span> combined with a system of <span class="kw-slate">50 adaptive mid-conversation injections</span> that carry volatile state without disturbing the cached prompt prefix. This post covers both mechanisms: the compaction tiers that manage conversation history, and the system reminder pipeline that carries real-time signals to the model’s attention.</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/services/compact/autoCompact.ts</code></td>
+<td>Proactive compaction (token threshold trigger)</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/compact/compact.ts</code></td>
+<td>Main compaction execution engine</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/compact/microCompact.ts</code></td>
+<td>Inline API-based compaction (cache_editing)</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/compact/reactiveCompact.ts</code></td>
+<td>Fallback compaction (413 error recovery)</td>
+<td>~150 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/compact/sessionMemoryCompact.ts</code></td>
+<td>Session memory preservation across compaction</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/compact/prompt.ts</code></td>
+<td>Compaction prompt templates</td>
+<td>~150 LOC</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="the-budget-constraint" class="level2">
+<h2 class="anchored" data-anchor-id="the-budget-constraint">The Budget Constraint</h2>
+<p>Before examining any algorithm, it helps to state the problem precisely. Every API call to Claude must satisfy a hard constraint:</p>
+<p><span class="math display">\[
+|S_{\text{system}}| + |H_{\text{history}}| + |T_{\text{tools}}| + |R_{\text{reminders}}| \;\leq\; W
+\]</span></p>
+<p>where <span class="math inline">\(W\)</span> is the context window size (200K tokens for Claude), <span class="math inline">\(S\)</span> is the system prompt (~12–15K tokens), <span class="math inline">\(T\)</span> is tool definitions (~8K tokens), and <span class="math inline">\(R\)</span> is the system reminders injected on this turn. What remains – <span class="math inline">\(W - |S| - |T| - |R|\)</span> – is the budget available for conversation history <span class="math inline">\(H\)</span>. This is a variant of the <strong>knapsack problem</strong>: maximize information value of retained messages subject to a token budget.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-budget-partition" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-budget-partition-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-budget-partition">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph BUDGET["W = 200K tokens"]
+    direction LR
+    SYS["&lt;b&gt;System&lt;/b&gt;&lt;br&gt;12-15K"]
+    TOOLS["&lt;b&gt;Tools&lt;/b&gt;&lt;br&gt;~8K"]
+    REM["&lt;b&gt;Reminders&lt;/b&gt;&lt;br&gt;0.2-2K"]
+    HIST["&lt;b&gt;Conversation History&lt;/b&gt;&lt;br&gt;up to 175K&lt;br&gt;&lt;i&gt;the compaction target&lt;/i&gt;"]
+  end
+
+  SYS ~~~ TOOLS ~~~ REM ~~~ HIST
+  style SYS fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style TOOLS fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style REM fill:#C2856E,color:#fff,stroke:#A06A54
+  style HIST fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-budget-partition-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The context window budget (W = 200K tokens) partitioned across four competing consumers. System prompt (12-15K), tool definitions (~8K), and system reminders (0.2-2K per turn) are fixed costs consuming roughly 20-25K tokens. Conversation history receives whatever remains (up to ~175K tokens) and is the sole target of the compaction tiers when the budget is exceeded.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The four boxes represent competing consumers of the fixed 200K-token context window, read left to right. System prompt, tool definitions, and reminders are fixed costs that consume roughly 20-25K tokens before a single user message is sent. The remaining space – “Conversation History” on the far right – is the sole target of compaction, and its flexible size is what the rest of this post is about.</p>
+<p>The fixed costs (<span class="math inline">\(S + T\)</span>) consume roughly 20–23K tokens before a single user message is sent. System reminders add another 200–2,000 tokens depending on the turn. That leaves approximately 175K tokens for history – and history is where all the interesting engineering happens, because history grows without bound while the window does not.</p>
+<hr>
+</section>
+<section id="token-accounting-you-cannot-manage-what-you-cannot-measure" class="level2">
+<h2 class="anchored" data-anchor-id="token-accounting-you-cannot-manage-what-you-cannot-measure">Token Accounting: You Cannot Manage What You Cannot Measure</h2>
+<p>Before the system can decide <em>when</em> to compact, it needs to know <em>how many tokens</em> it is using. Claude Code implements <span class="kw-slate">three counting methods</span>, each trading accuracy for speed – the same trade-off every monitoring system faces.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 26%">
+<col style="width: 42%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Speed</th>
+<th>When Used</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>API <code>count_tokens</code> (exact BPE tokenizer)</td>
+<td>Slow (network)</td>
+<td>Session start, calibration</td>
+</tr>
+<tr class="even">
+<td>Character heuristic (chars / 4 + overhead)</td>
+<td>Fast (local)</td>
+<td>Every message (workhorse)</td>
+</tr>
+<tr class="odd">
+<td>Fixed estimates (flat constants)</td>
+<td>Instant</td>
+<td>Images (~2K), documents (~2K)</td>
+</tr>
+</tbody>
+</table>
+<p>The character heuristic is the workhorse. For a text block of length <span class="math inline">\(\ell\)</span>, the estimate is <span class="math inline">\(\hat{t} = \lceil \ell / 4 \rceil + 1\)</span>. For tool-use blocks, <span class="math inline">\(\ell\)</span> includes both the tool name and the JSON-serialized input:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">// The core estimation logic -- fast, no network, ~85% accurate</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">estimateTokens</span>(block<span class="op">:</span> ContentBlock)<span class="op">:</span> <span class="dt">number</span> {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">switch</span> (block<span class="op">.</span><span class="at">type</span>) {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="st">'text'</span><span class="op">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">ceil</span>(block<span class="op">.</span><span class="at">text</span><span class="op">.</span><span class="at">length</span> <span class="op">/</span> <span class="dv">4</span>) <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">case</span> <span class="st">'tool_use'</span><span class="op">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>      <span class="cf">return</span> <span class="bu">Math</span><span class="op">.</span><span class="fu">ceil</span>(</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>        (block<span class="op">.</span><span class="at">name</span><span class="op">.</span><span class="at">length</span> <span class="op">+</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>(block<span class="op">.</span><span class="at">input</span>)<span class="op">.</span><span class="at">length</span>) <span class="op">/</span> <span class="dv">4</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>      ) <span class="op">+</span> <span class="dv">1</span><span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Why not use the exact tokenizer every time? Because it requires a network round-trip to Anthropic’s API. On the hot path of every message, that latency is unacceptable. The heuristic is fast and conservative – it tends to overestimate, which is safer than underestimating when managing a hard limit.</p>
+<p>The token monitoring system maintains a continuous <strong>warning state</strong> that drives compaction decisions:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Token Usage</th>
+<th>Warning State</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0–60%</td>
+<td><code>normal</code></td>
+<td>Normal operation</td>
+</tr>
+<tr class="even">
+<td>60–75%</td>
+<td><code>shortened outputs</code></td>
+<td>Shorter tool outputs</td>
+</tr>
+<tr class="odd">
+<td>75–90%</td>
+<td><code>aggressive summarization</code></td>
+<td>More aggressive summarization</td>
+</tr>
+<tr class="even">
+<td>90%+</td>
+<td><code>auto-compact trigger</code></td>
+<td>Trigger auto-compact</td>
+</tr>
+</tbody>
+</table>
+<p>A key optimization sits between counting and compaction: <span class="kw-terra">tokenSaverOutput</span> on <span class="kw-terra">BashTool</span>. When a bash command produces voluminous output (test logs, build output, file listings), the full output goes to the UI for display, but a compressed version goes to the model. This single optimization can save tens of thousands of tokens per session without any loss of information from the user’s perspective.</p>
+<hr>
+</section>
+<section id="the-compaction-tiers-a-cascade-from-free-to-expensive" class="level2">
+<h2 class="anchored" data-anchor-id="the-compaction-tiers-a-cascade-from-free-to-expensive">The Compaction Tiers: A Cascade from Free to Expensive</h2>
+<p>The compaction system implements five tiers, each more aggressive, more expensive, and triggered by more severe conditions. The system always prefers the lightest intervention that keeps the conversation within bounds. The tiers map directly to known cache eviction strategies.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-five-tiers" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-five-tiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-five-tiers">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  T1["&lt;b&gt;T1: Microcompact&lt;/b&gt;&lt;br&gt;Rearrange for&lt;br&gt;cache hits&lt;br&gt;&lt;i&gt;0 ms, no LLM&lt;/i&gt;&lt;br&gt;&lt;br&gt;Write-back&lt;br&gt;optimization"]
+  T2["&lt;b&gt;T2: Snip&lt;/b&gt;&lt;br&gt;Archive oldest&lt;br&gt;messages&lt;br&gt;&lt;i&gt;Async, no LLM&lt;/i&gt;&lt;br&gt;&lt;br&gt;LRU&lt;br&gt;truncation"]
+  T3["&lt;b&gt;T3: Collapse&lt;/b&gt;&lt;br&gt;Staged section&lt;br&gt;summarization&lt;br&gt;&lt;i&gt;LLM calls&lt;/i&gt;&lt;br&gt;&lt;br&gt;Adaptive&lt;br&gt;replacement (ARC)"]
+  T4["&lt;b&gt;T4: Auto&lt;/b&gt;&lt;br&gt;Full LLM-based&lt;br&gt;summarization&lt;br&gt;&lt;i&gt;Sub-agent&lt;/i&gt;&lt;br&gt;&lt;br&gt;Full flush&lt;br&gt;+ reload"]
+  T5["&lt;b&gt;T5: Reactive&lt;/b&gt;&lt;br&gt;Emergency 413&lt;br&gt;recovery&lt;br&gt;&lt;i&gt;One attempt&lt;/i&gt;&lt;br&gt;&lt;br&gt;Page fault&lt;br&gt;handler"]
+
+  T1 --&gt; T2 --&gt; T3 --&gt; T4 --&gt; T5
+  style T1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style T2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style T3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style T4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style T5 fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-five-tiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The five compaction tiers, ordered from least aggressive (left) to most aggressive (right), each mapped to a classical cache eviction analogue. Tier 1 (Microcompact) rearranges content for cache hits with zero cost and no LLM calls. Tier 2 (Snip) archives oldest messages via LRU truncation. Tier 3 (Collapse) performs staged section summarization, analogous to Adaptive Replacement Cache. Tier 4 (Auto) launches a full LLM-based summarization sub-agent. Tier 5 (Reactive) fires only on API 413 errors, preserving only the last 4 messages as an emergency page-fault handler.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at Tier 1 on the left and follow the arrows rightward through increasingly aggressive compaction strategies. Each box shows the tier name, what it does, its cost (from zero-cost rearrangement to a full LLM sub-agent call), and its classical cache-eviction analogue. The system always prefers the lightest tier that keeps the conversation within budget; it escalates rightward only when cheaper tiers are insufficient.</p>
+<section id="tier-1-microcompact-rearranging-for-cache-hits" class="level3">
+<h3 class="anchored" data-anchor-id="tier-1-microcompact-rearranging-for-cache-hits">Tier 1: Microcompact – Rearranging for Cache Hits</h3>
+<p>Microcompact does not reduce conversation size at all. It manages <span class="kw-sage">prompt cache invalidation</span> to minimize API costs. When Claude Code sends a request, it uses Anthropic’s <code>cache_editing</code> beta feature to mark sections as cacheable. Any change to a cached section invalidates the cache for everything after it.</p>
+<p>Microcompact detects these cache breaks and performs minimal content rearrangement. If a system reminder in the middle of the conversation changes (say, the token warning state updated), Microcompact pushes volatile content to the end, preserving the cache for the stable prefix. Think of this as defragmentation for your prompt cache. No data is lost – just reorganized for better hit rates.</p>
+</section>
+<section id="tier-2-snip-compact-lru-archival" class="level3">
+<h3 class="anchored" data-anchor-id="tier-2-snip-compact-lru-archival">Tier 2: Snip Compact – LRU Archival</h3>
+<p>When the token buffer exceeds <span class="kw-slate">13K tokens</span> over target, Snip Compact activates. It does not summarize anything. It performs <span class="kw-sage">archival</span>: older messages are moved to a separate store and replaced with a lightweight marker. This is textbook <span class="kw-sage">LRU (Least Recently Used)</span> eviction. The earliest messages – exploratory file reads, directory listings, structure discovery – are valuable for provenance but not for ongoing work. Snip Compact removes them from the active budget without an expensive LLM call.</p>
+</section>
+<section id="tier-3-context-collapse-staged-summarization" class="level3">
+<h3 class="anchored" data-anchor-id="tier-3-context-collapse-staged-summarization">Tier 3: Context Collapse – Staged Summarization</h3>
+<p>When usage exceeds <span class="kw-slate">90%</span>, the system begins <span class="kw-sage">grouped section summarization</span>. Rather than summarizing the entire conversation at once, it identifies logical sections – a debugging session, a file edit sequence, a code review – and summarizes each independently. The critical design choice is <span class="kw-sage">progressive degradation</span> rather than cliff-edge behavior:</p>
+<pre><code>At 90% usage:  oldest section summarized
+At 92% usage:  next oldest section summarized
+At 94% usage:  third section summarized
+...
+Conversation degrades gracefully, not catastrophically</code></pre>
+<p>This is analogous to how ARC (Adaptive Replacement Cache) manages eviction – instead of a single eviction policy, it adaptively balances multiple strategies based on the workload.</p>
+</section>
+<section id="tier-4-auto-compact-the-full-summarizer" class="level3">
+<h3 class="anchored" data-anchor-id="tier-4-auto-compact-the-full-summarizer">Tier 4: Auto Compact – The Full Summarizer</h3>
+<p>This is the tier most users encounter. When tokens reach <code>effectiveContextWindow - 13K</code>, Auto Compact launches a <strong>compaction sub-agent</strong> via <code>runForkedAgent()</code>, which forks from the parent agent. The fork shares the parent’s model and prompt cache prefix; there is no fixed model tier, because the sub-agent uses whatever model the parent uses. This design means the long system prompt and conversation prefix are a cache hit rather than a redundant cost. The sub-agent summarizes the older portion of the conversation into a structured summary.</p>
+<p><strong>The 9-section compaction prompt.</strong> The sub-agent’s instructions come from <code>BASE_COMPACT_PROMPT</code> in <code>src/services/compact/prompt.ts</code>, a structured template that covers nine sections: (i) primary request and intent, (ii) key technical concepts, (iii) files and code sections with relevant snippets, (iv) errors and fixes encountered, (v) problem-solving approaches, (vi) all user messages verbatim, (vii) pending tasks, (viii) current work in progress, and (ix) an optional next step. This structure ensures the summary preserves not just what was discussed but why, capturing both the technical state and the user’s intent.</p>
+<p><strong>The two-block output format.</strong> The sub-agent’s output follows a two-block structure. First, an <code>&lt;analysis&gt;</code> scratchpad block where the sub-agent reasons through the conversation chronologically, identifying what matters and what can be discarded. Second, a <code>&lt;summary&gt;</code> block containing the actual structured summary. At injection time, the runtime’s <code>formatCompactSummary()</code> function strips the <code>&lt;analysis&gt;</code> block before inserting the summary into context. This is a deliberate design: the scratchpad gives the sub-agent space to reason carefully about what to preserve, but the drafting work does not consume the token budget it just freed. Only the distilled <code>&lt;summary&gt;</code> enters the conversation history.</p>
+<p>The resulting summary follows a consistent format:</p>
+<pre class="text"><code>This session is being continued from a previous conversation
+that ran out of context.
+
+Summary:
+- Scope: 47 earlier messages compacted (user=18, assistant=20, tool=9)
+- Tools mentioned: bash, read, edit, grep
+- Recent user requests:
+  - Fix the authentication middleware for expired tokens
+  - Add unit tests for the token refresh flow
+- Key files: src/auth/middleware.ts, tests/auth/middleware.test.ts
+- Current work: Implementing retry logic for failed refreshes</code></pre>
+<p>Two critical mechanisms prevent disaster. First, a <span class="kw-sage">recursion guard</span>: the compaction sub-agent’s <code>querySource</code> is set to <code>'compact'</code>, and the compaction trigger checks for this and suppresses itself. Without this guard, compaction would trigger compaction in an infinite loop. Second, <span class="kw-sage">budget carryover</span>: the system records the token count before compaction so that billing and progress tracking remain accurate after the summary replaces the original messages.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The recursion guard is the same pattern as a reentrant lock or a reentrancy guard in Solidity smart contracts. When a system can invoke itself recursively, you need an explicit check to prevent infinite loops.</p>
+</div>
+</div>
+</section>
+<section id="tier-5-reactive-compact-the-page-fault-handler" class="level3">
+<h3 class="anchored" data-anchor-id="tier-5-reactive-compact-the-page-fault-handler">Tier 5: Reactive Compact – The Page Fault Handler</h3>
+<p>Despite all proactive tiers, edge cases exist. A tool result is unexpectedly large. Multiple system reminders inject simultaneously. The heuristic underestimates the true count. When the API returns a <strong>413 Prompt Too Long</strong> error, Reactive Compact fires. It performs immediate, aggressive compaction – preserving only the last 4 messages and summarizing everything else – then retries.</p>
+<p>A one-attempt guard (<code>hasAttemptedReactiveCompact</code>) prevents retry loops. If one reactive compaction is not enough, the error surfaces to the user. This tier exists because <strong>no estimation system is perfect</strong>. Rather than engineering perfect token counting, Claude Code accepts imprecision and provides a robust recovery path.</p>
+<hr>
+</section>
+</section>
+<section id="compaction-in-action-a-two-hour-session" class="level2">
+<h2 class="anchored" data-anchor-id="compaction-in-action-a-two-hour-session">Compaction in Action: A Two-Hour Session</h2>
+<p>To make all of this concrete, consider how context management behaves during a realistic coding session. The chart below shows the characteristic “sawtooth” pattern of token usage, where compaction events periodically bring usage back down.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-session-sawtooth" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-session-sawtooth-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-session-sawtooth">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph Phase1["Bootstrap (0-5 min)"]
+    B1["~17K tokens&lt;br&gt;System prompt +&lt;br&gt;first messages"]
+  end
+
+  subgraph Phase2["Exploration (5-30 min)"]
+    E1["Tokens grow&lt;br&gt;to ~95K"]
+    E2["T2 Snip&lt;br&gt;drops ~15K"]
+  end
+
+  subgraph Phase3["Implementation (30-55 min)"]
+    I1["Tokens grow&lt;br&gt;to ~185K"]
+    I2["T2 Snip&lt;br&gt;trims briefly"]
+    I3["T4 Auto Compact&lt;br&gt;drops to ~30K"]
+  end
+
+  subgraph Phase4["Second Phase (65-100 min)"]
+    S1["Tokens regrow&lt;br&gt;to ~185K"]
+    S2["T4 Auto Compact&lt;br&gt;drops to ~35K"]
+  end
+
+  subgraph Phase5["Final Push (100-120 min)"]
+    F1["Tokens at ~140K&lt;br&gt;Session ends"]
+  end
+
+  B1 --&gt; E1
+  E1 --&gt; E2
+  E2 --&gt; I1
+  I1 --&gt; I2
+  I2 --&gt; I3
+  I3 --&gt; S1
+  S1 --&gt; S2
+  S2 --&gt; F1
+  style B1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style E1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style E2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style I1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style I2 fill:#C4A882,color:#fff,stroke:#A08562
+  style I3 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style S1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style F1 fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-session-sawtooth-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Sawtooth token usage pattern across a two-hour coding session, progressing through five phases. Bootstrap (0-5 min) reaches ~17K tokens. Exploration (5-30 min) grows to ~95K before a Tier 2 snip drops ~15K. Implementation (30-55 min) grows to ~185K, triggering both Tier 2 snips and a Tier 4 auto-compact that resets usage to ~30K. The cycle repeats in the second implementation phase, with a second Tier 4 compact at minute 95. The final push ends the session at ~140K tokens.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the arrow chain left to right through five session phases, each representing a time window. Token counts climb within each phase (green nodes) until a compaction event fires (terracotta/purple nodes) and drops the count back down. The characteristic “sawtooth” shape – rising usage punctuated by sharp drops – shows how the compaction tiers keep a 400K+ token session within the 200K window.</p>
+<p><strong>Minutes 0–5: Bootstrap.</strong> System prompt assembles (~12K tokens). The user describes their task. Total: ~17K tokens. All tiers dormant.</p>
+<p><strong>Minutes 5–30: Exploration.</strong> The agent reads files, runs grep, examines project structure. Each tool result adds 2K–8K tokens. Around minute 25, the buffer exceeds 13K over target. <strong>Tier 2 (Snip)</strong> quietly archives the earliest exploration messages. Token count drops ~15K.</p>
+<p><strong>Minutes 30–55: Implementation.</strong> Active code writing, test running, iteration. Token growth accelerates because edits produce diffs and test output is verbose. Multiple Tier 2 snips occur. Around minute 50, usage crosses 90%. <strong>Tier 3 (Context Collapse)</strong> begins staged summarization of the oldest implementation sections.</p>
+<p><strong>Minutes 55–65: First Auto Compact.</strong> Despite Tier 3, continuous tool use pushes to the threshold. <strong>Tier 4 fires.</strong> The sub-agent summarizes everything except the last 4 messages. Tokens drop from ~185K to ~30K. The user sees “[compacting conversation…]” briefly. The summary preserves: which files were modified, original intent, test status, remaining work.</p>
+<p><strong>Minutes 65–100: Second phase.</strong> Fresh budget. The pattern repeats. Around minute 95, a second Tier 4 fires. This summary is richer because it incorporates the previous one – the <code>merge_compact_summaries</code> function layers prior context under “Previously compacted context.”</p>
+<p><strong>Minutes 100–120: Final push.</strong> The rolling-window pattern is clear: full fidelity for the last 20–30 minutes, compressed history for everything before. If a 413 fires, Tier 5 handles it transparently.</p>
+<p>The result: a session that would consume 400K+ tokens in a naive implementation operates comfortably within a 200K window, with no user-visible degradation in recent work.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The economic impact is substantial. Without compaction, a two-hour session at 400K tokens costs roughly 2x what it costs with compaction. Multiply by millions of sessions and the savings fund the engineering effort many times over. Compaction is not just a technical feature – it is a business requirement.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="system-reminders-50-adaptive-mid-conversation-injections" class="level2">
+<h2 class="anchored" data-anchor-id="system-reminders-50-adaptive-mid-conversation-injections">System Reminders: 50 Adaptive Mid-Conversation Injections</h2>
+<p>Compaction manages what the model <em>forgets</em>. System reminders manage what the model <em>learns</em> – mid-turn, without the user typing it, and without breaking the prompt cache. Every turn you take in Claude Code, invisible XML gets injected into your conversation. You never see it. The model always does.</p>
+<p>These <code>&lt;system-reminder&gt;</code> tags carry <span class="kw-slate">50 distinct notification types</span> stitched into the message stream at <code>messages.create()</code> time. They are the nervous system of the agent: constant, adaptive, and invisible to the end user. The key constraint is that reminders must live in the conversation messages, not in the system prompt, because the system prompt is cached (<span class="kw-slate">90% cost savings</span> at ~15K tokens per turn) and any byte change would invalidate that cache.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hot-cold" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hot-cold-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hot-cold">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  COLD["&lt;b&gt;SYSTEM PROMPT (cold)&lt;/b&gt;&lt;br&gt;Identity, tool policies,&lt;br&gt;anti-patterns, CLAUDE.md...&lt;br&gt;&lt;i&gt;Cache: HIT (90% savings)&lt;/i&gt;"]
+  HOT["&lt;b&gt;REMINDERS (hot)&lt;/b&gt;&lt;br&gt;Plan step 3/7, tokens 72%,&lt;br&gt;auth.ts modified...&lt;br&gt;&lt;i&gt;Changes every turn&lt;/i&gt;"]:::hot
+  STREAM["&lt;b&gt;Message stream&lt;/b&gt;&lt;br&gt;User msg + system-reminder tags + Assistant msg"]
+
+  COLD -- "stable prefix" --&gt; STREAM
+  HOT -- "injected per-turn" --&gt; STREAM
+
+  classDef hot fill:#C2856E,stroke:#A06A54,color:#ffffff
+  style COLD fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style HOT fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style STREAM fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hot-cold-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Hot/cold data separation for prompt economics. The system prompt (cold data) is cached server-side with a 5-minute TTL and achieves 90% cost savings; it must remain byte-identical across turns. System reminders (hot data) change every turn – plan step, token percentage, modified files – and are injected into the message stream rather than the system prompt to preserve the cache.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Two sources feed into the message stream at the bottom. The top-left “SYSTEM PROMPT” box represents cold, cached data that stays byte-identical across turns for 90% cost savings. The top-right “REMINDERS” box represents hot, volatile data that changes every turn. The arrows show that both converge into the message stream, but reminders are injected into conversation messages (not the system prompt) specifically to preserve the cache on the stable prefix.</p>
+<section id="the-reminder-taxonomy" class="level3">
+<h3 class="anchored" data-anchor-id="the-reminder-taxonomy">The Reminder Taxonomy</h3>
+<p>The 50 reminder types are organized into 10 categories, each addressing a different class of mid-conversation context. Think of it as the interrupt vector table in an x86 processor: the CPU has ~256 interrupt types organized by class (hardware faults, software traps, external interrupts), and each carries specific context that triggers a specific handler.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Count</th>
+<th>Reminder Types</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Plan &amp; Mode</strong></td>
+<td>6</td>
+<td>plan_mode (5-phase / iterative / subagent), plan_mode_reentry, plan_mode_exit, auto_mode, auto_mode_exit, plan_file_reference</td>
+</tr>
+<tr class="even">
+<td><strong>File &amp; IDE State</strong></td>
+<td>7</td>
+<td>edited_text_file, directory, file (text/image/notebook/pdf), compact_file_reference, pdf_reference, selected_lines_in_ide, opened_file_in_ide</td>
+</tr>
+<tr class="odd">
+<td><strong>Hook Results</strong></td>
+<td>5</td>
+<td>hook_success, hook_blocking_error, hook_additional_context, hook_stopped_continuation, async_hook_response</td>
+</tr>
+<tr class="even">
+<td><strong>Resource Budget</strong></td>
+<td>4</td>
+<td>token_usage, budget_usd, output_token_usage, task_status</td>
+</tr>
+<tr class="odd">
+<td><strong>Memory &amp; Context</strong></td>
+<td>6</td>
+<td>nested_memory, relevant_memories, compaction_reminder, context_efficiency, date_change, current_session_memory</td>
+</tr>
+<tr class="even">
+<td><strong>Skills &amp; Commands</strong></td>
+<td>4</td>
+<td>invoked_skills, skill_listing, skill_discovery, queued_command</td>
+</tr>
+<tr class="odd">
+<td><strong>Task Management</strong></td>
+<td>3</td>
+<td>todo_reminder, task_reminder, verify_plan_reminder</td>
+</tr>
+<tr class="even">
+<td><strong>Tool &amp; Agent Changes</strong></td>
+<td>5</td>
+<td>deferred_tools_delta, agent_listing_delta, mcp_instructions_delta, agent_mention, mcp_resource</td>
+</tr>
+<tr class="odd">
+<td><strong>Behavioral</strong></td>
+<td>5</td>
+<td>output_style, diagnostics, ultrathink_effort, critical_system_reminder, companion_intro</td>
+</tr>
+<tr class="even">
+<td><strong>Team</strong></td>
+<td>3</td>
+<td>team_context, teammate_mailbox, teammate_shutdown_batch</td>
+</tr>
+</tbody>
+</table>
+<p>The categories are not arbitrary. They map to the agent’s operational concerns:</p>
+<p><strong>Plan Mode (5)</strong> tracks where the agent is in multi-step execution. The <code>plan-mode-is-active</code> reminder alone has three variants – 5-phase, iterative, and subagent – because different planning strategies need different instructions. After compaction discards conversation history, these reminders are often the <em>only</em> mechanism by which the agent knows what step it is on.</p>
+<p><strong>File State (6)</strong> is the sensory layer. When a user edits a file outside Claude Code, <code>file-modified-by-user</code> fires. When the IDE has a file open, <code>file-opened-in-ide</code> injects that context. These reminders give the agent environmental awareness it would otherwise lack entirely – it cannot see the filesystem; these reminders are its eyes.</p>
+<p><strong>Hook Results (5)</strong> close the feedback loop between the <a href="./11-hooks-lifecycle.html">hooks system</a> and the agent’s reasoning. When a PreToolUse hook blocks a command, <code>hook-blocking-error</code> tells the model what happened and why. Without this feedback, the model would retry the same blocked command indefinitely.</p>
+<p><strong>Resource Budget (3)</strong> implements backpressure. Token pressure, dollar budget, and task status are not cosmetic warnings – they actively shape the model’s behavior, prompting shorter responses and more efficient tool use as resources deplete. ### Sparse vs.&nbsp;Full: Adaptive Selection</p>
+<p>Not every reminder fires on every turn. The system adaptively selects between <code>full</code> and <code>sparse</code> variants based on whether the context is novel or redundant.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variant</th>
+<th>When Used</th>
+<th>Token Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>full</strong></td>
+<td>First occurrence, critical state changes, after compaction</td>
+<td>~500 tokens</td>
+</tr>
+<tr class="even">
+<td><strong>sparse</strong></td>
+<td>Repeated/stable state, non-critical updates</td>
+<td>~20 tokens</td>
+</tr>
+</tbody>
+</table>
+<p>For example, the plan mode reminder in full mode includes all five phases of planning instructions (<span class="kw-slate">~500 tokens</span>). In sparse mode, it collapses to “Plan mode active. Continue current phase.” (<span class="kw-slate">~20 tokens</span>) – a <span class="kw-slate">96% reduction</span> on repeated turns.</p>
+<p>The analogy to <span class="kw-sage">adaptive bitrate streaming</span> is precise. Netflix does not always request the highest quality video; it monitors bandwidth, buffer level, and playback state, then selects the appropriate bitrate. Claude Code’s reminder system does the same: it monitors conversation state and injects the appropriate level of detail. Full when the context is novel. Sparse when it is stable.</p>
+<hr>
+</section>
+</section>
+<section id="the-hook-to-reminder-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="the-hook-to-reminder-pipeline">The Hook-to-Reminder Pipeline</h2>
+<p>Hooks execute shell commands at lifecycle events (see <a href="./11-hooks-lifecycle.html">Hooks &amp; Lifecycle</a>). But execution alone is useless if the model does not know what happened. The hook-to-reminder pipeline closes this loop: hook results become system reminders that inform the model’s next decision.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hook-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hook-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hook-pipeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  FIRE["Hook fires&lt;br&gt;&lt;i&gt;PreToolUse&lt;/i&gt;"]
+  EXEC["Execute shell&lt;br&gt;command"]
+  INSPECT["Inspect exit&lt;br&gt;code + stdout"]
+  INJECT["Wrap and inject&lt;br&gt;as reminder"]
+
+  FIRE --&gt; EXEC --&gt; INSPECT --&gt; INJECT
+
+  INSPECT --&gt; OK["exit 0 -&gt; hook-success"]:::success
+  INSPECT --&gt; BLOCK["exit 2 -&gt; hook-blocking-error"]:::danger
+  INSPECT --&gt; CTX["stdout -&gt; hook-additional-context"]:::info
+  INSPECT --&gt; STOP["halt -&gt; hook-stopped-continuation"]:::warn
+
+  classDef success fill:#9CAF88,stroke:#7A8D68,color:#ffffff
+  classDef danger fill:#C2856E,stroke:#A06A54,color:#ffffff
+  classDef info fill:#8B9DAF,stroke:#6E7F91,color:#ffffff
+  classDef warn fill:#B5A99A,stroke:#8A7F72,color:#ffffff
+  style FIRE fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style EXEC fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style INSPECT fill:#C2856E,color:#fff,stroke:#A06A54
+  style INJECT fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style OK fill:#C4A882,color:#fff,stroke:#A08562
+  style BLOCK fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style CTX fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style STOP fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hook-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Hook-to-reminder pipeline showing the four-stage flow from hook firing to conversation injection. A lifecycle hook (e.g., PreToolUse) fires, executes a shell command, inspects the exit code and stdout, then wraps the result as a typed system reminder. Exit code 0 produces hook-success; exit code 2 produces hook-blocking-error (which tells the model to try a different approach); stdout content produces hook-additional-context (e.g., lint feedback injected without an explicit tool call).
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top where a lifecycle hook fires, then follow the vertical chain downward through execution, inspection, and injection – time flows top to bottom. At the “Inspect exit code + stdout” node, the flow branches into four possible outcomes on the right: success (exit 0), blocking error (exit 2), additional context (stdout content), or stopped continuation (halt). Each branch produces a different typed system reminder that the model reads on its next turn.</p>
+<p>The five hook reminder types form a complete outcome taxonomy:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Reminder Type</th>
+<th>Trigger</th>
+<th>Model Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>hook-success</code></td>
+<td>Hook exits 0, no blocking output</td>
+<td>Proceed normally</td>
+</tr>
+<tr class="even">
+<td><code>hook-blocking-error</code></td>
+<td>Hook exits 2 (deny)</td>
+<td>Stop this approach; try a different strategy</td>
+</tr>
+<tr class="odd">
+<td><code>hook-stopped-continuation</code></td>
+<td>Hook halted further execution</td>
+<td>Acknowledge the halt; do not retry</td>
+</tr>
+<tr class="even">
+<td><code>hook-stopped-continuation-prefix</code></td>
+<td>Hook halted with partial output</td>
+<td>Use the partial output</td>
+</tr>
+<tr class="odd">
+<td><code>hook-additional-context</code></td>
+<td>Hook stdout contains extra info</td>
+<td>Incorporate into reasoning</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>hook-additional-context</code> type is particularly interesting. A PostToolUse hook on <code>Write</code> might run a linter and pipe the results to stdout. That output becomes a system reminder on the next turn, giving the model lint feedback without requiring an explicit tool call. The hook acts as a sensor, and the reminder acts as the sensory nerve carrying the signal to the brain.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is the <strong>Observer pattern</strong> with a twist. Classic Observer: subject changes state, notifies observers, observers react. Here: hook executes (event), result is captured (notification), and the <em>model</em> reacts on the next turn (observer callback). The twist is that the observer is not code – it is a language model interpreting natural language feedback.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="file-state-and-resource-backpressure" class="level2">
+<h2 class="anchored" data-anchor-id="file-state-and-resource-backpressure">File State and Resource Backpressure</h2>
+<p>Two reminder categories deserve additional attention because they solve problems that plague every LLM coding agent.</p>
+<p><span class="kw-terra">File state reminders</span> solve <span class="kw-sage">stale-read hazards</span>. When the model reads a file on turn 3 and the user edits it externally on turn 7, the model’s mental model of that file is now wrong. Without the <code>file-modified-by-user</code> reminder, the model might overwrite the user’s changes on turn 8. This is the same <span class="kw-sage">cache coherence</span> problem that <code>inotify</code> (Linux) and <code>FSEvents</code> (macOS) solve for applications – maintaining consistency between in-memory state and on-disk reality.</p>
+<p>The IDE-related reminders (<code>file-opened-in-ide</code>, <code>lines-selected-in-ide</code>) create a shared attention channel between human and agent. When you open a file and select specific lines, the model receives proactive context about what you are looking at, even before you type a prompt. This is <span class="kw-sage">proactive context injection</span> – information pushed because it is likely to be relevant, not because it was requested.</p>
+<p><strong>Resource budget reminders</strong> implement backpressure in the distributed-systems sense. As token usage climbs from 40% to 70% to 90%, the reminder escalates from absent to advisory to urgent. The model shifts its behavior: shorter responses, more efficient tool use, eventually wrapping up. The <code>usd-budget</code> reminder does the same for dollar spending when a user sets <code>--max-cost</code>. Both are closed-loop control systems where a downstream consumer (the context window, the wallet) signals an upstream producer (the model) to reduce output.</p>
+<hr>
+</section>
+<section id="the-aop-analogy-cross-cutting-concerns-for-prompts" class="level2">
+<h2 class="anchored" data-anchor-id="the-aop-analogy-cross-cutting-concerns-for-prompts">The AOP Analogy: Cross-Cutting Concerns for Prompts</h2>
+<p>The reminder system implements <strong>aspect-oriented programming</strong> for LLM conversations. The structural mapping to AOP frameworks like AspectJ or Spring AOP is exact, not metaphorical:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>AOP Concept</th>
+<th>System Reminder Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Aspect</strong></td>
+<td>A reminder category (plan, file, hook…)</td>
+</tr>
+<tr class="even">
+<td><strong>Join point</strong></td>
+<td>A position in the conversation stream (before next API call)</td>
+</tr>
+<tr class="odd">
+<td><strong>Advice</strong></td>
+<td>The reminder content injected at that point</td>
+</tr>
+<tr class="even">
+<td><strong>Pointcut</strong></td>
+<td>The selection logic (is plan mode active? did a hook fire?)</td>
+</tr>
+<tr class="odd">
+<td><strong>Weaving</strong></td>
+<td>Runtime injection at <code>messages.create()</code> time</td>
+</tr>
+<tr class="even">
+<td><strong>Cross-cutting concern</strong></td>
+<td>Token state, plan progress, file changes – spans all turns</td>
+</tr>
+</tbody>
+</table>
+<p>The key property that makes this AOP rather than simple middleware is that <strong>reminders are orthogonal to the core conversation</strong>. The user’s messages and the model’s responses form the base program. Reminders are woven in without modifying either – the user never types <code>&lt;system-reminder&gt;</code>, and the model’s responses do not contain them. They exist in a separate plane that intersects the conversation at join points.</p>
+<p>This orthogonality has the same benefit in prompts that it has in code: you can add, remove, or modify a reminder category without touching the system prompt, the tool definitions, or any other reminder category. This is separation of concerns at the prompt level.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>AOP was invented to solve the “scattering and tangling” problem in software: cross-cutting code scattered across modules and tangled with business logic. LLM prompts have the same problem – token budget awareness, plan state tracking, and file change detection are concerns that cut across every turn but do not belong in the base system prompt. Reminders solve prompt scattering the same way aspects solve code scattering.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="memory-persistence-knowledge-that-outlives-sessions" class="level2">
+<h2 class="anchored" data-anchor-id="memory-persistence-knowledge-that-outlives-sessions">Memory Persistence: Knowledge That Outlives Sessions</h2>
+<p>Compaction manages the <em>within-session</em> memory problem. But what about <em>across-session</em> knowledge? When a Tier 4 compaction fires and discards the history of a two-hour session, certain knowledge should survive: the user prefers tabs over spaces, the project uses a specific test framework, a particular file is the entry point.</p>
+<p>Claude Code addresses this through the <code>memory-file-contents</code> and <code>nested-memory-contents</code> reminder types. CLAUDE.md files – placed at the project root, in subdirectories, or in <code>~/.claude/</code> – are loaded at session start and injected as system reminders. After compaction discards conversation history, these memory files remain intact because they are re-injected on every turn as part of the reminder pipeline.</p>
+<p>The <code>session-continuation</code> reminder serves a related purpose. When a session resumes after interruption, or when a Tier 4 compaction resets the conversation, this reminder carries forward a compressed summary of what was accomplished. It is the bridge between the old context (now summarized) and the new context (starting fresh).</p>
+<p>Together, these mechanisms create a three-tier memory architecture:</p>
+<ol type="1">
+<li><strong>Ephemeral memory</strong> – the conversation history, managed by the five compaction tiers</li>
+<li><strong>Session memory</strong> – compact summaries that survive compaction within a session</li>
+<li><strong>Persistent memory</strong> – CLAUDE.md files and user preferences that survive across sessions</li>
+</ol>
+<p>This mirrors the storage hierarchy in any database system: RAM (fast, volatile, capacity-limited), WAL/journal (survives crashes within a transaction), and disk (survives restarts, effectively permanent).</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>Step back and the full picture emerges. Claude Code’s context management system is a <span class="kw-sage">garbage collector</span> for conversation history.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-gc-analogy" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-gc-analogy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-gc-analogy">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  GC["&lt;b&gt;Garbage Collector&lt;/b&gt;&lt;br&gt;5 compaction tiers"]
+  HEAP["&lt;b&gt;Heap&lt;/b&gt;&lt;br&gt;Conversation history"]
+  ROOTS["&lt;b&gt;Root Set&lt;/b&gt;&lt;br&gt;50 system reminders&lt;br&gt;+ CLAUDE.md files"]
+  SURVIVORS["&lt;b&gt;Survivors&lt;/b&gt;&lt;br&gt;Recent messages +&lt;br&gt;compact summary"]
+  FREED["&lt;b&gt;Freed&lt;/b&gt;&lt;br&gt;Old messages&lt;br&gt;evicted / summarized"]
+
+  GC -- "scans" --&gt; HEAP
+  HEAP -- "evicts" --&gt; FREED
+  GC -- "consults" --&gt; ROOTS
+  ROOTS -- "preserves" --&gt; SURVIVORS
+  HEAP -- "promotes" --&gt; SURVIVORS
+  style GC fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style HEAP fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style ROOTS fill:#C2856E,color:#fff,stroke:#A06A54
+  style SURVIVORS fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style FREED fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-gc-analogy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: The garbage collector analogy mapping Claude Code’s context management to JVM generational GC. The five compaction tiers act as the collector, scanning the conversation history (heap). System reminders and CLAUDE.md files form the root set – the references that are never collected and survive every compaction cycle. Recent messages and compact summaries are the survivors promoted across generations; old messages are the freed objects evicted or summarized away.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The “Garbage Collector” node on the left drives the process: it scans the “Heap” (conversation history) and consults the “Root Set” (system reminders and CLAUDE.md files). Arrows show the two outcomes – old messages are evicted or summarized into “Freed,” while recent messages and compact summaries are promoted into “Survivors.” The root set is never collected; it is the anchor that preserves critical context across every compaction cycle.</p>
+<p>Like a <span class="kw-sage">generational garbage collector</span> in the JVM, the system partitions memory into generations. Young messages (recent turns) are kept at full fidelity. Old messages are promoted to a summary generation. Ancient messages are collected entirely. The <span class="kw-sage">root set</span> – system reminders, CLAUDE.md contents, and the user’s most recent messages – is never collected.</p>
+<p>The parallels extend further:</p>
+<ul>
+<li><strong>Stop-the-world pauses</strong> correspond to Tier 4 compaction, where the agent briefly pauses to summarize (“compacting conversation…”).</li>
+<li><strong>Concurrent collection</strong> corresponds to Tier 2 snips, which happen asynchronously without blocking the conversation.</li>
+<li><strong>The write barrier</strong> corresponds to the recursion guard that prevents compaction from triggering compaction.</li>
+<li><strong>Finalization</strong> corresponds to the <code>merge_compact_summaries</code> function that folds prior summaries into new ones, ensuring no summary is orphaned.</li>
+</ul>
+<p>The system reminder pipeline completes the analogy: it is the mechanism by which the root set is maintained. On every GC cycle (every API turn), the 50 reminder types are re-evaluated, ensuring that critical volatile state – plan progress, file modifications, resource pressure – remains reachable even after collection discards the messages that originally contained it.</p>
+<p><strong>Context management is cache eviction in disguise.</strong> The five tiers map to known strategies: cache-line rearrangement (T1), LRU truncation (T2), adaptive replacement (T3), full flush-and-reload (T4), and fault recovery (T5). Recognizing this shape lets you borrow decades of systems research.</p>
+<p><strong>Volatile context must live outside cached regions.</strong> The system prompt is a 15K-token cached asset. Reminders are volatile signals that change every turn. Mixing them would destroy the cache. The hot/cold separation is the same pattern database architects use to keep working sets in the buffer pool.</p>
+<p><strong>Adaptive injection beats fixed injection.</strong> The sparse/full discriminator saves up to 96% of tokens on stable-state turns while preserving full context when state changes. Two levels, selected by a simple predicate (has this state changed?), are enough when the cost difference is 25x.</p>
+<p><strong>Progressive degradation beats cliff-edge failure.</strong> The graduated approach – Tier 2 snips before Tier 3 summarization before Tier 4 full compaction – means the conversation degrades gracefully. The user never experiences sudden context loss.</p>
+<p><strong>Reminders are the feedback loop that makes hooks useful.</strong> Without the hook-to-reminder pipeline, hooks would be invisible side effects. The pipeline transforms hooks from opaque actions into observable events that shape the model’s reasoning.</p>
+<p><strong>Prompt caching turns architecture into economics.</strong> The static/dynamic section split saves up to 90% on system prompt costs. The placement of volatile MCP instructions last, the ordering of stable fragments first – every architectural decision serves this economic goal. In a product serving millions of sessions, this is the difference between viability and bankruptcy.</p>
+<p>The context management system is the invisible foundation that makes everything else in Claude Code possible. The <a href="./05-tool-system.html">tool system</a>, the <a href="./02-agent-loop-query-engine.html">agent loop</a>, the <a href="./07-multi-agent-orchestration.html">multi-agent orchestrator</a> – they all assume the conversation remains coherent for as long as the user needs. The five compaction tiers and 50 system reminders are what make that assumption hold.</p>
+<hr>
+</section>
+<section id="appendix-full-list-of-system-reminder-types" class="level2 column-page">
+<h2 class="anchored" data-anchor-id="appendix-full-list-of-system-reminder-types">Appendix: Full List of System Reminder Types</h2>
+<p>Every system reminder is injected via the <code>normalizeAttachmentForAPI()</code> function in <code>messages.ts</code>, which wraps attachment content in <code>&lt;system-reminder&gt;</code> XML tags before inserting into the message stream. A handful of additional reminders are injected directly from specialized modules (noted below). The table lists all 50 types, grouped by category.</p>
+<p><strong>Plan &amp; Mode (6)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>plan_mode</code></td>
+<td>Plan mode activated</td>
+<td>Full planning instructions (5-phase, iterative, or subagent variant); up to ~500 tokens in full mode, ~20 in sparse</td>
+<td><code>src/utils/attachments.ts</code> → <code>getPlanModeInstructions()</code></td>
+</tr>
+<tr class="even">
+<td><code>plan_mode_reentry</code></td>
+<td>Re-entering plan mode after exit</td>
+<td>Instructions to read existing plan file, evaluate against new request, decide fresh vs.&nbsp;continue</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>plan_mode_exit</code></td>
+<td>Exiting plan mode</td>
+<td>“You have exited plan mode. You can now make edits, run tools, and take actions.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>auto_mode</code></td>
+<td>Auto mode activated</td>
+<td>Auto mode behavioral instructions</td>
+<td><code>src/utils/attachments.ts</code> → <code>getAutoModeInstructions()</code></td>
+</tr>
+<tr class="odd">
+<td><code>auto_mode_exit</code></td>
+<td>Exiting auto mode</td>
+<td>“You have exited auto mode. Ask clarifying questions when the approach is ambiguous.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>plan_file_reference</code></td>
+<td>Plan file exists post-compaction</td>
+<td>Full plan file contents with path; instructs to continue if relevant</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>File &amp; IDE State (7)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>edited_text_file</code></td>
+<td>File modified externally (user or linter)</td>
+<td>Notification with filename and diff snippet; “Don’t revert unless the user asks”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>directory</code></td>
+<td>Directory listing injected</td>
+<td>Wraps as synthetic <code>ls</code> tool_use / tool_result pair</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>file</code></td>
+<td>File content attached (text, image, notebook, PDF)</td>
+<td>Wraps as synthetic FileRead tool_use / tool_result; adds truncation note if file exceeds <code>MAX_LINES_TO_READ</code></td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>compact_file_reference</code></td>
+<td>File previously read, now compacted</td>
+<td>“You already read this file” reference with abbreviated content</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>pdf_reference</code></td>
+<td>PDF file attached</td>
+<td>PDF content with page reference</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>selected_lines_in_ide</code></td>
+<td>User selects lines in connected IDE</td>
+<td>File path, line range, and selected content — proactive context injection</td>
+<td><code>src/utils/attachments.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>opened_file_in_ide</code></td>
+<td>User opens file in connected IDE</td>
+<td>File path notification — shared attention channel between human and agent</td>
+<td><code>src/utils/attachments.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hook Results (5)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>hook_success</code></td>
+<td>Hook exits 0 (only for <code>SessionStart</code> and <code>UserPromptSubmit</code> events)</td>
+<td>“{hookName} hook success: {stdout}”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>hook_blocking_error</code></td>
+<td>Hook exits 2 (deny)</td>
+<td>“{hookName} hook blocking error from command: ‘{cmd}’: {error}” — model must try different approach</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>hook_additional_context</code></td>
+<td>Hook stdout contains extra info</td>
+<td>“{hookName} hook additional context: {lines}” — e.g., lint results piped from a PostToolUse hook</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>hook_stopped_continuation</code></td>
+<td>Hook halts further execution</td>
+<td>“{hookName} hook stopped continuation: {message}” — model must not retry</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>async_hook_response</code></td>
+<td>Async hook completes after initial turn</td>
+<td>Delayed hook result delivered on subsequent turn</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Resource Budget (4)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>token_usage</code></td>
+<td>Every turn (when tracking enabled)</td>
+<td>“Token usage: {used}/{total}; {remaining} remaining”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>budget_usd</code></td>
+<td><code>--max-cost</code> flag set</td>
+<td>“USD budget: <span class="math inline">\({used}/\)</span>{total}; ${remaining} remaining”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>output_token_usage</code></td>
+<td>Output token budget feature enabled</td>
+<td>“Output tokens — turn: {current}/{budget} · session: {total}”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>task_status</code></td>
+<td>Background agent completes, fails, or is killed</td>
+<td>Task ID, type, status, delta summary; warns “Do NOT spawn a duplicate” for running tasks</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Memory &amp; Context (6)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>nested_memory</code></td>
+<td>Session start (CLAUDE.md files loaded)</td>
+<td>“Contents of {path}:” followed by full CLAUDE.md content</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>relevant_memories</code></td>
+<td>Auto-memory system finds matching saved memories</td>
+<td>Memory header with staleness note + memory content</td>
+<td><code>src/utils/messages.ts</code>, <code>src/memdir/memoryAge.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>compaction_reminder</code></td>
+<td>Auto-compact enabled</td>
+<td>“Auto-compact is enabled. Older messages will be automatically summarized. You have unlimited context.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>context_efficiency</code></td>
+<td><code>HISTORY_SNIP</code> feature flag enabled</td>
+<td>Snip nudge text from <code>snipCompact.js</code> — encourages concise responses</td>
+<td><code>src/services/compact/snipCompact.js</code></td>
+</tr>
+<tr class="odd">
+<td><code>date_change</code></td>
+<td>Calendar date changes during session</td>
+<td>“The date has changed. Today’s date is now {date}. DO NOT mention this to the user.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>current_session_memory</code></td>
+<td>Session memory preserved across compaction</td>
+<td>Session-scoped memory content that survives Tier 4 compaction</td>
+<td><code>src/utils/attachments.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Skills &amp; Commands (4)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>invoked_skills</code></td>
+<td>Skill(s) invoked in current session</td>
+<td>“The following skills were invoked. Continue to follow these guidelines:” + full skill content</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>skill_listing</code></td>
+<td>Skills available in project</td>
+<td>“The following skills are available for use with the Skill tool:” + skill names/descriptions</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>skill_discovery</code></td>
+<td>Relevant skills auto-discovered for current task</td>
+<td>“Skills relevant to your task:” + matched skill names; feature-gated on <code>EXPERIMENTAL_SKILL_SEARCH</code></td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>queued_command</code></td>
+<td>Slash command queued mid-turn</td>
+<td>Queued command text, possibly with images; wraps in <code>&lt;command-name&gt;</code> tags for <code>/</code>-prefixed commands</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Task Management (3)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>todo_reminder</code></td>
+<td>TodoWrite tool not used recently</td>
+<td>“Consider using the TodoWrite tool to track progress” + existing todo list if any</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>task_reminder</code></td>
+<td>TaskCreate/TaskUpdate not used recently</td>
+<td>“Consider using TaskCreate/TaskUpdate to track progress” + existing tasks; feature-gated on <code>TodoV2</code></td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>verify_plan_reminder</code></td>
+<td>Plan implementation complete</td>
+<td>“Call the VerifyPlanExecution tool to verify all plan items were completed”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tool &amp; Agent Changes (5)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>deferred_tools_delta</code></td>
+<td>MCP tools become available/unavailable</td>
+<td>Lists newly available deferred tools or disconnected tools</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>agent_listing_delta</code></td>
+<td>Agent types become available/unavailable</td>
+<td>Lists new/removed agent types; initial load includes concurrency note</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>mcp_instructions_delta</code></td>
+<td>MCP servers connect/disconnect</td>
+<td>MCP server instructions blocks; lists disconnected servers</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>agent_mention</code></td>
+<td>User @-mentions an agent type</td>
+<td>“The user has expressed a desire to invoke the agent ‘{type}’. Please invoke appropriately.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>mcp_resource</code></td>
+<td>MCP resource content attached</td>
+<td>Full resource text content wrapped in <code>&lt;mcp-resource&gt;</code> tags; handles empty/binary gracefully</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Behavioral (5)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>output_style</code></td>
+<td>Output style mode active (e.g., brief, verbose)</td>
+<td>Style-specific behavioral instructions</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>diagnostics</code></td>
+<td>IDE reports new diagnostic issues</td>
+<td>Formatted diagnostic summary in <code>&lt;new-diagnostics&gt;</code> tags</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>ultrathink_effort</code></td>
+<td>User requests specific reasoning effort level</td>
+<td>“The user has requested reasoning effort level: {level}. Apply this to the current turn.”</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>critical_system_reminder</code></td>
+<td>Custom agent definition includes <code>criticalSystemReminder_EXPERIMENTAL</code></td>
+<td>Arbitrary critical instructions (e.g., verification agent READ-ONLY constraint)</td>
+<td><code>src/utils/messages.ts</code>, <code>src/utils/attachments.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>companion_intro</code></td>
+<td>Companion buddy first introduced</td>
+<td>Companion role and interaction instructions; feature-gated on <code>BUDDY</code></td>
+<td><code>src/buddy/prompt.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Team Coordination (3)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>team_context</code></td>
+<td>Agent is a teammate in a swarm</td>
+<td>Team name, identity, resources paths, task list guidance, messaging format</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="even">
+<td><code>teammate_mailbox</code></td>
+<td>Teammate messages received</td>
+<td>Formatted teammate messages from mailbox</td>
+<td><code>src/utils/messages.ts</code></td>
+</tr>
+<tr class="odd">
+<td><code>teammate_shutdown_batch</code></td>
+<td>Multiple teammates shut down</td>
+<td>Collapsed count of teammate shutdowns</td>
+<td><code>src/utils/collapseTeammateShutdowns.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Non-Attachment System Reminders (injected directly, not via the attachment pipeline)</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 35%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Trigger</th>
+<th>Content Summary</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Side question</td>
+<td>User asks a <code>/btw</code> side question</td>
+<td>“This is a side question. Answer directly in a single response. NO tools available.”</td>
+<td><code>src/utils/sideQuestion.ts</code></td>
+</tr>
+<tr class="even">
+<td>Context injection</td>
+<td>CLAUDE.md / context data available</td>
+<td>“As you answer the user’s questions, you can use the following context:” + key-value pairs</td>
+<td><code>src/utils/api.ts</code></td>
+</tr>
+<tr class="odd">
+<td>Malware analysis</td>
+<td>File read (non-Opus models)</td>
+<td>“Consider whether this file would be considered malware. You CAN provide analysis but MUST refuse to improve it.”</td>
+<td><code>src/tools/FileReadTool/FileReadTool.ts</code></td>
+</tr>
+<tr class="even">
+<td>File read warning</td>
+<td>Empty file or offset beyond file length</td>
+<td>“Warning: the file exists but the contents are empty” / “shorter than the provided offset”</td>
+<td><code>src/tools/FileReadTool/FileReadTool.ts</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>No-Op Types (defined but return empty arrays)</strong></p>
+<p>Nine attachment types are defined in the type system but produce no system-reminder content: <code>already_read_file</code>, <code>command_permissions</code>, <code>edited_image_file</code>, <code>hook_cancelled</code>, <code>hook_error_during_execution</code>, <code>hook_non_blocking_error</code>, <code>hook_system_message</code>, <code>structured_output</code>, <code>hook_permission_decision</code>. These exist for UI rendering or internal bookkeeping only.</p>
+<hr>
+<p><em>Series: <a href="./00-birds-eye-architecture.html">Inside Claude Code</a> | Part III.2 of 13</em> <em>Previous: <a href="./03-prompt-assembly.html">Prompt Assembly</a> | Next: <a href="./05-tool-system.html">The Tool System</a></em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./03-prompt-assembly.html" class="pagination-link" aria-label="III.1 — Prompt Assembly">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">III.1 — Prompt Assembly</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./17-memory-hierarchy.html" class="pagination-link" aria-label="III.3 — Memory Hierarchy">
+        <span class="nav-page-text">III.3 — Memory Hierarchy</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

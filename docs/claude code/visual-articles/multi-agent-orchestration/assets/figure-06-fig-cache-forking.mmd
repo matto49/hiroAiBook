@@ -1,0 +1,14 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  PREFIX["<b>Shared Prefix</b> (byte-identical)<br><i>System prompt + tool descriptions +<br>conversation history + fork boilerplate</i>"] --> C1
+  PREFIX --> C2
+  PREFIX --> C3
+
+  C1["Child 1: <b>FULL COST</b> + task 1"]
+  C2["Child 2: <b>CACHE HIT</b> + task 2"]
+  C3["Child 3: <b>CACHE HIT</b> + task 3"]
+
+  style PREFIX fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style C1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style C3 fill:#B39EB5,color:#fff,stroke:#8E7A93

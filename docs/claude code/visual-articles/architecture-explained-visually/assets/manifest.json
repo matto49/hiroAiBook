@@ -1,0 +1,42 @@
+[
+  {
+    "index": 1,
+    "kind": "image",
+    "file": "figure-01.png",
+    "url": "https://substack-post-media.s3.amazonaws.com/public/images/ad2c3580-fbd3-402c-a7a0-478905992cbd_1204x832.png",
+    "caption": "",
+    "alt": "Original figure 1"
+  },
+  {
+    "index": 2,
+    "kind": "image",
+    "file": "figure-02.png",
+    "url": "https://substack-post-media.s3.amazonaws.com/public/images/f8025cae-dc14-4c61-a04a-a7c9d3dab286_2030x1310.png",
+    "caption": "",
+    "alt": "Original figure 2"
+  },
+  {
+    "index": 3,
+    "kind": "image",
+    "file": "figure-03.png",
+    "url": "https://substack-post-media.s3.amazonaws.com/public/images/ce26004a-0a9c-4088-a5ed-ec7572b6aeaa_1200x480.png",
+    "caption": "",
+    "alt": "Original figure 3"
+  },
+  {
+    "index": 4,
+    "kind": "image",
+    "file": "figure-04.png",
+    "url": "https://substack-post-media.s3.amazonaws.com/public/images/939bede7-b0de-4770-a3e9-34d39488e776_2733x1020.png",
+    "caption": "",
+    "alt": "Original figure 4"
+  },
+  {
+    "index": 5,
+    "kind": "image",
+    "file": "figure-05.png",
+    "url": "https://substack-post-media.s3.amazonaws.com/public/images/cd9f458a-9e46-487b-b611-b512a7dc74d8_1782x1380.png",
+    "caption": "",
+    "alt": "Original figure 5"
+  }
+]

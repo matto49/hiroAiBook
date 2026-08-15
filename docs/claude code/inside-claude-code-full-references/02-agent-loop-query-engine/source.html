@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>The Agent Loop &amp; QueryEngine – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./15-agent-sdk-structured-io.html" rel="next">
+<link href="./01-end-to-end-workflow.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II. Agent Harness</a></li><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II.1 — Agent Loop &amp; Query Engine</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction-one-loop-one-abstraction" id="toc-introduction-one-loop-one-abstraction" class="nav-link active" data-scroll-target="#introduction-one-loop-one-abstraction">1. Introduction: One Loop, One Abstraction</a></li>
+  <li><a href="#why-asyncgenerator-the-design-space-of-agent-loops" id="toc-why-asyncgenerator-the-design-space-of-agent-loops" class="nav-link" data-scroll-target="#why-asyncgenerator-the-design-space-of-agent-loops">2. Why AsyncGenerator? The Design Space of Agent Loops</a></li>
+  <li><a href="#the-react-state-machine-seven-states-three-happy" id="toc-the-react-state-machine-seven-states-three-happy" class="nav-link" data-scroll-target="#the-react-state-machine-seven-states-three-happy">3. The ReAct State Machine: Seven States, Three Happy</a></li>
+  <li><a href="#the-queryparams-contract-separating-policy-from-mechanism" id="toc-the-queryparams-contract-separating-policy-from-mechanism" class="nav-link" data-scroll-target="#the-queryparams-contract-separating-policy-from-mechanism">4. The QueryParams Contract: Separating Policy from Mechanism</a></li>
+  <li><a href="#error-recovery-as-graceful-degradation" id="toc-error-recovery-as-graceful-degradation" class="nav-link" data-scroll-target="#error-recovery-as-graceful-degradation">5. Error Recovery as Graceful Degradation</a></li>
+  <li><a href="#the-doom-loop-detector-applied-halting-problem" id="toc-the-doom-loop-detector-applied-halting-problem" class="nav-link" data-scroll-target="#the-doom-loop-detector-applied-halting-problem">6. The Doom Loop Detector: Applied Halting Problem</a></li>
+  <li><a href="#streaming-and-tool-execution-concurrency-where-it-is-safe" id="toc-streaming-and-tool-execution-concurrency-where-it-is-safe" class="nav-link" data-scroll-target="#streaming-and-tool-execution-concurrency-where-it-is-safe">7. Streaming and Tool Execution: Concurrency Where It Is Safe</a></li>
+  <li><a href="#synthesis-how-the-asyncgenerator-choice-enables-everything" id="toc-synthesis-how-the-asyncgenerator-choice-enables-everything" class="nav-link" data-scroll-target="#synthesis-how-the-asyncgenerator-choice-enables-everything">8. Synthesis: How the AsyncGenerator Choice Enables Everything</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II. Agent Harness</a></li><li class="breadcrumb-item"><a href="./02-agent-loop-query-engine.html">II.1 — Agent Loop &amp; Query Engine</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">The Agent Loop &amp; QueryEngine</h1>
+<p class="subtitle lead">What if the most important architectural decision in a 512K-line codebase came down to a single keyword – yield?</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">agent-loop</div>
+    <div class="quarto-category">async</div>
+    <div class="quarto-category">generators</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction-one-loop-one-abstraction" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-one-loop-one-abstraction">1. Introduction: One Loop, One Abstraction</h2>
+<p><strong>Claude Code’s entire agent loop — streaming, tool execution, error recovery, context management — is implemented as a single asynchronous generator. This part examines why that design was chosen, how the generator abstraction shapes the architecture, and why most of the code handles failure recovery rather than the happy path.</strong></p>
+<p>Every interaction with Claude Code — interactive terminal, headless SDK, background sub-agent — flows through <code>query()</code> in <code>query.ts</code>: a single <span class="kw-slate">1,729-line</span> <span class="kw-sage">asynchronous generator</span> that handles API streaming, tool execution, context compaction, token escalation, model fallback, and loop divergence detection. An asynchronous generator is a <span class="kw-sage">coroutine</span> that yields streaming events to its caller and suspends until the caller is ready for more. This single language-level choice provides streaming without buffering, <span class="kw-sage">backpressure</span> without manual flow control, and composition without callback coordination.</p>
+<p>Of the seven states in the loop’s state machine, four exist solely to handle failure. Understanding why requires examining the full architecture: the generator abstraction, the state machine it implements, the error recovery cascade, and the concurrency model. The following diagram shows where <code>query.ts</code> sits:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-call-chain" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-call-chain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-call-chain">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  A["main.tsx"] --&gt; B["launchRepl()"]
+  B --&gt; C["QueryEngine.ts"]
+  C --&gt; D["query.ts"]
+  D --&gt; E["api/claude.ts&lt;br&gt;&lt;i&gt;LLM streaming&lt;/i&gt;"]
+  D --&gt; F["tools/*&lt;br&gt;&lt;i&gt;execute&lt;/i&gt;"]
+  D --&gt; G["compact/*&lt;br&gt;&lt;i&gt;context mgmt&lt;/i&gt;"]
+
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style B fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style E fill:#C4A882,color:#fff,stroke:#A08562
+  style F fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style G fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-call-chain-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Where query.ts sits in Claude Code’s call chain. The main entry point flows through the REPL and QueryEngine (session lifecycle) into query.ts (the ReAct loop), which fans out to three subsystems: the LLM streaming client, tool executors, and context compaction. QueryEngine decides when to invoke the loop; query.ts decides what to do inside it.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the arrows left to right through the call chain. The entry point (main.tsx) flows through launchRepl() and QueryEngine.ts into query.ts, the central node. From query.ts, three branches fan out to the subsystems it orchestrates: LLM streaming (api/claude.ts), tool execution (tools/<em>), and context management (compact/</em>). The key distinction is between QueryEngine.ts (which decides <em>when</em> to invoke the loop) and query.ts (which decides <em>what to do</em> inside the loop).</p>
+<p><code>QueryEngine.ts</code> manages session lifecycle – history, system prompt assembly, the decision of <em>when</em> to invoke the loop. <code>query.ts</code> is where the agent <em>thinks</em>. We begin with the generator abstraction (Section 2), proceed to the state machine it implements (Section 3), trace the policy injection mechanism (Section 4), examine error recovery (Sections 5-6), and close with concurrency and synthesis (Sections 7-8).</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/main.tsx</code></td>
+<td>CLI entry point; routes to REPL and QueryEngine</td>
+<td>~800 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/query.ts</code></td>
+<td>Core agent loop — async generator implementing the ReAct state machine</td>
+<td>~1,729 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/QueryEngine.ts</code></td>
+<td>Session lifecycle, history management, system prompt assembly</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/api/claude.ts</code></td>
+<td>LLM streaming client (messages API, retry, rate limiting)</td>
+<td>~1,200 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/tools/</code></td>
+<td>Tool execution orchestration (dispatch, permissions, hooks)</td>
+<td>~6 files</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="why-asyncgenerator-the-design-space-of-agent-loops" class="level2">
+<h2 class="anchored" data-anchor-id="why-asyncgenerator-the-design-space-of-agent-loops">2. Why AsyncGenerator? The Design Space of Agent Loops</h2>
+<p><strong>The agent loop has three requirements: (1) stream intermediate results to the UI as they arrive, so the user is never staring at a blank screen; (2) let the consumer control the pace, so a burst of tool results does not overwhelm the renderer; and (3) support multiple consumers (CLI, SDK, sub-agents) from one loop implementation.</strong> Claude Code meets all three with an <code>AsyncGenerator</code>.</p>
+<p>A regular <code>async function</code> cannot stream — the caller waits for the entire multi-turn interaction to complete before seeing anything. An EventEmitter streams, but the producer runs at its own pace; if tool results arrive faster than the UI can render, events pile up in memory. An AsyncGenerator solves both problems with a pull-based protocol: the consumer calls <code>next()</code> to request the next event, and the producer <em>suspends</em> until that call arrives. The generator cannot outrun its consumer because it physically cannot produce the next value until asked.</p>
+<p>Here is the actual function signature:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">async</span> <span class="kw">function</span><span class="op">*</span> <span class="fu">query</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  params<span class="op">:</span> QueryParams<span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>)<span class="op">:</span> AsyncGenerator<span class="op">&lt;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  StreamEvent <span class="op">|</span> Message <span class="op">|</span> ToolUseSummaryMessage<span class="op">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  Terminal  <span class="co">// &lt;-- return type: the final outcome</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>function*</code> and <code>yield*</code> are TypeScript syntax for generators and generator delegation — if unfamiliar, just read them as <code>function</code> and <code>yield</code>. The key idea: inside the loop, the code <code>await</code>s an API call, <code>yield</code>s the streamed tokens to the consumer, <code>await</code>s tool execution, <code>yield</code>s the tool result, and repeats. At each <code>yield</code>, the generator freezes its entire stack frame — local variables, loop counter, current state — and hands control to the consumer. When the consumer calls <code>next()</code>, the generator resumes exactly where it left off. The code reads like a normal sequential loop, but it produces a stream of events.</p>
+<p>The yielded types (<code>StreamEvent | Message | ...</code>) are the intermediate events the UI renders in real time. The <code>Terminal</code> return type carries the final outcome — why the loop ended and what the last state was. Consumers use <code>for await...of</code> to process events as they arrive:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> gen <span class="op">=</span> <span class="fu">query</span>(params)<span class="op">;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cf">await</span> (<span class="kw">const</span> <span class="bu">event</span> <span class="kw">of</span> gen) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">renderToUI</span>(<span class="bu">event</span>)<span class="op">;</span>  <span class="co">// each event renders immediately</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">// gen.return contains the Terminal: why the loop ended</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Why producer-consumer?</strong> The agent loop has one producer (the <code>query()</code> generator that calls the API and executes tools) but multiple consumers that need the same event stream: the interactive CLI renders tokens to the terminal, the headless SDK collects results programmatically, and sub-agents forward events to their parent. A producer-consumer split means the loop logic is written once and each consumer pulls events at its own pace. The generator suspends between pulls, so a slow consumer (the CLI doing expensive rendering) naturally slows the producer without any explicit synchronization.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-async-generator-flow" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-async-generator-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-async-generator-flow">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph PROD["Producer: query.ts"]
+    A["await API call"] --&gt; B["yield StreamEvent"]
+    B --&gt; C["await tool execution"]
+    C --&gt; D["yield ToolResult"]
+    D --&gt; E{"done?"}
+    E -- "no" --&gt; A
+    E -- "yes" --&gt; F["return Terminal"]
+  end
+
+  subgraph CONS["Consumer: CLI / SDK / Sub-agent"]
+    G["next()"] --&gt; H["render event to UI"]
+    H --&gt; G
+  end
+
+  B -.-&gt; G
+  D -.-&gt; G
+  H -.-&gt; A
+  H -.-&gt; C
+
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style B fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style E fill:#C4A882,color:#fff,stroke:#A08562
+  style F fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style G fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style H fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-async-generator-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The AsyncGenerator producer-consumer architecture. Read the left subgraph (Producer) top-to-bottom: query.ts awaits an API call, yields the streamed tokens, awaits tool execution, yields the tool result, then checks whether the task is done — if not, it loops back to the API call. Read the right subgraph (Consumer) as a separate loop: the consumer calls next() to pull an event, renders it to the UI, then calls next() again. Dotted lines show the handoff: each yield in the producer delivers an event to the consumer, and each next() call from the consumer resumes the producer. The producer physically cannot advance past a yield until the consumer pulls — this is how backpressure works.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Read each subgraph (Producer and Consumer) top-to-bottom as an independent loop. In the Producer, the flow cycles through await API call, yield StreamEvent, await tool execution, yield ToolResult, and a done? check that either loops back or returns Terminal. In the Consumer, a tight loop calls next() and renders each event. The dotted lines between the subgraphs show the handoff: each yield delivers an event to the consumer, and each next() call resumes the producer. The producer cannot advance past a yield until the consumer pulls – this is how backpressure works without explicit coordination code.</p>
+<p>The key insight in this diagram is the dotted lines between the two subgraphs. Each dotted arrow represents a <em>handoff</em>: when the producer yields, it suspends and the event flows to the consumer; when the consumer finishes rendering and calls <code>next()</code>, control flows back to the producer, which resumes from exactly where it left off. This back-and-forth is what makes the architecture pull-based — the consumer sets the pace, not the producer. If the CLI takes 50ms to render a complex diff, the producer simply waits. If the SDK processes events instantly, the producer runs at full speed. Same loop, different pacing, zero coordination code.</p>
+<p>Generator delegation enables composition: the outer <code>query()</code> delegates to <code>queryLoop()</code>, and a logging wrapper can intercept every yielded event without modifying either function. One loop, many consumers, zero code duplication.</p>
+<hr>
+</section>
+<section id="the-react-state-machine-seven-states-three-happy" class="level2">
+<h2 class="anchored" data-anchor-id="the-react-state-machine-seven-states-three-happy">3. The ReAct State Machine: Seven States, Three Happy</h2>
+<p><strong>The generator is the mechanism; the ReAct state machine is the logic it executes. This state machine has seven states, but only three constitute the happy path – the remaining four exist entirely for error recovery.</strong></p>
+<p>The classic <span class="kw-sage">ReAct loop</span> – where an LLM alternates between <em>reasoning</em> about what to do and <em>acting</em> by calling tools – sounds simple: think, act, observe, repeat. In a textbook, that is <span class="kw-slate">three states</span>. In production, you need to handle truncated responses, overflowing context, crashing tools, overloaded APIs, and an agent that gets stuck in circles. Each failure mode adds a state.</p>
+<p>Here is the complete state machine as it exists in <code>query.ts</code>:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-react-state-machine" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-react-state-machine-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-react-state-machine">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  Start(( )) --&gt; Build["BuildConfig"]
+  Build --&gt; Call["CallModel"]
+  Call --&gt; Stream["ProcessStream"]
+  Stream --&gt; Check["CheckStop"]
+  Check --&gt;|"tool use"| Exec["ExecuteTools"]
+  Exec --&gt;|"next iteration"| Build
+  Check --&gt;|"end turn"| Term["Terminal"]
+  Check -.-&gt;|"max tokens / 413"| Build
+  Call --&gt;|"stream error"| Fallback["FallbackModel"]
+  Fallback --&gt;|"retry"| Build
+  Fallback --&gt;|"surface error"| Term
+
+  style Start fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Build fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Call fill:#C2856E,color:#fff,stroke:#A06A54
+  style Stream fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style Check fill:#C4A882,color:#fff,stroke:#A08562
+  style Exec fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style Term fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Fallback fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-react-state-machine-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: The complete ReAct loop state machine with seven states. The happy path (green nodes) flows left to right: BuildConfig, CallModel, ProcessStream, CheckStop, ExecuteTools, then loops back to BuildConfig. Recovery paths (terracotta) branch to FallbackModel on stream errors or loop back on max-tokens/413 errors. Only three of the seven states are on the happy path; the remaining four handle error recovery.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the black dot on the left and follow the solid arrows right — this is the happy path: BuildConfig assembles the request, CallModel streams the API response, ProcessStream collects it, CheckStop inspects the <code>stop_reason</code>. If the model wants to use a tool (<code>tool use</code>), the flow goes up to ExecuteTools and loops back to BuildConfig for the next turn. If the model signals completion (<code>end turn</code>), the flow exits right to Terminal. The dotted arrows are recovery paths: a stream error from CallModel drops to FallbackModel, which can retry or surface the error. A <code>max_tokens</code> or 413 error from CheckStop loops back to BuildConfig to retry with adjusted parameters. Only three states (BuildConfig → CallModel → ProcessStream) are on every turn; the remaining four activate only when something goes wrong.</p>
+<p>Let us trace each path through this machine.</p>
+<p><strong>BUILD CONFIG</strong> snapshots the current environment – model selection, thinking configuration, tool schemas, beta headers – into a frozen <code>QueryConfig</code>. This snapshot ensures that mid-loop changes (a user toggling plan mode, a feature flag update) do not take effect until the next turn boundary. It is the same principle as double-buffering in graphics: the running frame never sees a half-updated state.</p>
+<p><strong>CALL MODEL</strong> initiates a streaming request to the Anthropic API via <code>createMessage()</code>. The response arrives as a sequence of <span class="kw-sage">server-sent events</span> (SSE) – <code>message_start</code>, <code>content_block_delta</code>, <code>message_stop</code> – and each is yielded to the caller for real-time UI rendering. This is where the AsyncGenerator’s pull-based model pays off: each SSE event is yielded as it arrives, and the generator suspends until the consumer is ready for the next one.</p>
+<p><strong>PROCESS STREAM</strong> collects the streamed events into a complete message and passes it to the decision point.</p>
+<p><strong>CHECK STOP REASON</strong> is the critical branching node. The API’s <code>stop_reason</code> field determines the next state:</p>
+<ul>
+<li><strong><code>end_turn</code></strong>: The model believes it is done. Run stop hooks (lifecycle callbacks that check for premature termination). If a hook says “you forgot to run the tests,” the loop resumes.</li>
+<li><strong><code>tool_use</code></strong>: The model wants to call tools. Execute them (details in Section 7), append results to the conversation, continue.</li>
+<li><strong><code>max_tokens</code></strong>: The response was truncated. Escalate the output limit and retry.</li>
+<li><strong>error (413, 529, stream failure)</strong>: Route to the appropriate recovery path.</li>
+</ul>
+<p><strong>FALLBACK MODEL</strong> is reached when the primary model’s stream fails. If a fallback model is configured, the loop switches to it and retries. If the fallback also fails, the error surfaces to the user.</p>
+<p><strong>TERMINAL</strong> is the absorbing state. It carries the reason the loop ended and the final message.</p>
+<p>The key insight, and the one that motivates the next two sections, is this: four of the seven states are <em>recovery</em> states. The happy path is just BUILD CONFIG, CALL MODEL, PROCESS STREAM, CHECK STOP, EXECUTE TOOLS, and back to BUILD CONFIG. The rest of the machine exists because <strong>production systems spend more time recovering from failure than executing the happy path</strong>. This is the iceberg principle of systems design – the visible logic is the tip; error handling is the mass beneath.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Trade-off">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Trade-off
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>More recovery states mean more code paths to test and more possible state transitions. Claude Code accepts this complexity because an agent that crashes on a 413 error is useless. The alternative – a simpler loop that fails hard – shifts the recovery burden to the user. The 1,729 lines of <code>query.ts</code> are the price of never showing users an unrecoverable crash.</p>
+</div>
+</div>
+<p>The state machine’s behavior, however, is not fixed. Different execution contexts (interactive CLI, headless SDK, plan mode) require different policies. The next section examines the injection mechanism that makes this possible.</p>
+<hr>
+</section>
+<section id="the-queryparams-contract-separating-policy-from-mechanism" class="level2">
+<h2 class="anchored" data-anchor-id="the-queryparams-contract-separating-policy-from-mechanism">4. The QueryParams Contract: Separating Policy from Mechanism</h2>
+<p><strong>The state machine’s behavior varies by context – interactive vs.&nbsp;headless, permissive vs.&nbsp;restricted, primary model vs.&nbsp;fallback. Rather than scattering <code>if</code> statements through the loop, Claude Code injects all policy variation through a single parameter object.</strong></p>
+<p>The <code>QueryParams</code> type carries everything the loop needs to begin execution. Rather than listing all 13 fields, here are the five that reveal the design principle:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">export type</span> QueryParams <span class="op">=</span> {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  messages<span class="op">:</span> Message[]        <span class="co">// conversation history (compactable)</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  tools<span class="op">:</span> ToolUseContext      <span class="co">// available capabilities (dynamic per mode)</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  canUseTool<span class="op">:</span> CanUseToolFn   <span class="co">// permission policy (injected, not hardcoded)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  maxTurns<span class="op">?:</span> <span class="dt">number</span>          <span class="co">// iteration budget (prevents runaway)</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  fallbackModel<span class="op">?:</span> <span class="dt">string</span>     <span class="co">// resilience policy (switch on failure)</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ... 8 more fields for streaming, caching, budget, hooks</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Notice that <code>canUseTool</code> is a <em>function</em>, not data. It takes a tool name and returns whether that tool is permitted. This <span class="kw-sage">function-as-parameter</span> design means the permission policy is fully decoupled from the loop. Plan mode injects a <code>canUseTool</code> that blocks all write tools. Auto-accept mode injects one that allows everything. Custom configurations inject their own. The loop does not know or care which policy it is enforcing.</p>
+<p>This is the <span class="kw-sage">Strategy pattern</span> applied to agent orchestration. The loop is the context; the injected functions are interchangeable strategies. The same loop runs identically across the interactive CLI, the headless SDK, and background sessions – because the varying behavior lives in the injected parameters, not in the loop itself.</p>
+<p>Similarly, <code>querySource</code> identifies <em>who</em> initiated the query: <code>user</code>, <code>compact</code>, <code>session_memory</code>, or <code>subagent</code>. The loop uses this to prevent recursive behavior – a compaction query should not trigger further compaction. This is dependency injection for control flow: the caller tells the loop what it is, and the loop adjusts its behavior without branching on mode flags.</p>
+<p>The connection to the state machine is direct: every transition in the state machine that depends on context – whether to attempt compaction, whether to allow a tool, whether to retry on failure – reads from <code>QueryParams</code> rather than from ambient state. The generator mechanism is pure; the policy is injected. This separation is what allows a single 1,729-line function to serve every execution mode without conditional sprawl.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Strategy pattern – define a family of algorithms (permission policies), encapsulate each one (as a function), and make them interchangeable. The GoF book (1994) describes this with classes; modern TypeScript does it with higher-order functions. Same insight, lighter syntax.</p>
+</div>
+</div>
+<details>
+<summary>
+Deep Dive: Full QueryParams and Loop State
+</summary>
+<p>The complete <code>QueryParams</code> type includes fields for system prompt (<code>SystemPrompt</code>, an opaque branded type), user/system context dictionaries, query source identification, output token overrides, task budgets, and cache control flags.</p>
+<p>Inside the loop, these are destructured into mutable state:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> State <span class="op">=</span> {</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  messages<span class="op">:</span> Message[]</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  toolUseContext<span class="op">:</span> ToolUseContext</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  autoCompactTracking<span class="op">:</span> AutoCompactTrackingState <span class="op">|</span> <span class="dt">undefined</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  maxOutputTokensRecoveryCount<span class="op">:</span> <span class="dt">number</span>       <span class="co">// guards against infinite escalation</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  hasAttemptedReactiveCompact<span class="op">:</span> <span class="dt">boolean</span>       <span class="co">// guards against compaction loops</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  turnCount<span class="op">:</span> <span class="dt">number</span>                          <span class="co">// iteration counter</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  transition<span class="op">:</span> Continue <span class="op">|</span> <span class="dt">undefined</span>           <span class="co">// WHY did the previous turn continue?</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  stopHookActive<span class="op">:</span> <span class="dt">boolean</span> <span class="op">|</span> <span class="dt">undefined</span>        <span class="co">// prevents stop hook re-entrancy</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  pendingToolUseSummary<span class="op">:</span> <span class="bu">Promise</span><span class="op">&lt;...&gt;</span> <span class="op">|</span> <span class="dt">undefined</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>transition</code> field is particularly clever. It records <em>why</em> the previous iteration chose to continue – was it a tool use? A max-tokens recovery? A stop hook injection? This lets the current iteration adjust its behavior based on the previous turn’s outcome, without requiring an explicit finite state machine with named states. It is an implicit state machine embedded in a single field.</p>
+</details>
+<p>With both the mechanism (AsyncGenerator), the logic (state machine), and the configuration (QueryParams) established, we can now turn to the question that dominates the loop’s line count: what happens when things go wrong?</p>
+<hr>
+</section>
+<section id="error-recovery-as-graceful-degradation" class="level2">
+<h2 class="anchored" data-anchor-id="error-recovery-as-graceful-degradation">5. Error Recovery as Graceful Degradation</h2>
+<p><strong>Four of seven states in the state machine are recovery states. This section examines why each exists and how they interact, revealing a cascading recovery strategy borrowed from distributed systems.</strong></p>
+<p>Think of error recovery in distributed systems. When a web server gets overloaded, it does not simply reject all requests. It sheds load, retries with backoff, falls back to cached responses, and finally returns a degraded response. Claude Code applies the same philosophy to its agent loop – five recovery paths, ordered from cheapest to most expensive.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-error-recovery" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-error-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-error-recovery">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  ERR["&lt;b&gt;Error occurs&lt;/b&gt;"] --&gt; D1{"max tokens?"}
+  D1 --&gt;|"yes"| D1A{"attempt &lt;= 3?"}
+  D1A --&gt;|"yes"| ESC["Escalate&lt;br&gt;8K to 64K"]
+  D1A --&gt;|"no"| SURF["Surface error"]
+  D1 --&gt;|"no"| D2{"413 too long?"}
+  D2 --&gt;|"yes"| D2A{"first attempt?"}
+  D2A --&gt;|"yes"| COMPACT["Reactive&lt;br&gt;compact"]
+  D2A --&gt;|"no"| SURF
+  D2 --&gt;|"no"| D3{"529 overloaded?"}
+  D3 --&gt;|"yes"| BACKOFF["Exp. backoff&lt;br&gt;1s, 2s, 4s&lt;br&gt;with jitter"]
+  D3 --&gt;|"no"| D4{"Stream fail&lt;br&gt;+ fallback?"}
+  D4 --&gt;|"yes"| FB["Fallback model&lt;br&gt;(once)"]
+  D4 --&gt;|"no"| SURF
+
+  style ERR fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style D1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style D1A fill:#C2856E,color:#fff,stroke:#A06A54
+  style ESC fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style SURF fill:#C4A882,color:#fff,stroke:#A08562
+  style D2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style D2A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style COMPACT fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style D3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style BACKOFF fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style D4 fill:#C4A882,color:#fff,stroke:#A08562
+  style FB fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-error-recovery-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Error recovery decision tree with five recovery paths ordered by cost. Max-tokens errors trigger output limit escalation (8K to 64K, capped at 3 attempts). HTTP 413 triggers reactive compaction (once). HTTP 529 triggers exponential backoff with jitter. Stream failures trigger a one-shot model fallback. Each path has an explicit guard against retry loops; all paths terminate at ‘surface error’ if recovery fails.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the “Error occurs” node at the top and follow the decision tree downward. Each diamond tests one error type in priority order: max tokens, 413 too long, 529 overloaded, then stream failure. At each decision, the “yes” branch leads to a bounded recovery action (escalate, compact, backoff, or fallback), while the “no” branch falls through to the next check. Every recovery path has an explicit guard (attempt count or boolean flag) that routes to “Surface error” if retries are exhausted. The takeaway: no recovery path can loop indefinitely.</p>
+<p><strong>Max-tokens recovery</strong> handles truncated responses. When the model generates a long code block that exceeds the default <span class="kw-slate">8,192-token output limit</span>, the loop escalates to <span class="kw-slate">64,000 tokens</span> and retries. A counter caps this at three attempts. Most truncations resolve on the first retry – the default limit was simply too conservative for that particular response. The counter is essential: without it, a model that consistently generates maximum-length output would escalate indefinitely.</p>
+<p><span class="kw-sage">Reactive compaction</span> (HTTP 413) handles overflowing context. A 413 means the entire request exceeded the API’s <span class="kw-sage">context window</span>. This typically happens when a tool returns unexpectedly large output – catting a binary file, reading a massive log. The loop attempts to compress the conversation history (see <a href="./04-context-compaction.html">Part III.1</a> for the full compaction story). A boolean flag (<code>hasAttemptedReactiveCompact</code>) allows exactly one attempt. The single-attempt guard is critical: compaction itself consumes tokens, and if the compacted result is still too large, retrying compaction would loop forever.</p>
+<p><strong>Backoff retry</strong> (HTTP 529) handles API overload. The <span class="kw-sage">exponential backoff</span> starts at approximately one second and grows to approximately thirty seconds, with jitter to prevent <span class="kw-sage">thundering herd</span> effects.</p>
+<p><span class="kw-sage">Model fallback</span> handles persistent stream failures. If the primary model’s stream fails mid-generation and a <span class="kw-mauve">fallback model</span> is configured, the loop switches models. The critical safety line:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">yield</span><span class="op">*</span> <span class="fu">queryModelWithStreaming</span>({</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="op">...</span>options<span class="op">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  model<span class="op">:</span> params<span class="op">.</span><span class="at">fallbackModel</span><span class="op">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  fallbackModel<span class="op">:</span> <span class="dt">undefined</span><span class="op">,</span>  <span class="co">// &lt;-- prevents infinite fallback chain</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Setting <code>fallbackModel: undefined</code> on the recursive call is the circuit breaker. Without it, a failing fallback model would trigger another fallback attempt, creating an infinite cascade. Note the use of <code>yield*</code> here – the composed generator delegates to the fallback call, and the consumer sees a seamless stream of events regardless of which model is producing them. This is the AsyncGenerator’s composability at work.</p>
+<p>Every recovery path follows the same meta-pattern: <strong>try once (or a bounded number of times), guard against loops, surface to the user if all else fails.</strong> This is exactly how <span class="kw-sage">circuit breakers</span> work in microservice architectures (popularized by Netflix’s Hystrix). The circuit breaker monitors failures, trips after a threshold, and prevents the system from repeatedly hammering a broken dependency. Recovery paths handle transient failures – errors that can be resolved by retrying, compacting, or switching models. But there is a more insidious failure mode: the agent that never errors but never finishes. The next section addresses this problem.</p>
+<hr>
+</section>
+<section id="the-doom-loop-detector-applied-halting-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-doom-loop-detector-applied-halting-problem">6. The Doom Loop Detector: Applied Halting Problem</h2>
+<p><strong>Even with robust error recovery, the loop can still diverge — cycling endlessly without crashing, repeating the same actions, or refusing to stop.</strong> Claude Code uses three heuristics, each targeting a different failure mode:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-failure-modes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-failure-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-failure-modes">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph DIV ["Divergence"]
+    D1["Infinite loop"] --&gt; D2["Guard: maxTurns&lt;br&gt;&lt;i&gt;hard ceiling&lt;/i&gt;"]
+  end
+
+  subgraph CONV ["Premature Convergence"]
+    P1["Wrong answer,&lt;br&gt;early stop"] --&gt; P2["Guard: stop hooks&lt;br&gt;&lt;i&gt;inspect final state&lt;/i&gt;"]
+  end
+
+  subgraph OSC ["Oscillation"]
+    O1["Stuck cycle,&lt;br&gt;repeated actions"] --&gt; O2["Guard: repetition&lt;br&gt;detection"]
+  end
+
+  style D1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style D2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style P1 fill:#C2856E,color:#fff,stroke:#A06A54
+  style P2 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style O1 fill:#C4A882,color:#fff,stroke:#A08562
+  style O2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-failure-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Three failure modes of iterative computation – divergence, premature convergence, and oscillation – paired with their corresponding guards. Divergence (infinite loops) is caught by a hard maxTurns ceiling. Premature convergence (wrong answer, early stop) is caught by stop hooks that inspect final state. Oscillation (stuck cycles) is caught by repetition detection. Each guard carries its own explicit bound to prevent meta-divergence.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Each of the three subgraphs pairs a failure mode (left node) with its corresponding guard (right node). Read left to right within each: Divergence (infinite loops) is caught by maxTurns, Premature Convergence (wrong answer, early stop) is caught by stop hooks, and Oscillation (stuck cycles) is caught by repetition detection. The three subgraphs are independent and complementary – together they cover the three ways an iterative computation can fail to produce a correct result.</p>
+<p><strong>Heuristic 1: Turn counting (divergence guard).</strong> The <code>maxTurns</code> parameter sets a hard ceiling on loop iterations. This is a <span class="kw-sage">watchdog timer</span> – the simplest and most robust termination guarantee. The default is generous (dozens of turns), but it catches any form of runaway execution, regardless of cause. Its simplicity is its strength: no matter how the agent misbehaves, the counter eventually fires.</p>
+<p><strong>Heuristic 2: <span class="kw-terra">Stop hooks</span> (convergence guard).</strong> When the model says “I’m done” (<code>end_turn</code>), Claude Code runs <span class="kw-sage">lifecycle callbacks</span> that inspect the final state. A stop hook might check: “Did you modify test files but never run the tests?” If the hook detects a premature stop, it injects an error message and the loop resumes. A counter prevents stop hooks from firing indefinitely – without this guard, a stop hook that always rejects would create its own infinite loop. This is a meta-application of the same bounded-retry principle from Section 5: every recovery mechanism, including the one that checks for premature termination, has an explicit bound.</p>
+<p><strong>Heuristic 3: Repetition detection (oscillation guard).</strong> If the agent repeats the same tool call with the same arguments multiple times, it is likely stuck in a cycle. The loop tracks recent tool invocations and can break the cycle by injecting a “you seem to be repeating yourself” nudge. This is the subtlest failure mode: the agent appears to be making progress – it is calling tools, generating responses – but it is traversing the same states in a loop.</p>
+<p>The three heuristics are complementary. Turn counting catches divergence regardless of cause. Stop hooks catch premature convergence that turn counting would miss (the agent stops “successfully” but incorrectly). Repetition detection catches oscillation that neither of the others would flag (the agent neither diverges nor converges – it cycles). Together, they approximate a halting oracle for the specific domain of tool-using agents.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Alan Turing proved in 1936 that no algorithm can decide whether an arbitrary program will halt. An AI agent looping over tool calls is such a program — you cannot guarantee termination in general. But you can engineer around it. Turn limits handle divergence (infinite loops). Stop hooks handle convergence to the wrong answer (premature termination). Repetition detection handles oscillation (stuck in a cycle). Together, these three heuristics cover the three failure modes of iterative computation — and each has an explicit bound to prevent becoming a problem itself.</p>
+</div>
+</div>
+<p>The doom loop detector addresses the macro question of whether the loop will terminate. The next section turns to the micro question: within a single iteration, how are tools dispatched and executed?</p>
+<hr>
+</section>
+<section id="streaming-and-tool-execution-concurrency-where-it-is-safe" class="level2">
+<h2 class="anchored" data-anchor-id="streaming-and-tool-execution-concurrency-where-it-is-safe">7. Streaming and Tool Execution: Concurrency Where It Is Safe</h2>
+<p><strong>Within each loop iteration, the model may request multiple tool calls. The StreamingToolExecutor overlaps tool execution with model generation, using a readers-writers concurrency model that parallelizes reads while serializing writes.</strong></p>
+<p>The <span class="kw-terra">StreamingToolExecutor</span> is a key optimization. When the model’s streaming response contains multiple tool calls, the executor does not wait for the entire response to finish. As soon as a tool call’s input JSON is complete (<code>content_block_stop</code>), execution begins – even while subsequent tool calls are still being streamed.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-streaming-execution" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-streaming-execution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-streaming-execution">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+gantt
+  title Streaming Tool Execution Timeline
+  dateFormat X
+  axisFormat %s s
+
+  section Model Stream
+    tool 1 JSON         :a1, 0, 3
+    tool 2 JSON         :a2, 3, 5
+    tool 3 JSON         :a3, 5, 8
+
+  section Parallel Reads
+    Read(a.ts)          :b1, 3, 6
+    Grep(*.ts)          :b2, 4, 7
+    Glob(src/)          :b3, 5, 7
+
+  section Sequential Writes
+    Edit(b.ts)          :crit, c1, 8, 11
+    Bash(test)          :crit, c2, 11, 15
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-streaming-execution-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Streaming tool execution timeline showing three concurrent phases. The model stream (top) emits tool call JSON incrementally. Read-only tools (Read, Grep, Glob) begin executing as soon as their JSON completes, running in parallel. Side-effecting tools (Edit, Bash) serialize after the parallel batch, each waiting for the previous to finish. This overlap saves 30-50% of wall-clock time compared to sequential execution.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Time flows left to right across three swim lanes. The top lane (Model Stream) shows tool-call JSON being emitted incrementally. The middle lane (Parallel Reads) shows three read-only tools launching as soon as their JSON completes, running concurrently and overlapping in time. The bottom lane (Sequential Writes) shows side-effecting tools running one after another (marked critical in red), each waiting for the previous to finish. The key takeaway is the time saved: reads overlap with each other and with the stream, while writes serialize – this is the readers-writers concurrency model in action.</p>
+<p>The concurrency rule is simple and conservative:</p>
+<ul>
+<li><strong>Read-only tools</strong> (Read, Grep, Glob, WebFetch) share a parallel pool. Three file reads launch simultaneously.</li>
+<li><strong>Side-effecting tools</strong> (Write, Edit, Bash) acquire exclusive access. A file edit followed by a test run must preserve ordering.</li>
+</ul>
+<p>This is the <span class="kw-sage">readers-writers problem</span> from concurrent programming – a classic synchronization challenge where multiple readers can access a resource simultaneously, but writers need exclusive access. Claude Code solves it with a <span class="kw-sage">concurrency semaphore</span>: readers share the lock, writers acquire it exclusively.</p>
+<p>The connection to the AsyncGenerator abstraction is important here. Each tool result is yielded back to the consumer as it completes. Because the generator is pull-based, the consumer processes results at its own pace – a fast terminal can render results as they arrive, while a slower consumer (a network relay, a test harness) naturally applies backpressure. The generator does not need to know which consumer it is serving.</p>
+<p>Before any tool executes, it passes through a permission pipeline: first <code>canUseTool()</code> (the injected policy function from Section 4), then pre-tool hooks (lifecycle callbacks that can inspect or modify the input), then actual execution, then post-tool hooks. This pipeline runs per-tool, even within the parallel pool – so a permission denial on one read-only tool does not block the others.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-tool-permission-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-tool-permission-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-tool-permission-pipeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  CALL["Tool call arrives"]
+  CAN{"canUseTool()"}
+  PRE["Pre-hooks&lt;br&gt;&lt;i&gt;PreToolUse&lt;/i&gt;"]
+  PCHK{"hook exit 2?"}
+  EXEC["tool.call()&lt;br&gt;&lt;i&gt;sandbox execution&lt;/i&gt;"]
+  POST["Post-hooks&lt;br&gt;&lt;i&gt;PostToolUse&lt;/i&gt;"]
+  RESULT["tool_result&lt;br&gt;appended to history"]
+  DENY["Error: denied&lt;br&gt;&lt;i&gt;model retries&lt;/i&gt;"]
+  BLOCK["Error: blocked&lt;br&gt;&lt;i&gt;hook rejection&lt;/i&gt;"]
+
+  subgraph FAIL["Failure Handling"]
+    direction LR
+    SIBLING["Sibling abort&lt;br&gt;&lt;i&gt;cancel all peers&lt;/i&gt;"]
+    INT1["1x Ctrl+C&lt;br&gt;&lt;i&gt;cancel current tool&lt;/i&gt;"]
+    INT2["2x Ctrl+C&lt;br&gt;&lt;i&gt;cancel entire loop&lt;/i&gt;"]
+  end
+
+  CALL --&gt; CAN
+  CAN -- "allowed" --&gt; PRE --&gt; PCHK
+  CAN -- "denied" --&gt; DENY
+  PCHK -- "pass" --&gt; EXEC --&gt; POST --&gt; RESULT
+  PCHK -- "exit 2" --&gt; BLOCK
+  EXEC -.-&gt; FAIL
+
+  style CALL fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style CAN fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style PRE fill:#C2856E,color:#fff,stroke:#A06A54
+  style PCHK fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style EXEC fill:#C4A882,color:#fff,stroke:#A08562
+  style POST fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style RESULT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style DENY fill:#C2856E,color:#fff,stroke:#A06A54
+  style BLOCK fill:#C2856E,color:#fff,stroke:#A06A54
+  style SIBLING fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style INT1 fill:#C4A882,color:#fff,stroke:#A08562
+  style INT2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-tool-permission-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Per-tool permission pipeline and failure handling. Each tool call passes through four stages: canUseTool (policy check), pre-hooks (lifecycle callbacks), tool.call (actual execution in sandbox), and post-hooks (observation/logging). A denial at canUseTool or a block from pre-hooks short-circuits to an error result without executing the tool. When concurrent tools are running and one fails, sibling abort cancels all peers. User interrupts follow the tool’s interruptBehavior flag: cancel tools abort immediately, block tools complete first.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the happy path top to bottom: a tool call arrives, passes <code>canUseTool()</code> (the injected policy), runs through pre-hooks, executes in the sandbox, runs post-hooks, and produces a <code>tool_result</code>. Two short-circuit paths branch left: a denial from <code>canUseTool()</code> or a block from a pre-hook (exit code 2) skips execution entirely and returns an error to the model. The dotted arrow from <code>tool.call()</code> to the Failure Handling subgraph shows what happens when things go wrong mid-execution: sibling abort cancels concurrent peers, a single Ctrl+C cancels just the current tool, and a double Ctrl+C cancels the entire agent loop.</p>
+<p>When multiple tools execute concurrently and one fails, Claude Code implements <span class="kw-sage">sibling abort</span>: all concurrently executing tools receive a cancellation signal, and their results are replaced with error messages. User interrupts (Ctrl+C) work similarly – one interrupt cancels the current tool and lets the agent continue; two rapid interrupts cancel the entire loop.</p>
+<p>For a typical turn with three file reads followed by an edit, streaming execution saves <span class="kw-slate">30-50% of wall-clock time</span> compared to fully sequential execution. The reads overlap with each other and with the model’s continued streaming. Only the write operations serialize.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Trade-off">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Trade-off
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Parallel read-only tools are safe because they have no side effects. But what about tools that <em>appear</em> read-only but have hidden dependencies – like reading a file that another concurrent tool is about to edit? Claude Code avoids this by classifying at the tool level, not the invocation level. A tool is either always safe for parallel execution or always serialized. Conservative, but correct – and far easier to reason about than per-invocation analysis.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="synthesis-how-the-asyncgenerator-choice-enables-everything" class="level2">
+<h2 class="anchored" data-anchor-id="synthesis-how-the-asyncgenerator-choice-enables-everything">8. Synthesis: How the AsyncGenerator Choice Enables Everything</h2>
+<p><strong>The preceding sections are not independent features – they are consequences of a single architectural decision. The AsyncGenerator abstraction enables the state machine, simplifies error recovery, supports policy injection, and makes concurrent tool execution composable. This final section traces those connections.</strong></p>
+<p>The choice of AsyncGenerator as the loop’s structural primitive is not merely a convenient implementation detail. It is the load-bearing decision that enables the rest of the architecture:</p>
+<p><strong>The state machine lives inside the generator’s control flow.</strong> The seven states of the ReAct machine (Section 3) are not encoded as an explicit state enum with a transition table. They are implicit in the generator’s linear control flow: <code>while (true) { buildConfig(); callModel(); processStream(); checkStop(); }</code>. Each <code>yield</code> point in this flow corresponds to a state boundary. The generator’s preservation of stack frames between yields means the state machine’s context (local variables, flags, counters) persists naturally, without external storage. An EventEmitter-based loop would need to serialize this state between events; the generator carries it for free.</p>
+<p><strong>Error recovery composes via <code>yield*</code>.</strong> The model fallback mechanism (Section 5) delegates to a new generator call via <code>yield*</code>. The consumer sees a seamless stream of events regardless of whether the primary or fallback model is producing them. The recovery path is invisible to the consumer – a property that would require explicit event forwarding in a callback or EventEmitter architecture.</p>
+<p><strong>Policy injection works because the generator is a closure.</strong> The <code>QueryParams</code> contract (Section 4) is captured in the generator’s closure when <code>query()</code> is called. Every subsequent <code>yield</code> and <code>await</code> within the generator has access to the same parameters. This is simpler and less error-prone than passing configuration through an event chain or storing it in shared mutable state.</p>
+<p><strong>Concurrent tool execution yields results incrementally.</strong> The streaming tool executor (Section 7) yields each tool result as it completes. Because the generator is pull-based, the consumer processes results at its own pace. Backpressure is automatic. A push-based architecture would need explicit buffering to avoid overwhelming a slow consumer during a burst of concurrent tool completions.</p>
+<p><strong>The doom loop detector operates at the yield boundary.</strong> Each time the generator yields and resumes (Section 6), the loop can check its termination conditions: turn count, repetition history, stop hook status. The <code>yield</code> point is a natural place for these checks because it is the boundary between one iteration and the next – a boundary that the generator makes explicit in the code’s structure.</p>
+<p>In summary, the <span class="kw-slate">1,729 lines</span> of <code>query.ts</code> implement a production agent loop that handles <span class="kw-slate">seven states</span>, <span class="kw-slate">five recovery paths</span>, <span class="kw-slate">three termination heuristics</span>, and a concurrent tool executor – all unified by a single asynchronous generator. The generator does not merely provide streaming. It provides the structural backbone that makes the loop’s complexity manageable: linear control flow for the state machine, <span class="kw-sage">closures</span> for policy injection, <code>yield*</code> for recovery composition, and <span class="kw-sage">pull-based backpressure</span> for safe concurrency. The happy path is perhaps <span class="kw-slate">200 lines</span>. The remaining 1,500 lines of recovery logic are the real product – and the generator abstraction is what keeps them readable.</p>
+<hr>
+<p><em>Next in the series: <a href="./03-prompt-assembly.html">Part III.1: Prompt Assembly Pipeline</a>, where we examine how Claude Code constructs the system prompt from 250+ fragments – the context engineering that programs the model before the loop even begins. Then <a href="./07-multi-agent-orchestration.html">Part II.3: Multi-Agent Orchestration</a> covers how the loop spawns sub-agents – five types, from cheap read-only explorers to persistent teammates.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./01-end-to-end-workflow.html" class="pagination-link" aria-label="I.2 — End-to-End Workflow">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">I.2 — End-to-End Workflow</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./15-agent-sdk-structured-io.html" class="pagination-link" aria-label="II.2 — Agent SDK &amp; Structured I/O">
+        <span class="nav-page-text">II.2 — Agent SDK &amp; Structured I/O</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

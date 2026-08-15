@@ -1,0 +1,20 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  S1["1. Startup<br><i>Credentials, config, extensions</i>"]
+  S2["2. Prompt Assembly<br><i>65+ fragments → 15K tokens</i>"]
+  S3["3. Agent Loop<br><i>ReAct: think → act → observe</i>"]
+  S4["4. Tool Execution<br><i>Read, Edit, Bash, …</i>"]
+  S5["5. Permission Gate<br><i>Rules → classifier → user</i>"]
+  S6["6. Streaming Output<br><i>API stream → render → terminal</i>"]
+  S7["7. Completion<br><i>Session save, memory extract</i>"]
+
+  S1 --> S2 --> S3 --> S4
+  S4 -->|"loop back"| S3
+  S4 --> S5 --> S6 --> S7
+  style S1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style S3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style S4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style S5 fill:#C4A882,color:#fff,stroke:#A08562
+  style S6 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style S7 fill:#8B9DAF,color:#fff,stroke:#6E7F91

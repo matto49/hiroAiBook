@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Prompt Assembly Pipeline – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./04-context-compaction.html" rel="next">
+<link href="./19-plan-mode.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III.1 — Prompt Assembly</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#context-engineering-overview" id="toc-context-engineering-overview" class="nav-link active" data-scroll-target="#context-engineering-overview">Context Engineering Overview</a></li>
+  <li><a href="#introduction-why-prompt-assembly-matters" id="toc-introduction-why-prompt-assembly-matters" class="nav-link" data-scroll-target="#introduction-why-prompt-assembly-matters">Introduction: Why Prompt Assembly Matters</a></li>
+  <li><a href="#the-assembly-pipeline" id="toc-the-assembly-pipeline" class="nav-link" data-scroll-target="#the-assembly-pipeline">The Assembly Pipeline</a></li>
+  <li><a href="#fragment-taxonomy-the-eight-categories" id="toc-fragment-taxonomy-the-eight-categories" class="nav-link" data-scroll-target="#fragment-taxonomy-the-eight-categories">Fragment Taxonomy: The Eight Categories</a>
+  <ul class="collapse">
+  <li><a href="#why-fragments-instead-of-one-big-string" id="toc-why-fragments-instead-of-one-big-string" class="nav-link" data-scroll-target="#why-fragments-instead-of-one-big-string">Why Fragments Instead of One Big String?</a></li>
+  </ul></li>
+  <li><a href="#claude.md-discovery-project-instructions-as-prompt-fragments" id="toc-claude.md-discovery-project-instructions-as-prompt-fragments" class="nav-link" data-scroll-target="#claude.md-discovery-project-instructions-as-prompt-fragments">CLAUDE.md Discovery: Project Instructions as Prompt Fragments</a></li>
+  <li><a href="#dynamic-context-what-changes-per-turn" id="toc-dynamic-context-what-changes-per-turn" class="nav-link" data-scroll-target="#dynamic-context-what-changes-per-turn">Dynamic Context: What Changes Per Turn</a></li>
+  <li><a href="#budget-management-the-knapsack-constraint" id="toc-budget-management-the-knapsack-constraint" class="nav-link" data-scroll-target="#budget-management-the-knapsack-constraint">Budget Management: The Knapsack Constraint</a></li>
+  <li><a href="#the-anti-pattern-directives-negative-instructions-at-scale" id="toc-the-anti-pattern-directives-negative-instructions-at-scale" class="nav-link" data-scroll-target="#the-anti-pattern-directives-negative-instructions-at-scale">The Anti-Pattern Directives: Negative Instructions at Scale</a></li>
+  <li><a href="#prompt-caching-where-architecture-meets-economics" id="toc-prompt-caching-where-architecture-meets-economics" class="nav-link" data-scroll-target="#prompt-caching-where-architecture-meets-economics">Prompt Caching: Where Architecture Meets Economics</a>
+  <ul class="collapse">
+  <li><a href="#what-prompt-caching-is" id="toc-what-prompt-caching-is" class="nav-link" data-scroll-target="#what-prompt-caching-is">What Prompt Caching Is</a></li>
+  <li><a href="#how-tool-responses-affect-caching" id="toc-how-tool-responses-affect-caching" class="nav-link" data-scroll-target="#how-tool-responses-affect-caching">How Tool Responses Affect Caching</a></li>
+  <li><a href="#mcp-and-cache-invalidation" id="toc-mcp-and-cache-invalidation" class="nav-link" data-scroll-target="#mcp-and-cache-invalidation">MCP and Cache Invalidation</a></li>
+  <li><a href="#quantifying-the-token-cost" id="toc-quantifying-the-token-cost" class="nav-link" data-scroll-target="#quantifying-the-token-cost">Quantifying the Token Cost</a></li>
+  </ul></li>
+  <li><a href="#system-reminders-mid-conversation-injection" id="toc-system-reminders-mid-conversation-injection" class="nav-link" data-scroll-target="#system-reminders-mid-conversation-injection">System Reminders: Mid-Conversation Injection</a>
+  <ul class="collapse">
+  <li><a href="#event-driven-trigger-taxonomy" id="toc-event-driven-trigger-taxonomy" class="nav-link" data-scroll-target="#event-driven-trigger-taxonomy">Event-Driven Trigger Taxonomy</a></li>
+  <li><a href="#a-worked-example-the-edited_text_file-reminder" id="toc-a-worked-example-the-edited_text_file-reminder" class="nav-link" data-scroll-target="#a-worked-example-the-edited_text_file-reminder">A Worked Example: The <code>edited_text_file</code> Reminder</a></li>
+  <li><a href="#the-aop-analogy" id="toc-the-aop-analogy" class="nav-link" data-scroll-target="#the-aop-analogy">The AOP Analogy</a></li>
+  <li><a href="#the-hooks-to-reminder-pipeline" id="toc-the-hooks-to-reminder-pipeline" class="nav-link" data-scroll-target="#the-hooks-to-reminder-pipeline">The Hooks-to-Reminder Pipeline</a></li>
+  </ul></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III.1 — Prompt Assembly</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Prompt Assembly Pipeline</h1>
+<p class="subtitle lead">65+ fragments, a middleware pipeline, and the art of context-window budgeting</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">prompts</div>
+    <div class="quarto-category">context-engineering</div>
+    <div class="quarto-category">middleware</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="context-engineering-overview" class="level2">
+<h2 class="anchored" data-anchor-id="context-engineering-overview">Context Engineering Overview</h2>
+<p>This post opens the <span class="kw-sage">Context Engineering</span> section of the series. Four subsystems jointly determine what the model sees in every API call: <span class="kw-sage">prompt assembly</span> (this post), <span class="kw-sage">context compaction</span> (Part III.2), <span class="kw-sage">memory hierarchy</span> (Part III.3), and <span class="kw-sage">hooks and notifications</span> (Part III.4). The figure below shows how each subsystem contributes to the final context window at each turn of the agent loop.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-context-engineering" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-context-engineering-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-context-engineering">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph Static["Static Feeds"]
+    SYS["System Prompt&lt;br&gt;&lt;i&gt;17 sections, 4-6K tok&lt;/i&gt;"]
+    MEM["Memory&lt;br&gt;&lt;i&gt;MEMORY.md, session&lt;/i&gt;"]
+    HIST["Conv. History&lt;br&gt;&lt;i&gt;user + assistant + tools&lt;/i&gt;"]
+  end
+
+  subgraph Dynamic["Dynamic Feeds"]
+    TOOLS["Tool Definitions&lt;br&gt;&lt;i&gt;40 schemas, deferred&lt;/i&gt;"]
+    REM["System Reminders&lt;br&gt;&lt;i&gt;50+ types, mid-turn&lt;/i&gt;"]
+    COMP["Compaction&lt;br&gt;&lt;i&gt;replaces old turns&lt;/i&gt;"]
+  end
+
+  WIN(["Context Window&lt;br&gt;&lt;i&gt;200K token budget&lt;/i&gt;"])
+
+  SYS --&gt; WIN
+  MEM --&gt; WIN
+  HIST --&gt; WIN
+  TOOLS --&gt; WIN
+  REM --&gt; WIN
+  COMP --&gt; WIN
+  style SYS fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style MEM fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style HIST fill:#C2856E,color:#fff,stroke:#A06A54
+  style TOOLS fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style REM fill:#C4A882,color:#fff,stroke:#A08562
+  style COMP fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style WIN fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-context-engineering-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: What feeds into the context window at each agent turn. Three static feeds (system prompt at 4-6K tokens, memory files, and conversation history) and three dynamic feeds (40 tool schemas with deferred loading, 50 system reminder types injected mid-turn, and compaction summaries that replace old turns) compete for a shared 200K-token budget.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Six source nodes feed into a single Context Window node on the right. The left subgraph contains three static feeds (System Prompt, Memory, Conversation History) and the right subgraph contains three dynamic feeds (Tool Definitions, System Reminders, Compaction). All six arrows converge on the 200K-token budget, illustrating the competition for a shared, finite resource. The key insight is that every feed consumes tokens from the same pool – a larger system prompt means less room for conversation history, and vice versa.</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/constants/prompts.ts</code></td>
+<td>403 prompt string templates (~728 KB of text)</td>
+<td>~18,000 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/constants/system.ts</code></td>
+<td>System prompt prefixes and static fragments</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/systemPrompt.ts</code></td>
+<td>System prompt assembly pipeline</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/claudemd.ts</code></td>
+<td>CLAUDE.md discovery and parsing (walks directory tree)</td>
+<td>~600 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/messages.ts</code></td>
+<td>Message normalization and system reminder injection</td>
+<td>~1,500 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/tokens.ts</code></td>
+<td>Token counting and budget estimation</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/skills/</code></td>
+<td>11 built-in skills (bundled prompt fragments)</td>
+<td>~4,066 LOC</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="introduction-why-prompt-assembly-matters" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-why-prompt-assembly-matters">Introduction: Why Prompt Assembly Matters</h2>
+<p>You type “Fix the login bug in auth.py” and press Enter. Before the model reads a single token of your request, a middleware pipeline assembles approximately <strong>65 prompt fragments</strong> into a single system prompt, budgets them against a 200K-token context window, and arranges the result to maximize server-side cache hits. The model never sees the machinery — only the finished product.</p>
+<p>This post advances a single thesis: <strong>the system prompt is not a static string but a runtime composition, and every design decision in its assembly pipeline is a response to the fundamental scarcity of the context window.</strong> The context window is finite. Every token spent on overhead is a token unavailable for reasoning. Fragment-based assembly, conditional inclusion, static/dynamic partitioning, prompt caching, and mid-conversation injection are all techniques for maximizing behavioral guidance within a fixed budget.</p>
+<p>The pipeline is an instance of two classical patterns working in concert: the <strong>builder pattern</strong>, where each stage adds a piece to an immutable request object and the final <code>build()</code> step produces the API call, and the <strong>pipeline pattern</strong>, where each stage transforms and passes data downstream without awareness of the full chain. Understanding this pipeline is essential context for the <a href="./02-agent-loop-query-engine.html">agent loop</a> that consumes its output, the <a href="./04-context-compaction.html">compaction system</a> that manages budget overflow downstream, and the <a href="./07-multi-agent-orchestration.html">multi-agent orchestrator</a> that assembles dramatically different prompts for each sub-agent type.</p>
+<hr>
+</section>
+<section id="the-assembly-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="the-assembly-pipeline">The Assembly Pipeline</h2>
+<p><strong>The prompt assembler gathers fragments from eight sources, orders them into 17 sections, and emits a typed <code>SystemPrompt</code> object. The entire process is shaped by a single constraint: the token budget.</strong></p>
+<p>When the <code>QueryEngine</code> prepares an API call, it constructs the system prompt through a layered process. It begins with a fixed prefix:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> DEFAULT_PREFIX <span class="op">=</span> <span class="st">"You are Claude Code, Anthropic's official CLI for Claude."</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Then it layers on sections in a specific order. The <span class="kw-slate">17 sections</span> split into two groups: <span class="kw-slate">eight static sections</span> (computed once per session, invariant across turns) and <span class="kw-slate">nine dynamic sections</span> (recomputed per turn or per session). The split is not organizational convenience — it is a <span class="kw-sage">cost optimization</span> that determines where the <span class="kw-sage">cache boundary</span> falls.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-assembly-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-assembly-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-assembly-pipeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph STATIC["Static (cached)"]
+    S1["S1: Identity"]
+    S2["S2: Tool Policy"]
+    S3["S3: Anti-Patterns"]
+    S4["S4: Reversibility"]
+    S5["S5: Tool Rules"]
+    S6["S6: Efficiency"]
+    S7["S7: Tone"]
+    S8["S8: Cache Control"]
+  end
+
+  S1 --&gt; S2 --&gt; S3 --&gt; S4 --&gt; S5 --&gt; S6 --&gt; S7 --&gt; S8
+
+  BOUNDARY["- - - cache boundary - - -"]
+
+  S8 --&gt; BOUNDARY
+
+  subgraph DYNAMIC["Dynamic (per-turn)"]
+    D1["D1: Memory"]
+    D2["D2: Environment"]
+    D3["D3: Language"]
+    D4["D4: Output Style"]
+    D5["D5: MCP"]
+    D6["D6: Scratchpad"]
+    D7["D7: Fork Config"]
+    D8["D8: Summarize"]
+    D9["D9: Brief Mode"]
+  end
+
+  BOUNDARY --&gt; D1
+  D1 --&gt; D2 --&gt; D3 --&gt; D4 --&gt; D5 --&gt; D6 --&gt; D7 --&gt; D8 --&gt; D9
+
+  D9 --&gt; OUT["&lt;b&gt;SystemPrompt&lt;/b&gt;"]
+  style S1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style S3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style S4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style S5 fill:#C4A882,color:#fff,stroke:#A08562
+  style S6 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style S7 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S8 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style BOUNDARY fill:#C2856E,color:#fff,stroke:#A06A54
+  style D1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style D2 fill:#C4A882,color:#fff,stroke:#A08562
+  style D3 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style D4 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style D5 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style D6 fill:#C2856E,color:#fff,stroke:#A06A54
+  style D7 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style D8 fill:#C4A882,color:#fff,stroke:#A08562
+  style D9 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style OUT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-assembly-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The 17-section assembly pipeline. Static sections S1-S8 (Identity, Tool Policy, Anti-Patterns, Reversibility, Tool Rules, Efficiency, Tone, Cache Control) form a cacheable prefix that is byte-identical across turns. Dynamic sections D1-D9 (Memory, Environment, Language, Output Style, MCP, Scratchpad, Fork Config, Summarize, Brief Mode) are appended after the cache boundary. The dashed boundary marks the cache breakpoint; everything above it qualifies for 90% cost reduction.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the flow top to bottom through 17 numbered sections. The upper subgraph (Static) contains sections S1 through S8, connected in order. A dashed cache boundary separates them from the lower subgraph (Dynamic), which contains sections D1 through D9. The flow terminates at the SystemPrompt output node. Everything above the cache boundary is byte-identical across turns and qualifies for 90% cost reduction via prompt caching; everything below is recomputed per turn.</p>
+<p>The version tags visible in the minified source (vr9, Tr9, kr9, etc.) reveal revision history. The identity section <code>vr9</code> has been through nine revisions — each presumably tested against evaluation suites for behavioral regressions. Prompt engineering at this scale requires the same discipline as code: version control, regression testing, and careful rollout.</p>
+<p>The result is typed as an opaque <code>SystemPrompt</code> — a deliberate design choice. TypeScript’s type system prevents accidental concatenation or mutation downstream. You cannot pass a raw string where a <code>SystemPrompt</code> is expected.</p>
+<hr>
+</section>
+<section id="fragment-taxonomy-the-eight-categories" class="level2">
+<h2 class="anchored" data-anchor-id="fragment-taxonomy-the-eight-categories">Fragment Taxonomy: The Eight Categories</h2>
+<p><strong>Every prompt fragment belongs to one of eight categories, each corresponding to a different lifecycle and a different position in the assembly order.</strong></p>
+<p>Instead of a single monolithic system prompt, Claude Code scatters its instructions across approximately <span class="kw-slate">250 individual prompt fragments</span> in eight categories. These fragments are template literals, conditional blocks, and dynamically generated strings spread throughout the codebase. They are selected, ordered, and composed based on context: Is this the main agent or a sub-agent? Is plan mode active? Has compaction occurred? Are <span class="kw-terra">MCP servers</span> connected?</p>
+<p>This is not accidental complexity. It is a <span class="kw-sage">compiler for behavior</span>: source fragments are selected, assembled, optimized for caching, and delivered to the model as a single prompt. The total assembled size ranges from <span class="kw-slate">15 KB to 25 KB</span> — a substantial portion of the input token budget.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-fragment-taxonomy" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-fragment-taxonomy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-fragment-taxonomy">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  SP["&lt;b&gt;system-prompt-*&lt;/b&gt; (66)&lt;br&gt;Identity, Safety,&lt;br&gt;Plan, Style"]
+  AP["&lt;b&gt;agent-prompt-*&lt;/b&gt; (36)&lt;br&gt;Explore, Plan,&lt;br&gt;Commit, PR"]
+  TD["&lt;b&gt;tool-description-*&lt;/b&gt; (73)&lt;br&gt;Bash (30+!), Edit,&lt;br&gt;Grep, Agent"]
+  SR["&lt;b&gt;system-reminder-*&lt;/b&gt; (50+)&lt;br&gt;Plan state, Files,&lt;br&gt;Token budget"]
+  SK["&lt;b&gt;skill-*&lt;/b&gt; (11)&lt;br&gt;Debugging,&lt;br&gt;Simplify, Frontend"]
+  DA["&lt;b&gt;data-*&lt;/b&gt; (27)&lt;br&gt;SDK refs for&lt;br&gt;8 languages"]
+  IN["&lt;b&gt;internal-*&lt;/b&gt; (misc)&lt;br&gt;Cache markers,&lt;br&gt;Assembly glue"]
+  OUT(["&lt;b&gt;Assembled&lt;br&gt;System Prompt&lt;/b&gt;"])
+
+  SP --&gt; OUT
+  AP --&gt; OUT
+  TD --&gt; OUT
+  SR --&gt; OUT
+  SK --&gt; DA --&gt; IN --&gt; OUT
+  style SP fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style AP fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style TD fill:#C2856E,color:#fff,stroke:#A06A54
+  style SR fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style SK fill:#C4A882,color:#fff,stroke:#A08562
+  style DA fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style IN fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style OUT fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-fragment-taxonomy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: The eight fragment categories with approximate counts, converging into a single assembled system prompt. system-prompt-* (66 fragments) covers identity and safety; tool-description-* (73 fragments) is the largest category, with Bash alone requiring 30+; system-reminder-* (50+ fragments) handles mid-conversation injection; data-* (27 fragments) injects SDK reference docs for 8 languages as just-in-time prompt components – the surprise category.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Each labeled box represents one of the eight fragment categories, with its count in parentheses. All categories flow into the central Assembled System Prompt node at the bottom right. The top four categories (system-prompt, agent-prompt, tool-description, system-reminder) feed directly into the output, while skill, data, and internal chain through each other first – reflecting their dependency order. The largest category by far is tool-description (73 fragments), with Bash alone accounting for 30+, underscoring how much of the prompt budget goes to tool instructions.</p>
+<p>Three categories deserve closer examination.</p>
+<p><strong><code>tool-description-*</code></strong> (<span class="kw-slate">73 fragments</span>) is the largest category. <span class="kw-terra">BashTool</span> alone requires <span class="kw-slate">30+ fragments</span> covering sandbox restrictions, git safety, sleep avoidance, command descriptions, and mode-specific rules. Each tool’s description becomes part of the <code>tools</code> parameter in the API call, meaning these fragments are not documentation — they are active instructions on every turn. The volume is proportional to risk: Bash has the most fragments because it has the most potential for damage. See <a href="./05-tool-system.html">Part IV.1: Tool System</a> for the full tool architecture.</p>
+<p><strong><code>system-reminder-*</code> (50 fragments)</strong> are the dynamic injection mechanism. Unlike system prompt fragments (which appear once at the beginning), reminders are inserted throughout the conversation to reinforce context mid-session. We examine these in the system reminders section below.</p>
+<p><strong><code>data-*</code> (27 fragments)</strong> is the surprise. These are not prompts at all — they are SDK reference documentation for Python, TypeScript, Go, C#, Java, Ruby, PHP, and cURL. When a user asks Claude Code to write Anthropic SDK code, the relevant <code>data-*</code> fragment is injected as just-in-time reference material. This is a clever repurposing of the fragment system: it treats documentation as a prompt component.</p>
+<section id="why-fragments-instead-of-one-big-string" class="level3">
+<h3 class="anchored" data-anchor-id="why-fragments-instead-of-one-big-string">Why Fragments Instead of One Big String?</h3>
+<p>A monolithic system prompt would be simpler to maintain but impossible to conditionally compose. The fragment approach has three advantages that connect directly to the token budget constraint:</p>
+<ol type="1">
+<li><strong>Conditional inclusion.</strong> Plan mode does not need all 73 tool fragments. Sub-agents get stripped-down prompts. Fragments can be toggled by feature flags. Every excluded fragment saves tokens for conversation history.</li>
+<li><strong>Independent versioning.</strong> Each fragment evolves independently. The diff between v2.1.81 and v2.1.88 shows fragments being added, removed, and reworded with nearly every release — without touching the assembly logic.</li>
+<li><strong>Cache-friendly boundaries.</strong> Fragments that do not change between turns can be placed in a single cacheable block, reducing redundant processing.</li>
+</ol>
+<p>The trade-off is real: hundreds of pieces to maintain, with ordering dependencies and the possibility of conflicting instructions across fragments. This is the classic flexibility-versus-simplicity trade-off in any template system. But given the context window constraint, the ability to conditionally include only what is needed outweighs the maintenance cost.</p>
+<hr>
+</section>
+</section>
+<section id="claude.md-discovery-project-instructions-as-prompt-fragments" class="level2">
+<h2 class="anchored" data-anchor-id="claude.md-discovery-project-instructions-as-prompt-fragments">CLAUDE.md Discovery: Project Instructions as Prompt Fragments</h2>
+<p><strong>Two sources feed dynamic context into the assembly. User context collects project-specific data; system context adds runtime state. Both are memoized because they do not change between turns.</strong></p>
+<p>The most visible dynamic fragment is the CLAUDE.md file — project-specific instructions that customize agent behavior per-repository. Claude Code discovers these files through a hierarchical walk:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> getUserContext <span class="op">=</span> <span class="fu">memoize</span>(<span class="kw">async</span> () <span class="kw">=&gt;</span> ({</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  claudeMd<span class="op">:</span> <span class="cf">await</span> <span class="fu">loadClaudeMd</span>()<span class="op">,</span>     <span class="co">// Project + user CLAUDE.md files</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  currentDate<span class="op">:</span> <span class="vs">`Today's date is </span><span class="sc">${</span><span class="fu">getLocalISODate</span>()<span class="sc">}</span><span class="vs">.`</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>}))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>loadClaudeMd()</code> function searches three scopes:</p>
+<ol type="1">
+<li><strong>User-level</strong> (<code>~/.claude/CLAUDE.md</code>) — personal preferences that apply to every project.</li>
+<li><strong>Project-level</strong> (<code>./CLAUDE.md</code>) — repository-specific instructions checked into version control.</li>
+<li><strong>Directory-level</strong> (<code>.claude/CLAUDE.md</code> in subdirectories) — scoped instructions for monorepo components.</li>
+</ol>
+<p>Files at each level are concatenated, with more specific scopes appearing later in the assembled prompt (and thus receiving more attention from the model due to <span class="kw-mauve">recency bias</span>). The entire CLAUDE.md payload is injected as section D1 in the assembly pipeline and receives its own <span class="kw-sage">cache breakpoint</span>, so editing a CLAUDE.md file only invalidates that block — not the entire cached prefix.</p>
+<p>System context adds runtime state that the model needs for situational awareness:</p>
+<ul>
+<li><strong>Git status</strong> — current branch, uncommitted changes, recent commits.</li>
+<li><strong>OS information</strong> — platform, shell, working directory.</li>
+<li><strong>Available tools</strong> — which tools are registered for the current agent type and mode.</li>
+</ul>
+<p>Both user context and system context are memoized (cached for the session). Recomputing git status on every turn would add latency without value, since the model’s own tool calls are the primary source of repository changes.</p>
+<hr>
+</section>
+<section id="dynamic-context-what-changes-per-turn" class="level2">
+<h2 class="anchored" data-anchor-id="dynamic-context-what-changes-per-turn">Dynamic Context: What Changes Per Turn</h2>
+<p><strong>Static fragments define who the agent is. Dynamic fragments tell it where it is.</strong></p>
+<p>Beyond CLAUDE.md, several categories of context are computed or updated on each turn:</p>
+<p><strong>Environment</strong> (D2) injects the working directory, platform, shell type, and OS version. This is why Claude Code knows to use <code>brew</code> on macOS and <code>apt</code> on Linux without being told.</p>
+<p><strong>Language</strong> (D3) sets the response language based on user locale or explicit configuration.</p>
+<p><strong>MCP</strong> (D5) is the only truly <strong>volatile</strong> section. When Model Context Protocol servers connect or disconnect mid-session, this section changes. Its placement last in the dynamic block is a deliberate cache optimization — any change to a cached section invalidates everything after it, so the most volatile content goes at the end. See <a href="./10-model-context-protocol.html">Part VI.1: MCP</a> for the full protocol.</p>
+<p><strong>Scratchpad</strong> (D6) provides working memory within a session — notes the model writes to itself that persist across compaction boundaries.</p>
+<p><strong>Brief mode</strong> (D9) modifies output style when the user activates terse mode, reducing the model’s response verbosity.</p>
+<p>The agent-specific fragments are equally important. Sub-agents receive dramatically smaller prompts — approximately <span class="kw-slate">3 KB</span> compared to the main agent’s <span class="kw-slate">20 KB</span>. The <span class="kw-terra">Explore sub-agent</span> gets a prompt that starts with <em>“You are a file search specialist”</em> and operates in read-only mode with only <code>Read</code>, <code>Glob</code>, <code>Grep</code>, and <code>LSP</code>. The <span class="kw-terra">Plan sub-agent</span> is a <em>“software architect”</em> with the same restricted tools but a different output format. This <span class="kw-slate">7x size difference</span> is a direct cost optimization: sub-agents are spawned frequently, and each spawn incurs the full system prompt cost. See <a href="./07-multi-agent-orchestration.html">Part II.3: Multi-Agent Orchestration</a> for the sub-agent architecture.</p>
+<p>Each sub-agent’s prompt is assembled from a <span class="kw-sage">3-part structure</span> that determines its final size and content:</p>
+<ol type="1">
+<li><p><strong>Part I: Agent-specific prompt.</strong> This is the role definition and behavioral contract. The general-purpose sub-agent receives approximately <span class="kw-slate">600 characters</span> of instructions (“You are an agent for Claude Code” plus guidelines on thoroughness and scope). The verification agent, which must validate complex constraints, receives up to <span class="kw-slate">4,500 characters</span>. The Explore and Plan agents fall in between, with structured output format requirements that add to their prompt length.</p></li>
+<li><p><strong>Part II: Thread notes and environment info.</strong> All sub-agent types share a common block of behavioral constraints (use absolute paths, no emojis, report concisely) plus runtime context: the current working directory, platform, shell type, and model ID. These prevent sub-agents from producing output that confuses the parent and ensure each child knows where it is without needing to discover this via tool calls.</p></li>
+<li><p><strong>Part III: Context injection.</strong> This is the variable-cost component. CLAUDE.md files and git status are included for the general-purpose Subagent and Teammate types, but explicitly omitted for Explore and Plan. The omission is a deliberate cost optimization: at <span class="kw-slate">34 million Explore spawns per week</span>, even a few hundred tokens of CLAUDE.md content per spawn compounds to billions of tokens saved at fleet scale.</p></li>
+</ol>
+<p>The total assembled prompt ranges from approximately <span class="kw-slate">100 lines</span> for Explore (no CLAUDE.md, no git status, minimal role definition) to approximately <span class="kw-slate">500 lines</span> for Teammate (full main-agent prompt plus team memory plus CLAUDE.md hierarchy).</p>
+<hr>
+</section>
+<section id="budget-management-the-knapsack-constraint" class="level2">
+<h2 class="anchored" data-anchor-id="budget-management-the-knapsack-constraint">Budget Management: The Knapsack Constraint</h2>
+<p><strong>The token budget is not one concern among many — it is THE concern that generates the pipeline’s architecture.</strong></p>
+<p>Every LLM has a <strong>context window</strong> — the maximum number of tokens it can process in a single request. For Claude, this is typically 200K tokens. The challenge is packing the most useful information into that window, because anything left out is invisible to the model.</p>
+<p>The budget constraint is expressed as:</p>
+<p><span class="math display">\[|system| + |history| + |tools| + |output| \leq W\]</span></p>
+<p>where <span class="math inline">\(W\)</span> is the context window size. This is a <strong>knapsack problem</strong>: a container of fixed capacity, items of varying sizes and values, and the goal of maximizing total value within the capacity.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-token-budget" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-token-budget-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-token-budget">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  A["&lt;b&gt;System Prompt&lt;/b&gt;&lt;br&gt;&lt;i&gt;~8K&lt;/i&gt;"]
+  B["&lt;b&gt;Conversation History&lt;/b&gt;&lt;br&gt;&lt;i&gt;0-170K, grows each turn, compactable&lt;/i&gt;"]
+  C["&lt;b&gt;Tool Schemas&lt;/b&gt;&lt;br&gt;&lt;i&gt;~5-10K&lt;/i&gt;"]
+  D["&lt;b&gt;Output Reserve&lt;/b&gt;&lt;br&gt;&lt;i&gt;~16K&lt;/i&gt;"]
+
+  A ~~~ B ~~~ C ~~~ D
+
+  E["W = 200K tokens total budget"]
+
+  A --&gt; E
+  B --&gt; E
+  C --&gt; E
+  D --&gt; E
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style B fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style E fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-token-budget-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Token budget allocation within the 200K context window, partitioned across four consumers. The system prompt (~8K), tool schemas (~5-10K), and output reserve (~16K) are fixed costs consuming roughly 30K tokens. The remainder (up to 170K) is available for conversation history, which grows each turn and is the primary target of the compaction system when the budget is exceeded.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The four boxes represent the four consumers of the 200K-token budget, arranged left to right. System Prompt (~8K), Conversation History (0-170K, the only variable-size consumer), Tool Schemas (~5-10K), and Output Reserve (~16K) all feed into the total budget node. The critical insight is that System Prompt, Tool Schemas, and Output Reserve are essentially fixed costs (~30K), leaving at most 170K for conversation history – and that history is the only component that can be compacted when the budget runs out.</p>
+<p>Now we can see how each pipeline stage serves this constraint:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 78%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Stage</th>
+<th>How It Manages the Budget</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Fragment assembly</strong></td>
+<td>Conditionally includes only the fragments needed for the current mode, minimizing the fixed ~8K overhead</td>
+</tr>
+<tr class="even">
+<td><strong>Static/dynamic split</strong></td>
+<td>Places invariant content before the cache boundary so it is processed once, not every turn</td>
+</tr>
+<tr class="odd">
+<td><strong>Tool descriptions</strong></td>
+<td>Compressed per-tool fragments rather than verbose documentation</td>
+</tr>
+<tr class="even">
+<td><strong>Message normalization</strong></td>
+<td>Merges adjacent content blocks, resolves tombstones, consolidates tool results</td>
+</tr>
+<tr class="odd">
+<td><strong>Prompt caching</strong></td>
+<td>Marks invariant blocks with <code>cache_control</code> for 90% cost reduction on cache hits</td>
+</tr>
+</tbody>
+</table>
+<p>The budget is checked before every API call:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> tokenCount <span class="op">=</span> <span class="fu">tokenCountWithEstimation</span>(messages)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> threshold <span class="op">=</span> <span class="fu">getEffectiveContextWindowSize</span>(model) <span class="op">-</span> AUTOCOMPACT_BUFFER_TOKENS</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co">// AUTOCOMPACT_BUFFER_TOKENS = 13,000 -- a safety margin</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="cf">return</span> tokenCount <span class="op">&gt;=</span> threshold</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That 13,000-token buffer exists because token counting is an <em>estimate</em>. The exact count depends on the model’s tokenizer, and getting it wrong means a rejected request (HTTP 413). The buffer provides margin for error — another instance of the engineering principle that estimates need safety margins. When the budget is exceeded, the <a href="./04-context-compaction.html">compaction system</a> triggers a cascade that ranges from lightweight trimming to emergency summarization.</p>
+<hr>
+</section>
+<section id="the-anti-pattern-directives-negative-instructions-at-scale" class="level2">
+<h2 class="anchored" data-anchor-id="the-anti-pattern-directives-negative-instructions-at-scale">The Anti-Pattern Directives: Negative Instructions at Scale</h2>
+<p><strong>Most LLM agents define what they should do. Claude Code also defines what they should NOT do — and the density of these negative instructions reveals the gap between LLM capability and reliable behavior.</strong></p>
+<p>The system prompt contains over <span class="kw-slate">40 explicit prohibitions</span>. The word “NEVER” appears dozens of times. Each rule is a scar from a real failure — a case where the model’s default behavior caused a problem in testing or production.</p>
+<p>A sampling from the tool descriptions alone:</p>
+<ul>
+<li>“NEVER use the -i flag (interactive input not supported)”</li>
+<li>“NEVER push to the remote repository unless explicitly asked”</li>
+<li>“NEVER skip hooks (–no-verify) unless the user explicitly asks”</li>
+<li>“NEVER amend commits that are already pushed”</li>
+<li>“NEVER create documentation files unless explicitly requested”</li>
+</ul>
+<p>The rules cluster into four categories:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 23%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Purpose</th>
+<th>Budget Connection</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Safety</strong> (~12)</td>
+<td>Prevent destructive operations (rm -rf, force push, secret exposure)</td>
+<td>A destructive action wastes an entire session’s token investment</td>
+</tr>
+<tr class="even">
+<td><strong>Correctness</strong> (~10)</td>
+<td>Prevent hallucination (read files before editing, use absolute paths)</td>
+<td>Hallucinated edits require rollback turns, consuming budget</td>
+</tr>
+<tr class="odd">
+<td><strong>UX quality</strong> (~10)</td>
+<td>Maintain voice (no emojis, no filler phrases, no unsolicited docs)</td>
+<td>Filler tokens waste output budget directly</td>
+</tr>
+<tr class="even">
+<td><strong>Efficiency</strong> (~8)</td>
+<td>Prevent token waste (do not re-read files, use specialized tools)</td>
+<td>Directly reduces per-turn token consumption</td>
+</tr>
+</tbody>
+</table>
+<p>Beyond individual prohibitions, the prompt includes six explicit <strong>anti-pattern directives</strong> that address the most common LLM coding failure modes:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 44%">
+<col style="width: 55%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Anti-Pattern</th>
+<th>Why It Matters</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>“Don’t add features beyond what was asked”</td>
+<td>Prevents scope creep (the #1 LLM coding failure mode)</td>
+</tr>
+<tr class="even">
+<td>“Don’t add error handling for impossible scenarios”</td>
+<td>Prevents defensive over-coding</td>
+</tr>
+<tr class="odd">
+<td>“Don’t create abstractions for one-time operations”</td>
+<td>Prevents premature abstraction</td>
+</tr>
+<tr class="even">
+<td>“Avoid backwards-compatibility hacks”</td>
+<td>Prevents unnecessary compatibility shims</td>
+</tr>
+<tr class="odd">
+<td>“Avoid time estimates”</td>
+<td>LLMs are bad at time estimation; silence beats noise</td>
+</tr>
+<tr class="even">
+<td>“Do not over-engineer”</td>
+<td>Prefer simple/direct over architecturally “pure”</td>
+</tr>
+</tbody>
+</table>
+<p>These anti-patterns work alongside a <span class="kw-sage">reversibility framework</span> that maps every action along two axes — reversibility and scope — to determine the required confirmation behavior. A reversible, local action (editing a file) can be taken freely. An irreversible, broad-scope action (force-pushing to main) requires explicit confirmation with explanation of consequences. See <a href="./06-safety-sandbox.html">Part IV.2: Safety &amp; Sandbox</a> for the full permission model.</p>
+<hr>
+</section>
+<section id="prompt-caching-where-architecture-meets-economics" class="level2">
+<h2 class="anchored" data-anchor-id="prompt-caching-where-architecture-meets-economics">Prompt Caching: Where Architecture Meets Economics</h2>
+<section id="what-prompt-caching-is" class="level3">
+<h3 class="anchored" data-anchor-id="what-prompt-caching-is">What Prompt Caching Is</h3>
+<p>Every API call to Claude includes the full message payload: system prompt, tool definitions, conversation history, and the new user message. Without optimization, the server must <strong>process the entire payload from scratch on every call</strong> — tokenizing, encoding, and computing attention over content it has already seen on the previous turn. For a 20-turn session sending an 8K-token system prompt, that is 20 copies of the same 8K tokens being processed from scratch. At API pricing, this redundancy is expensive.</p>
+<p><span class="kw-sage">Prompt caching</span> is Anthropic’s server-side optimization that eliminates this redundancy. The idea is simple: the client marks a prefix of the request as “unchanged since last time,” and the server reuses its internal representation of that prefix instead of recomputing it. The cached prefix is stored server-side for a TTL (5 minutes by default, or 1 hour for eligible accounts). On a cache hit, input tokens in the cached prefix are billed at a <span class="kw-slate">90% discount</span> — 10% of the normal input token price.</p>
+<p>The critical constraint is that <strong>caching is prefix-based</strong>: the server caches a contiguous prefix of the request, starting from the beginning. If any byte changes within the cached prefix, everything from that point onward is invalidated.</p>
+<p>Why? Because of how transformer inference works. The server’s cached representation is not just raw text — it is the <span class="kw-sage">KV cache</span> (key-value cache), the intermediate attention states computed during the forward pass. In a transformer, every token’s representation depends on all tokens before it. If you change token 5,000 in a 20,000-token sequence, the attention states for tokens 5,001 through 20,000 are all invalid because they were computed with the old token 5,000 as input. Only tokens 1 through 4,999 can be reused. This is the same reason you cannot splice a frame into the middle of a video and keep the subsequent frames unchanged — each frame (like each attention state) depends on what came before it.</p>
+<p>This means the <strong>ordering of content in the request determines the cache hit rate</strong>. Stable content must come first; volatile content must come last. A change at position <span class="math inline">\(k\)</span> invalidates the cache for all <span class="math inline">\(n - k\)</span> tokens after it, so the cost of a change is proportional to how early it occurs.</p>
+<p><strong>The entire prompt assembly pipeline is ordered to maximize cache hit rates. This is not an exaggeration — the render order, the static/dynamic split, and the placement of volatile content at the end all serve one goal: reducing API costs.</strong></p>
+<p>Claude Code marks cache breakpoints with a single field:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  type<span class="op">:</span> <span class="st">'text'</span><span class="op">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  text<span class="op">:</span> <span class="fu">appendSystemContext</span>(systemPrompt<span class="op">,</span> systemContext)<span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  cache_control<span class="op">:</span> { type<span class="op">:</span> <span class="st">'ephemeral'</span> }<span class="op">,</span>  <span class="co">// &lt;-- 5-minute cache TTL</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>cache_control: { type: 'ephemeral' }</code> marker creates a breakpoint. Everything before this marker is cached server-side for five minutes. Subsequent turns skip re-processing the system prompt entirely.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-cache-order" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-cache-order-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-cache-order">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph CACHED["90% cost reduction (cache hit)"]
+    T["1. &lt;b&gt;Tools&lt;/b&gt;&lt;br&gt;&lt;i&gt;schemas&lt;/i&gt;"]
+    S["2. &lt;b&gt;Static&lt;/b&gt;&lt;br&gt;&lt;i&gt;S1-S8&lt;/i&gt;"]
+    SD["3. &lt;b&gt;Session&lt;/b&gt;&lt;br&gt;&lt;i&gt;D1-D4, D6-D9&lt;/i&gt;"]
+  end
+
+  MCP["4. &lt;b&gt;MCP (D5)&lt;/b&gt;&lt;br&gt;&lt;i&gt;VOLATILE&lt;/i&gt;&lt;br&gt;cache miss starts here"]
+  MSG["5. &lt;b&gt;Messages&lt;/b&gt;&lt;br&gt;&lt;i&gt;history&lt;/i&gt;"]
+
+  T --&gt; S --&gt; SD --&gt; MCP --&gt; MSG
+  style T fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style SD fill:#C2856E,color:#fff,stroke:#A06A54
+  style MCP fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style MSG fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-cache-order-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Prompt assembly order optimized for caching, arranged from most stable to most volatile. Tool schemas and static sections (S1-S8) form the cached prefix at 90% cost reduction. Session-scoped dynamic sections (D1-D4, D6-D9) extend the prefix when stable. MCP (D5), the only truly volatile section, is placed last so that its changes do not invalidate the preceding cached content. Messages (conversation history) follow after all system content.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the five nodes left to right, ordered from most stable to most volatile. The shaded subgraph (Tools, Static, Session) represents the cached prefix that receives a 90% cost reduction on cache hits. MCP (D5) is placed immediately outside this boundary because it is the only truly volatile section – any change here marks where cache misses begin. Messages (conversation history) follow last. The ordering principle: stable content first, volatile content last, so that changes invalidate as little cached content as possible.</p>
+<p>In a session with no MCP servers (D5 is empty), the cache prefix extends all the way to the messages — the best-case scenario. The math for a 50-turn session:</p>
+<pre><code>  System prompt: ~15,000 tokens
+  Without caching:  50 × 15,000 = 750,000 input tokens
+  With 90% cache:   50 × 15,000 × 0.10 = 75,000 effective input tokens
+  Savings:          675,000 tokens per session</code></pre>
+<p>The system prompt is separated into multiple blocks to maximize cache hit rates. The main prompt (stable across turns) and the user context like CLAUDE.md content (stable across turns but different per project) each get their own cache breakpoint:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">function</span> <span class="fu">buildSystemPromptBlocks</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  systemPrompt<span class="op">:</span> SystemPrompt<span class="op">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  userContext<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">string</span><span class="op">&gt;,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  systemContext<span class="op">:</span> <span class="bu">Record</span><span class="op">&lt;</span><span class="dt">string</span><span class="op">,</span> <span class="dt">string</span><span class="op">&gt;,</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>)<span class="op">:</span> BetaContentBlockParam[] {</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> [</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>      type<span class="op">:</span> <span class="st">'text'</span><span class="op">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>      text<span class="op">:</span> <span class="fu">appendSystemContext</span>(systemPrompt<span class="op">,</span> systemContext)<span class="op">,</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>      cache_control<span class="op">:</span> { type<span class="op">:</span> <span class="st">'ephemeral'</span> }<span class="op">,</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">// CLAUDE.md as separate cacheable block</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">...</span>userContext<span class="op">.</span><span class="at">claudeMd</span> <span class="op">?</span> [{</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>      type<span class="op">:</span> <span class="st">'text'</span><span class="op">,</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>      text<span class="op">:</span> userContext<span class="op">.</span><span class="at">claudeMd</span><span class="op">,</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>    }] <span class="op">:</span> []<span class="op">,</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  ]</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>There is also a <strong>fork worker optimization</strong>. When Claude Code runs parallel tool calls, all fork children inherit the same system prompt. The cache write by the first worker benefits all subsequent workers in the same batch. A fork of five parallel workers pays the full input token cost once, not five times.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Prompt caching turns prompt engineering into cost engineering. The decision to place MCP instructions (D5) last in the assembly order is not about readability or logical grouping — it is about money. Any change to a cached section invalidates everything after it. By placing the only volatile section last, all preceding content stays cached. This is the same principle as putting the most frequently changing files at the end of a backup archive.</p>
+</div>
+</div>
+</section>
+<section id="how-tool-responses-affect-caching" class="level3">
+<h3 class="anchored" data-anchor-id="how-tool-responses-affect-caching">How Tool Responses Affect Caching</h3>
+<p>Tool responses create an interesting caching challenge. When the model calls a tool (e.g., reads a file), the tool result — potentially <span class="kw-slate">10,000+ tokens</span> of file content — is inserted into the conversation history as a <code>tool_result</code> block. On subsequent turns, that tool result is part of the messages payload and must be sent again. Without optimization, a session that reads 20 files accumulates 200K+ tokens of tool results that are resent on every subsequent API call.</p>
+<p>Claude Code addresses this through two mechanisms built on the <span class="kw-terra">cache_editing beta</span>:</p>
+<p><strong><code>cache_reference</code> on tool results.</strong> For tool_result blocks that fall within the cached prefix (i.e., earlier in the conversation than the last <code>cache_control</code> marker), Claude Code adds a <code>cache_reference</code> field set to the <code>tool_use_id</code>. This tells the server: “you already have this tool result cached from a previous request; reference it by ID instead of re-processing the full content.” The server matches the reference to its cached representation and skips the re-encoding.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Add cache_reference to tool_result blocks within the cached prefix</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">isToolResultBlock</span>(block)) {</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  msg<span class="op">.</span><span class="at">content</span>[j] <span class="op">=</span> <span class="bu">Object</span><span class="op">.</span><span class="fu">assign</span>({}<span class="op">,</span> block<span class="op">,</span> {</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    cache_reference<span class="op">:</span> block<span class="op">.</span><span class="at">tool_use_id</span><span class="op">,</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong><code>cache_edits</code> for eviction.</strong> When old tool results are no longer worth caching (the model has moved on to different files), the <a href="./04-context-compaction.html">Microcompact tier</a> inserts a <code>cache_edits</code> block that tells the server to delete specific cached tool results. This is cache eviction at the application layer: Claude Code decides which tool results are stale, and the server reclaims their cache space.</p>
+<p>The combined effect: tool results from recent turns are cached and referenced cheaply. Tool results from older turns are evicted. The system prompt, tool schemas, and recent conversation history remain in the cache prefix, while only the newest user message and system reminders fall outside it.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is a <span class="kw-sage">write-through cache with explicit eviction</span>. New tool results are written to the cache on first use (<code>cache_control: ephemeral</code>). They are read from the cache on subsequent turns (<code>cache_reference</code>). And they are evicted when stale (<code>cache_edits</code>). The three operations — write, read, evict — are the fundamental operations of any cache, here applied at the API protocol level rather than in memory.</p>
+</div>
+</div>
+</section>
+<section id="mcp-and-cache-invalidation" class="level3">
+<h3 class="anchored" data-anchor-id="mcp-and-cache-invalidation">MCP and Cache Invalidation</h3>
+<p>MCP servers present the most severe cache challenge, and the source code reveals a multi-stage mitigation strategy that evolved over time.</p>
+<p><strong>The original problem.</strong> MCP server instructions — the natural-language descriptions of what each MCP server’s tools do and how to use them — were originally placed in the system prompt as the last dynamic section (the “MCP section” in the <a href="#fig-cache-order">assembly order diagram above</a>). To understand why this was uniquely problematic, note what the cache prefix contains vs.&nbsp;what it doesn’t. Regular tool <em>responses</em> (the output of Bash, Read, Grep, etc.) live in the <span class="kw-sage">conversation message stream</span>, which comes <em>after</em> the cached prefix. A Bash command returning different output on every turn has zero effect on the system prompt cache. But MCP server <em>instructions and tool definitions</em> were placed <span class="kw-terra">inside the system prompt itself</span> — part of the cached prefix. Every other system prompt section was stable: the identity text never changes, built-in tool schemas are compiled into the binary, CLAUDE.md changes only when the user edits it, and the date section uses month-level granularity to minimize churn. The MCP section was the <span class="kw-terra">only system prompt section whose bytes depended on the runtime state of external processes</span>. MCP servers can crash, restart, or be added by the user at any moment during a session. A user types <code>/mcp add postgres</code> on turn 15, or the GitHub MCP server’s process dies and respawns on turn 30 — and suddenly the MCP section has different bytes than it did on the previous turn. Since caching is prefix-based, this change invalidated everything after it in the request. A user who connected a single MCP server could inadvertently increase their per-turn cost by thousands of tokens.</p>
+<p><strong>The mitigation: <code>mcp_instructions_delta</code>.</strong> The source reveals that MCP instructions have been migrated out of the system prompt entirely. Instead of rebuilding D5 every turn, Claude Code now delivers MCP instructions via a <code>mcp_instructions_delta</code> <a href="./04-context-compaction.html">system reminder</a> injected into the conversation messages:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">// prompts.ts — MCP instructions moved to delta attachments</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">// instead of this per-turn recompute, which busts the prompt</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co">// cache on late MCP connect.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When an MCP server connects, its instructions arrive as a system reminder on the next turn — not as a change to the system prompt. The system prompt stays byte-identical, the cache stays valid, and the instructions still reach the model. When an MCP server disconnects, a corresponding delta reminder lists the disconnected servers.</p>
+<p><strong>The same pattern applies to MCP tool schemas.</strong> When MCP tools appear in the tool definition array, they could bust the tool schema cache. The <code>deferred_tools_delta</code> attachment carries new or removed tool announcements as system reminders instead of modifying the tool array, preserving the tool schema cache prefix.</p>
+<p>The engineering lesson: <strong>every volatile signal that was originally placed in the system prompt has been systematically migrated to system reminders</strong>. The date (uses month granularity to minimize changes), the current model, MCP instructions, deferred tool listings — all moved to the message stream to protect the ~20K-token cached prefix. The source comments are explicit about the motivation: <code>"busts the prompt cache"</code> appears <span class="kw-slate">15+ times</span> across the codebase as the justification for these migrations.</p>
+</section>
+<section id="quantifying-the-token-cost" class="level3">
+<h3 class="anchored" data-anchor-id="quantifying-the-token-cost">Quantifying the Token Cost</h3>
+<p>Why does all this caching engineering matter? Consider a typical 30-turn interactive session:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-token-cost" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-token-cost-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-token-cost">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph USER["&lt;b&gt;User visible&lt;/b&gt;"]
+    U1["User messages&lt;br&gt;+ history&lt;br&gt;&lt;b&gt;~500K&lt;/b&gt;"]
+  end
+  subgraph HIDDEN["&lt;b&gt;Hidden overhead (~510K raw tokens)&lt;/b&gt;"]
+    H1["System prompt&lt;br&gt;&lt;b&gt;~150K&lt;/b&gt;"]
+    H2["Tool schemas&lt;br&gt;&lt;b&gt;~210K&lt;/b&gt;"]
+    H3["Reminders&lt;br&gt;&lt;b&gt;~60K&lt;/b&gt;"]
+    H4["CLAUDE.md&lt;br&gt;MEMORY.md&lt;br&gt;&lt;b&gt;~90K&lt;/b&gt;"]
+  end
+
+  U1 ~~~ H1
+  H1 ~~~ H2
+  H2 ~~~ H3
+  H3 ~~~ H4
+
+  style U1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style H1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style H2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style H3 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style H4 fill:#C4A882,color:#fff,stroke:#A08562
+  style USER fill:#9CAF8822,stroke:#7A8D68
+  style HIDDEN fill:#C2856E22,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-token-cost-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Token cost breakdown for a 30-turn session, split into user-visible and hidden overhead. The user-visible portion (slate, ~500K tokens) is messages and history. Hidden overhead comprises four components: system prompt (~150K raw, cacheable), tool schemas (~210K raw, cacheable), system reminders (~60K cumulative new tokens), and CLAUDE.md/MEMORY.md (~90K raw, cacheable). The hidden overhead totals approximately 510K raw input tokens. With prompt caching (90% discount on repeated prefixes), the effective hidden cost drops to ~85K tokens, adding roughly 20% to the effective input cost.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Compare the two side-by-side groups: the “User visible” block on the left shows the user’s own messages and history (~500K tokens across 30 turns), while the “Hidden overhead” block on the right breaks down four invisible components – system prompt, tool schemas, reminders, and CLAUDE.md/MEMORY.md – totaling ~510K raw input tokens. The key insight is that hidden overhead <em>exceeds</em> user-visible content in raw token volume. Prompt caching reduces the effective hidden cost to ~85K tokens (since three of the four components are cacheable at 90% discount, and previously-injected reminders are cached as part of the conversation history), adding ~20% to the effective input cost.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 34%">
+<col style="width: 16%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Component</th>
+<th>Tokens (30 turns)</th>
+<th>Cached?</th>
+<th>Effective Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>User messages + history</td>
+<td>~500,000</td>
+<td>Partial (last msg)</td>
+<td>~400,000</td>
+</tr>
+<tr class="even">
+<td>System prompt (S1–S8, D1–D9)</td>
+<td>~150,000 (5K × 30)</td>
+<td>Yes (90%)</td>
+<td>~15,000</td>
+</tr>
+<tr class="odd">
+<td>Tool schemas (73 fragments)</td>
+<td>~210,000 (7K × 30)</td>
+<td>Yes (90%)</td>
+<td>~21,000</td>
+</tr>
+<tr class="even">
+<td>System reminders (cumulative)</td>
+<td>~60,000</td>
+<td>Partial (new only)</td>
+<td>~40,000</td>
+</tr>
+<tr class="odd">
+<td>CLAUDE.md + MEMORY.md</td>
+<td>~90,000 (3K × 30)</td>
+<td>Yes (90%)</td>
+<td>~9,000</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total hidden overhead: ~510,000 raw input tokens, ~85,000 effective tokens after caching.</strong> In a session where the user’s own messages total ~500,000 tokens (~400,000 effective), the hidden overhead adds <span class="kw-terra">~20% to the effective input token cost</span>. Without prompt caching, the full 510,000 raw tokens would be billed at standard input rates — nearly doubling the bill. This is why Claude Code invests so heavily in cache stability: the prefix-ordering constraints, the <code>cache_reference</code> mechanism for tool results, and the migration of every volatile signal out of the system prompt are not premature optimizations — they are load-bearing cost engineering.</p>
+<hr>
+</section>
+</section>
+<section id="system-reminders-mid-conversation-injection" class="level2">
+<h2 class="anchored" data-anchor-id="system-reminders-mid-conversation-injection">System Reminders: Mid-Conversation Injection</h2>
+<p><strong>System reminders inject dynamic context into the middle of a conversation without modifying the system prompt.</strong> There are over 50 of them (see the <a href="./04-context-compaction.html">full inventory in Post 4</a>), and they solve a specific problem: how do you update the model’s context mid-session without breaking the prompt cache?</p>
+<p>LLMs suffer from <span class="kw-mauve">instruction decay</span> — the longer the conversation, the less attention the model pays to instructions at the beginning of the context. As the conversation history grows and pushes the system prompt further from the model’s current focus, critical behavioral rules fade in influence. System reminders counteract this by re-emphasizing rules at the point where they are most relevant.</p>
+<p>The mechanism is straightforward. Reminders are wrapped in <code>&lt;system-reminder&gt;</code> XML tags and appended to the next user message, riding inside conversation messages rather than in the system prompt:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-system-reminders" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-system-reminders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-system-reminders">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  SYS["System Prompt&lt;br&gt;&lt;i&gt;cached, 5 min TTL&lt;/i&gt;"]
+  U1["User: Turn 1"]
+  A1["Assistant: Turn 1 response"]
+  U2["User: Turn 5"]
+  R1["+ reminder: Plan mode step 3 of 7"]:::reminder
+  A2["Assistant: Turn 5 response"]
+  U3["User: Turn 6"]
+  R2["+ reminder: Files changed (src/auth.ts)"]:::reminder
+  R3["+ reminder: Token usage 78%"]:::reminder
+  A3["Assistant: Turn 6 response"]
+
+  SYS --&gt; U1 --&gt; A1 --&gt; U2 --&gt; R1 --&gt; A2 --&gt; U3 --&gt; R2 --&gt; R3 --&gt; A3
+
+  classDef reminder fill:#C2856E,stroke:#A06A54,color:#ffffff
+  style SYS fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style U1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style A1 fill:#C2856E,color:#fff,stroke:#A06A54
+  style U2 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style R1 fill:#C4A882,color:#fff,stroke:#A08562
+  style A2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style U3 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style R2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style R3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style A3 fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-system-reminders-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: System reminders injected into a conversation timeline. The system prompt (cached, 5-min TTL) remains untouched at the top. Reminders (shown in terracotta) are appended to user messages at strategic points: plan mode status at turn 5, file-change notifications and token usage at turn 6. This preserves the cached system prompt while counteracting instruction decay – the phenomenon where the model pays less attention to distant instructions.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Time flows downward through the conversation timeline. The System Prompt (cached, 5-min TTL) sits at the top and remains untouched throughout. User and Assistant messages alternate below it. The terracotta-colored reminder nodes are injected between user messages and assistant responses – notice how Turn 5 gets one reminder (plan mode status) while Turn 6 gets two (file changes and token usage). The key takeaway: reminders ride inside conversation messages rather than modifying the system prompt, preserving the cache while counteracting instruction decay deeper in the conversation.</p>
+<section id="event-driven-trigger-taxonomy" class="level3">
+<h3 class="anchored" data-anchor-id="event-driven-trigger-taxonomy">Event-Driven Trigger Taxonomy</h3>
+<p>The 50+ reminder types are not fired at random. Each one is triggered by a specific runtime event, and these events fall into four categories that together define the reminder lifecycle:</p>
+<ol type="1">
+<li><p><strong>After a tool result.</strong> When a tool finishes executing, the runtime evaluates what changed and injects the appropriate reminders on the next turn. Examples include current git status (injected after Bash commands that modify the repository), token budget remaining (updated after every API round-trip), and recently changed files (injected after Edit or Write calls modify the working tree).</p></li>
+<li><p><strong>After a permission decision.</strong> When the permission system allows or denies a tool call, the outcome and rationale are captured as a reminder. This ensures the model knows what it was permitted to do and why, preventing it from re-requesting a denied action or from being unaware that a sensitive operation was silently approved.</p></li>
+<li><p><strong>After compaction.</strong> When the compaction cascade summarizes older turns (see <a href="./04-context-compaction.html">Part III.2: Context Compaction</a>), a reminder is injected describing what was summarized and what information may have been lost. This is critical because the model cannot detect that its own history was compressed. Without the reminder, it might reference details that no longer exist in the context.</p></li>
+<li><p><strong>Periodic reinforcement.</strong> Some reminders fire on a schedule rather than in response to a specific event. Safety constraints, coding style rules, and output format directives are re-injected periodically to counteract instruction decay. These are the reminders most analogous to the “aspect advice” described below: cross-cutting behavioral rules that must remain salient regardless of what the conversation is about.</p></li>
+</ol>
+</section>
+<section id="a-worked-example-the-edited_text_file-reminder" class="level3">
+<h3 class="anchored" data-anchor-id="a-worked-example-the-edited_text_file-reminder">A Worked Example: The <code>edited_text_file</code> Reminder</h3>
+<p>To make the mechanism concrete, consider one of the most practically important reminder types: <code>edited_text_file</code>, implemented in <code>src/utils/messages.ts</code> at line 3538, via the <code>normalizeAttachmentForAPI()</code> function.</p>
+<p>The scenario is straightforward. The user opens <code>src/auth.ts</code> in their IDE and changes a function signature while the agent is working. The agent does not know this happened. On its next turn, it might overwrite the user’s change, or make edits that conflict with the new signature. A file watcher detects the external modification. The runtime wraps a notification in a <code>&lt;system-reminder&gt;</code> XML tag and injects it into the next user-turn message. The exact message template from the source code reads:</p>
+<blockquote class="blockquote">
+<p>“Note: {filename} was modified, either by the user or by a linter. This change was intentional, so make sure to take it into account as you proceed (ie. don’t revert it unless the user asks you to). Don’t tell the user this, since they are already aware. Here are the relevant changes (shown with line numbers): {snippet}”</p>
+</blockquote>
+<p>Here, <code>{filename}</code> is the path to the modified file (e.g., <code>src/auth.ts</code>) and <code>{snippet}</code> is a line-numbered diff of the changes. Without this reminder, the model would have a stale view of the file and might silently overwrite the user’s work. The reminder gives the model environmental awareness at zero tool-call cost. The phrasing is carefully chosen: “don’t tell the user this, since they are already aware” prevents the model from narrating the change back to the user, which would be both annoying and a waste of output tokens.</p>
+</section>
+<section id="the-aop-analogy" class="level3">
+<h3 class="anchored" data-anchor-id="the-aop-analogy">The AOP Analogy</h3>
+<p>This is <strong>aspect-oriented programming (AOP)</strong> applied to LLM conversations. In traditional AOP (Spring Framework, AspectJ), cross-cutting concerns like logging, security, and transactions are injected at join points without modifying the core business logic. System reminders do the same thing: cross-cutting concerns (token state, plan progress, file changes) are injected at conversation join points without modifying the system prompt.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 32%">
+<col style="width: 67%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>AOP Concept</th>
+<th>System Reminder Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Aspect</strong></td>
+<td>A reminder category (plan state, file changes, tokens)</td>
+</tr>
+<tr class="even">
+<td><strong>Join point</strong></td>
+<td>A position in the conversation (before user message, after tool result)</td>
+</tr>
+<tr class="odd">
+<td><strong>Advice</strong></td>
+<td>The reminder content that gets injected</td>
+</tr>
+<tr class="even">
+<td><strong>Weaving</strong></td>
+<td>The runtime injection of reminders into messages</td>
+</tr>
+<tr class="odd">
+<td><strong>Cross-cutting concern</strong></td>
+<td>Context that spans multiple turns but does not belong in the system prompt</td>
+</tr>
+</tbody>
+</table>
+<p>The 50 reminders cover ten categories: <strong>plan and mode</strong> (plan steps, auto mode, re-entry), <strong>file and IDE state</strong> (modified files, opened files, selected lines), <strong>hook results</strong> (success, blocking errors, additional context), <strong>resource budget</strong> (token usage, USD budget, task status), <strong>memory and context</strong> (CLAUDE.md, recalled memories, compaction, date changes), <strong>skills and commands</strong> (invoked skills, skill listing, queued commands), <strong>task management</strong> (todo/task reminders, plan verification), <strong>tool and agent changes</strong> (deferred tools, agent listings, MCP instructions), <strong>behavioral</strong> (output style, diagnostics, reasoning effort), and <strong>team coordination</strong> (team context, teammate messages). See the <a href="./04-context-compaction.html">full inventory in Post 4</a>.</p>
+</section>
+<section id="the-hooks-to-reminder-pipeline" class="level3">
+<h3 class="anchored" data-anchor-id="the-hooks-to-reminder-pipeline">The Hooks-to-Reminder Pipeline</h3>
+<p>The reminder system is not limited to the 50+ built-in types. The <span class="kw-sage">hooks system</span> extends it into a user-programmable injection mechanism. Users can attach arbitrary shell commands to any of <span class="kw-slate">25+ lifecycle events</span>, including <code>PreToolUse</code>, <code>PostToolUse</code>, <code>SessionStart</code>, <code>Stop</code>, <code>Notification</code>, and others defined in the hooks configuration. When a lifecycle event fires, the registered hook command executes, and any stdout it produces is captured by the runtime and injected as a system reminder on the next turn. This makes the reminder system user-extensible without modifying Claude Code’s source.</p>
+<p>The practical implications are significant. A team can enforce project-specific invariants (e.g., “always run <code>cargo clippy</code> after editing a Rust file”) by attaching a <code>PostToolUse</code> hook to the Edit tool that runs the linter and pipes warnings back as reminders. A security-conscious organization can attach a <code>PreToolUse</code> hook to Bash that scans proposed commands against a deny-list and returns a warning reminder if a match is found. In each case, the hook’s stdout flows through the same <code>&lt;system-reminder&gt;</code> XML injection path as the built-in reminders, so the model treats hook-generated context with the same visibility as a direct user instruction.</p>
+<p>For a full treatment of the system reminder architecture and the lifecycle hooks that trigger them, see <a href="./11-hooks-lifecycle.html">Part III.4: Hooks &amp; Lifecycle</a>.</p>
+<hr>
+</section>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>The prompt assembly pipeline reveals something fundamental about production LLM agents: <strong>prompts are code, and they demand code-level engineering.</strong> Version tags, fragment-based architecture, conditional assembly, cache-optimized ordering, and regression testing — Claude Code treats its prompts with the same discipline as its source code.</p>
+<p>The pipeline solves the central tension of context-window scarcity through a coordinated set of techniques:</p>
+<ol type="1">
+<li><p><strong>Fragment-based composition</strong> enables conditional inclusion, so each mode and agent type receives only the fragments it needs. A sub-agent’s 3 KB prompt costs 85% less per turn than the main agent’s 20 KB.</p></li>
+<li><p><strong>Static/dynamic partitioning</strong> places invariant content before the cache boundary, ensuring the 90% cache discount applies to the bulk of the system prompt across all turns in a session.</p></li>
+<li><p><strong>Negative instructions</strong> prune the model’s action space more effectively than positive instructions alone. The 40+ “NEVER” rules and six anti-pattern directives are not sloppy engineering — they are the prompt equivalent of defensive programming, systematically encoding every failure mode observed in production.</p></li>
+<li><p><strong>System reminders</strong> counteract instruction decay by re-injecting critical context mid-conversation without invalidating the cached system prompt. They are the AOP of LLM engineering.</p></li>
+<li><p><strong>Budget checking</strong> at every turn, with a 13,000-token safety margin, triggers <a href="./04-context-compaction.html">compaction</a> before the window overflows rather than after.</p></li>
+</ol>
+<p>The unifying insight is that the prompt is not merely <em>input</em> to the model — it is the <strong>program</strong> that the model executes. The assembly pipeline is the compiler, the fragments are the source modules, the cache breakpoints are the optimization passes, and the token budget is the target architecture’s memory limit. Understanding this pipeline is prerequisite to understanding every other component in Claude Code, because every component — the <a href="./02-agent-loop-query-engine.html">agent loop</a>, the <a href="./05-tool-system.html">tool system</a>, the <a href="./06-safety-sandbox.html">safety layer</a>, the <a href="./07-multi-agent-orchestration.html">multi-agent orchestrator</a> — operates within the budget this pipeline establishes.</p>
+<div class="callout callout-style-default callout-note callout-titled" title="Key Takeaways">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Key Takeaways
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li><p><strong>The system prompt is assembled from 250+ fragments in 8 categories</strong>, organized into 17 ordered sections. This architecture enables conditional inclusion, independent versioning, and cache-optimized delivery.</p></li>
+<li><p><strong>The static/dynamic split is a cost optimization.</strong> Static sections form a cacheable prefix; dynamic sections are appended after the cache boundary. This ordering reduces system prompt processing costs by approximately 90% in a typical session.</p></li>
+<li><p><strong>Negative instructions map the reliability gap.</strong> Every “NEVER” rule is a scar from a failure mode where LLM capability diverged from reliable behavior. They are the prompt equivalent of defensive programming.</p></li>
+<li><p><strong>System reminders are AOP for LLMs.</strong> Cross-cutting concerns (plan state, file changes, token pressure) are injected at conversation join points without modifying the cached system prompt.</p></li>
+<li><p><strong>Prompt caching turns prompt engineering into cost engineering.</strong> The render order, cache breakpoints, and volatile-content-last placement all exist to maximize cache hits — the difference between a viable product and an unprofitably expensive one.</p></li>
+</ol>
+</div>
+</div>
+<hr>
+<p><em>Next: <a href="./07-multi-agent-orchestration.html">Part II.3 – Multi-Agent Orchestration</a> shows how the prompt assembly pipeline adapts for sub-agents – from 3 KB Explore prompts to 20 KB Teammate prompts. Then <a href="./04-context-compaction.html">Part III.2 – Context Compaction</a> examines what happens when the context window fills up — the five-tier compaction cascade that decides what to keep and what to discard.</em></p>
+<p><em>All analysis based on source extracted from the v2.1.88 source map leak. File sizes and line counts reference the unminified reconstruction.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./19-plan-mode.html" class="pagination-link" aria-label="II.4 — Plan Mode">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">II.4 — Plan Mode</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./04-context-compaction.html" class="pagination-link" aria-label="III.2 — Context Compaction">
+        <span class="nav-page-text">III.2 — Context Compaction</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

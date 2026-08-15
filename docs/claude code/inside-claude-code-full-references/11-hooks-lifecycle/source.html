@@ -1,0 +1,2156 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Hooks &amp; Lifecycle Events – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./05-tool-system.html" rel="next">
+<link href="./17-memory-hierarchy.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./11-hooks-lifecycle.html">III.4 — Hooks &amp; Lifecycle</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#introduction-why-lifecycle-hooks-matter" id="toc-introduction-why-lifecycle-hooks-matter" class="nav-link active" data-scroll-target="#introduction-why-lifecycle-hooks-matter">Introduction: Why Lifecycle Hooks Matter</a></li>
+  <li><a href="#core-hook-events" id="toc-core-hook-events" class="nav-link" data-scroll-target="#core-hook-events">Core Hook Events</a></li>
+  <li><a href="#hook-configuration-the-settings.json-format" id="toc-hook-configuration-the-settings.json-format" class="nav-link" data-scroll-target="#hook-configuration-the-settings.json-format">Hook Configuration: The settings.json Format</a></li>
+  <li><a href="#execution-model-shell-commands-and-exit-code-semantics" id="toc-execution-model-shell-commands-and-exit-code-semantics" class="nav-link" data-scroll-target="#execution-model-shell-commands-and-exit-code-semantics">Execution Model: Shell Commands and Exit Code Semantics</a></li>
+  <li><a href="#the-feedback-loop-system-reminders" id="toc-the-feedback-loop-system-reminders" class="nav-link" data-scroll-target="#the-feedback-loop-system-reminders">The Feedback Loop: System Reminders</a></li>
+  <li><a href="#use-cases-linting-logging-and-custom-permission-gates" id="toc-use-cases-linting-logging-and-custom-permission-gates" class="nav-link" data-scroll-target="#use-cases-linting-logging-and-custom-permission-gates">Use Cases: Linting, Logging, and Custom Permission Gates</a>
+  <ul class="collapse">
+  <li><a href="#enforcement-blocking-production-database-writes" id="toc-enforcement-blocking-production-database-writes" class="nav-link" data-scroll-target="#enforcement-blocking-production-database-writes">Enforcement: Blocking Production Database Writes</a></li>
+  <li><a href="#automation-auto-formatting-on-write" id="toc-automation-auto-formatting-on-write" class="nav-link" data-scroll-target="#automation-auto-formatting-on-write">Automation: Auto-Formatting on Write</a></li>
+  <li><a href="#auditing-logging-all-tool-calls" id="toc-auditing-logging-all-tool-calls" class="nav-link" data-scroll-target="#auditing-logging-all-tool-calls">Auditing: Logging All Tool Calls</a></li>
+  <li><a href="#composition-multiple-hooks-on-the-same-event" id="toc-composition-multiple-hooks-on-the-same-event" class="nav-link" data-scroll-target="#composition-multiple-hooks-on-the-same-event">Composition: Multiple Hooks on the Same Event</a></li>
+  </ul></li>
+  <li><a href="#stop-hooks-convergence-guards-for-the-agent-loop" id="toc-stop-hooks-convergence-guards-for-the-agent-loop" class="nav-link" data-scroll-target="#stop-hooks-convergence-guards-for-the-agent-loop">Stop Hooks – Convergence Guards for the Agent Loop</a></li>
+  <li><a href="#the-notification-system-alerting-across-channels" id="toc-the-notification-system-alerting-across-channels" class="nav-link" data-scroll-target="#the-notification-system-alerting-across-channels">The Notification System – Alerting Across Channels</a>
+  <ul class="collapse">
+  <li><a href="#five-notification-triggers" id="toc-five-notification-triggers" class="nav-link" data-scroll-target="#five-notification-triggers">Five Notification Triggers</a></li>
+  <li><a href="#delivery-channels" id="toc-delivery-channels" class="nav-link" data-scroll-target="#delivery-channels">Delivery Channels</a></li>
+  <li><a href="#hook-integration" id="toc-hook-integration" class="nav-link" data-scroll-target="#hook-integration">Hook Integration</a></li>
+  </ul></li>
+  <li><a href="#hooks-in-the-broader-extension-architecture" id="toc-hooks-in-the-broader-extension-architecture" class="nav-link" data-scroll-target="#hooks-in-the-broader-extension-architecture">Hooks in the Broader Extension Architecture</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  <li><a href="#appendix-full-list-of-hook-events" id="toc-appendix-full-list-of-hook-events" class="nav-link" data-scroll-target="#appendix-full-list-of-hook-events">Appendix: Full List of Hook Events</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./03-prompt-assembly.html">III. Context Engineering</a></li><li class="breadcrumb-item"><a href="./11-hooks-lifecycle.html">III.4 — Hooks &amp; Lifecycle</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Hooks &amp; Lifecycle Events</h1>
+<p class="subtitle lead">Core hook events for safety, auditing, and behavior modification</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">hooks</div>
+    <div class="quarto-category">lifecycle</div>
+    <div class="quarto-category">extensibility</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction-why-lifecycle-hooks-matter" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-why-lifecycle-hooks-matter">Introduction: Why Lifecycle Hooks Matter</h2>
+<p><strong>How do you enforce invariants on an AI agent without forking the codebase?</strong> An enterprise needs to block production database writes. A team needs to auto-format every file write. A solo developer needs to log every shell command. These are <span class="kw-sage">cross-cutting concerns</span> – they cut across every subsystem and need to be composable, configurable, and external to the agent’s core code.</p>
+<p>Claude Code’s hooks solve this. Instead of modifying tool execution code to add formatting, logging, or gating, you configure hooks that fire at lifecycle events. Each hook is a shell command – any language, any tool – that receives context via environment variables and can observe, modify, or block the action. This design turns Claude Code from a fixed-behavior binary into a configurable <span class="kw-sage">execution pipeline</span> where every significant event can be intercepted.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hooks-aop" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hooks-aop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hooks-aop">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  log["Audit Logging&lt;br&gt;&lt;i&gt;PostToolUse&lt;/i&gt;"]
+  gate["Safety Gates&lt;br&gt;&lt;i&gt;PreToolUse&lt;/i&gt;"]
+  fmt["Auto-Formatting&lt;br&gt;&lt;i&gt;PostToolUse&lt;/i&gt;"]
+
+  agent["&lt;b&gt;Core Agent Loop&lt;/b&gt;&lt;br&gt;&lt;i&gt;unmodified&lt;/i&gt;"]
+
+  env["Env Setup&lt;br&gt;&lt;i&gt;SessionStart&lt;/i&gt;"]
+  notify["Alerting&lt;br&gt;&lt;i&gt;Notification&lt;/i&gt;"]
+  clean["Cleanup&lt;br&gt;&lt;i&gt;Stop&lt;/i&gt;"]
+
+  log --&gt; agent
+  gate --&gt; agent
+  fmt --&gt; agent
+  env --&gt; agent
+  notify --&gt; agent
+  clean --&gt; agent
+  style log fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style gate fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style fmt fill:#C2856E,color:#fff,stroke:#A06A54
+  style agent fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style env fill:#C4A882,color:#fff,stroke:#A08562
+  style notify fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style clean fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hooks-aop-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Hooks as aspect-oriented programming applied to an AI agent. Six categories of cross-cutting concerns – audit logging (PostToolUse), safety gates (PreToolUse), auto-formatting (PostToolUse), environment setup (SessionStart), alerting (Notification), and cleanup (Stop) – attach to the core agent loop without modifying any of its code. This separation means Claude Code’s tool execution logic remains unchanged regardless of how many hooks are configured, preserving testability while enabling arbitrary customization.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The central node is the Core Agent Loop, which remains unmodified. Six cross-cutting concerns radiate inward toward it, each labeled with the lifecycle event it attaches to: Audit Logging and Auto-Formatting use PostToolUse, Safety Gates use PreToolUse, Env Setup uses SessionStart, Alerting uses Notification, and Cleanup uses Stop. The arrows point toward the core, showing that hooks observe or intercept the agent – they do not change its internal logic.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The PreToolUse/PostToolUse pair is exactly the <span class="kw-sage">Intercepting Filter pattern</span> from enterprise Java – a chain of filters that process a request before and after the core handler. In Spring, it is <code>HandlerInterceptor.preHandle()</code> / <code>postHandle()</code>. In Express.js, it is middleware. Same pattern, different domain.</p>
+</div>
+</div>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/utils/hooks/hookEvents.ts</code></td>
+<td>Hook event type definitions (27 lifecycle events)</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/hooks/hookHelpers.ts</code></td>
+<td>Hook execution helpers (spawn, timeout, result parsing)</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/hooks/hooksConfigManager.ts</code></td>
+<td>Hook configuration loading and matcher dispatch</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/hooks/sessionHooks.ts</code></td>
+<td>Session-level hook orchestration</td>
+<td>~250 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/hooks/postSamplingHooks.ts</code></td>
+<td>Post-sampling hook integration (stop hooks)</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/hooks/execAgentHook.ts</code></td>
+<td>Agent-spawned hook execution</td>
+<td>~150 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/notifier.ts</code></td>
+<td>Notification delivery (desktop, terminal bell, IDE)</td>
+<td>~300 LOC</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="core-hook-events" class="level2">
+<h2 class="anchored" data-anchor-id="core-hook-events">Core Hook Events</h2>
+<p>Claude Code exposes <span class="kw-slate">over 25 lifecycle events</span> (see <a href="#appendix-full-sdk-hook-surface">Appendix</a> for the complete list). The <span class="kw-slate">10 most operationally important</span> events – the ones you will configure hooks for in practice – fire at specific points in the agent’s execution. They divide into three categories: <strong>safety-critical</strong> events that can block execution, <strong>audit</strong> events that observe without blocking, and <strong>lifecycle</strong> events that manage session boundaries.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hooks-timeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hooks-timeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hooks-timeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  SS["SessionStart&lt;br&gt;&lt;i&gt;Lifecycle&lt;/i&gt;"]
+  UPS["UserPromptSubmit&lt;br&gt;&lt;i&gt;Lifecycle&lt;/i&gt;"]
+  PRE["PreToolUse&lt;br&gt;&lt;i&gt;Safety -- CAN GATE (exit 2 = deny)&lt;/i&gt;"]
+  PERM["PermissionRequest&lt;br&gt;&lt;i&gt;Safety -- can auto-resolve&lt;/i&gt;"]
+  EXEC(["TOOL EXECUTES"])
+  POST["PostToolUse&lt;br&gt;&lt;i&gt;Audit&lt;/i&gt;"]
+  FAIL["PostToolUseFailure&lt;br&gt;&lt;i&gt;Audit&lt;/i&gt;"]
+  NOTIF["Notification&lt;br&gt;&lt;i&gt;Lifecycle&lt;/i&gt;"]
+  COMPACT["PreCompact / PostCompact&lt;br&gt;&lt;i&gt;Lifecycle&lt;/i&gt;"]
+  STOP["Stop&lt;br&gt;&lt;i&gt;Lifecycle&lt;/i&gt;"]
+
+  SS --&gt; UPS --&gt; PRE --&gt; PERM --&gt; EXEC --&gt; POST
+  EXEC --&gt; FAIL
+  POST --&gt; NOTIF
+  NOTIF --&gt; COMPACT --&gt; STOP
+  style SS fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style UPS fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style PRE fill:#C2856E,color:#fff,stroke:#A06A54
+  style PERM fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style EXEC fill:#C4A882,color:#fff,stroke:#A08562
+  style POST fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style FAIL fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style NOTIF fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style COMPACT fill:#C2856E,color:#fff,stroke:#A06A54
+  style STOP fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hooks-timeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Timeline of the 10 core lifecycle events during a typical agent turn, organized by category. Safety-critical events (PreToolUse, PermissionRequest) sit before tool execution and can block it via exit code 2. Audit events (PostToolUse, PostToolUseFailure) sit after execution and observe outcomes without altering them. Lifecycle events (SessionStart, UserPromptSubmit, PreCompact, PostCompact, Notification, Stop) mark session boundaries and context management milestones. Only the safety-critical events can alter the execution path.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top with SessionStart and follow the arrows downward through the timeline of a single agent turn. Safety-critical events (PreToolUse, PermissionRequest) appear before the central TOOL EXECUTES node and are the only events that can alter the execution path. After tool execution, the flow branches: success goes to PostToolUse, failure goes to PostToolUseFailure. The remaining lifecycle events (Notification, PreCompact/PostCompact, Stop) occur as the session winds down.</p>
+<p>The following table provides a reference for these 10 core events:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 11%">
+<col style="width: 16%">
+<col style="width: 17%">
+<col style="width: 24%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Event</th>
+<th>Category</th>
+<th>Can Block?</th>
+<th>When It Fires</th>
+<th>Context Available</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>SessionStart</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>Session begins</td>
+<td>Session ID, working directory</td>
+</tr>
+<tr class="even">
+<td><strong>UserPromptSubmit</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>User submits a prompt</td>
+<td>Prompt text, session state</td>
+</tr>
+<tr class="odd">
+<td><strong>PreToolUse</strong></td>
+<td>Safety</td>
+<td><strong>Yes</strong> (exit 2)</td>
+<td>Before any tool executes</td>
+<td>Tool name, input arguments</td>
+</tr>
+<tr class="even">
+<td><strong>PermissionRequest</strong></td>
+<td>Safety</td>
+<td><strong>Yes</strong> (auto-resolve)</td>
+<td>Permission check triggered</td>
+<td>Tool, permission level, arguments</td>
+</tr>
+<tr class="odd">
+<td><strong>PostToolUse</strong></td>
+<td>Audit</td>
+<td>No</td>
+<td>After tool succeeds</td>
+<td>Tool name, input, output</td>
+</tr>
+<tr class="even">
+<td><strong>PostToolUseFailure</strong></td>
+<td>Audit</td>
+<td>No</td>
+<td>After tool fails</td>
+<td>Tool name, input, error</td>
+</tr>
+<tr class="odd">
+<td><strong>PreCompact</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>Before context compaction</td>
+<td>Token count, message count</td>
+</tr>
+<tr class="even">
+<td><strong>PostCompact</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>After context compaction</td>
+<td>New token count, removed count</td>
+</tr>
+<tr class="odd">
+<td><strong>Notification</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>Agent sends a notification</td>
+<td>Notification text, type</td>
+</tr>
+<tr class="even">
+<td><strong>Stop</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td>Session ends</td>
+<td>Session ID, turn count</td>
+</tr>
+</tbody>
+</table>
+<p>The critical distinction is that only <strong>PreToolUse</strong> and <strong>PermissionRequest</strong> can alter the execution path. A <span class="kw-terra">PreToolUse</span> hook returning <span class="kw-terra">exit code 2</span> blocks the tool entirely – the model is told the action was denied and must try a different approach. A PermissionRequest hook can auto-resolve the permission check, bypassing the user prompt. All other events are observational: the hook runs, but its outcome does not change what happens next.</p>
+<p><strong>What the system prompt tells the model about hooks.</strong> The system prompt includes a hooks section that frames hooks as user-controlled interceptors:</p>
+<blockquote class="blockquote">
+<p><em>“Users may configure ‘hooks’, shell commands that execute in response to events like tool calls, in settings. Treat feedback from hooks, including <code>&lt;user-prompt-submit-hook&gt;</code>, as coming from the user. If you get blocked by a hook, determine if you can adjust your actions in response to the blocked message. If not, ask the user to check their hooks configuration.”</em></p>
+</blockquote>
+<p>This framing is important: the model treats hook output as user feedback, not system noise. When a PreToolUse hook blocks a <code>Write</code> call with “files in <code>src/generated/</code> are auto-generated — do not edit,” the model treats this the same as if the user had typed that instruction. This is why hooks are effective behavioral constraints — they speak with the user’s authority.</p>
+<hr>
+</section>
+<section id="hook-configuration-the-settings.json-format" class="level2">
+<h2 class="anchored" data-anchor-id="hook-configuration-the-settings.json-format">Hook Configuration: The settings.json Format</h2>
+<p>Hooks are configured in <code>settings.json</code> with a <span class="kw-sage">matcher-based dispatch</span> system. Each hook definition specifies an event, an optional matcher to filter which invocations trigger it, and one or more shell commands to execute.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PreToolUse"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Bash"</span> <span class="fu">},</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>          <span class="fu">{</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"python3 /path/to/validate_bash.py"</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>          <span class="fu">}</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>        <span class="ot">]</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PostToolUse"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Write"</span> <span class="fu">},</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>          <span class="fu">{</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"prettier --write $FILE_PATH"</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>          <span class="fu">}</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>        <span class="ot">]</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"SessionStart"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>          <span class="fu">{</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>            <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"echo 'Session started' &gt;&gt; /tmp/claude-audit.log"</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>          <span class="fu">}</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>        <span class="ot">]</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Matchers filter on three dimensions:</p>
+<ul>
+<li><strong>Tool name</strong> (<code>"tool": "Bash"</code>) – matches a specific tool.</li>
+<li><strong>Command pattern</strong> (<code>"command": "rm *"</code>) – matches shell commands containing a pattern.</li>
+<li><strong>File pattern</strong> (<code>"file": "*.py"</code>) – matches file operations on specific paths.</li>
+</ul>
+<p>When no matcher is specified, the hook fires for every invocation of that event. Multiple hooks on the same event run <span class="kw-sage">sequentially</span> – a hook that fails on PreToolUse blocks execution before subsequent hooks even run. This sequential execution guarantees deterministic behavior: hooks compose as a pipeline, not as concurrent handlers.</p>
+<p>The configuration can live in three locations, with the same cascade semantics as the rest of Claude Code’s settings:</p>
+<ol type="1">
+<li><strong>Project-level</strong> (<code>.claude/settings.json</code>) – applies to a specific repository.</li>
+<li><strong>User-level</strong> (<code>~/.claude/settings.json</code>) – applies to all projects for one user.</li>
+<li><strong>Enterprise-level</strong> (managed policy) – applies organization-wide.</li>
+</ol>
+<p>Project-level hooks override user-level hooks for the same event and matcher. This means a team can define standard hooks in the repository, and individual developers can add personal hooks without conflicting.</p>
+<hr>
+</section>
+<section id="execution-model-shell-commands-and-exit-code-semantics" class="level2">
+<h2 class="anchored" data-anchor-id="execution-model-shell-commands-and-exit-code-semantics">Execution Model: Shell Commands and Exit Code Semantics</h2>
+<p>Hooks execute as shell commands in a child process. The hook receives its context through <strong>environment variables</strong> – the tool name, input arguments, file paths, and session metadata are all available as <code>$TOOL_NAME</code>, <code>$TOOL_INPUT</code>, <code>$FILE_PATH</code>, and similar variables. The hook’s stdout is captured and can be fed back to the model.</p>
+<p>The exit code determines the outcome:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hooks-exit-codes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hooks-exit-codes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hooks-exit-codes">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  hook["&lt;b&gt;Hook Shell Command&lt;br&gt;Executes&lt;/b&gt;"]
+
+  e0["&lt;b&gt;Exit 0&lt;/b&gt;&lt;br&gt;Success"]
+  e2["&lt;b&gt;Exit 2&lt;/b&gt;&lt;br&gt;Block (deny)"]
+  eother["&lt;b&gt;Other Exit Code&lt;/b&gt;&lt;br&gt;Error"]
+
+  r0["Proceed normally.&lt;br&gt;Stdout becomes hook-success&lt;br&gt;system reminder."]
+  r2["Tool execution &lt;b&gt;blocked&lt;/b&gt;.&lt;br&gt;Model told to try different&lt;br&gt;approach (hook-blocking-error)."]
+  rother["Hook failed (logged).&lt;br&gt;Tool still executes.&lt;br&gt;Non-fatal unless PreToolUse."]
+
+  hook --&gt; e0 --&gt; r0
+  hook --&gt; e2 --&gt; r2
+  hook --&gt; eother --&gt; rother
+  style hook fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style e0 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style e2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style eother fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style r0 fill:#C4A882,color:#fff,stroke:#A08562
+  style r2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style rother fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hooks-exit-codes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: Hook exit code semantics showing three possible outcomes from any hook invocation. Exit 0 signals approval and the tool proceeds normally, with stdout captured as a system reminder. Exit 2 signals deliberate denial and blocks the tool, with the model receiving a hook-blocking-error message explaining why. Any other exit code signals an error in the hook script itself, which is logged but does not necessarily block execution. The choice of exit 2 (rather than 1) for blocking is deliberate: it avoids false positives from scripts that crash with exit 1.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top where the hook shell command executes. Three branches fan out representing the three possible exit codes. The left branch (Exit 0) leads to normal operation with stdout captured as a system reminder. The center branch (Exit 2) leads to the tool being blocked, with the model told to try a different approach. The right branch (any other exit code) indicates an error in the hook script itself, which is logged but does not necessarily stop execution. The critical distinction is that only exit 2 is treated as a deliberate denial.</p>
+<ul>
+<li><strong>Exit 0</strong> – Success. The hook ran and approved the action (or observed it without objection). For PreToolUse, this means “proceed.” For PostToolUse, this means “observation recorded.”</li>
+<li><strong>Exit 2</strong> – Block. The action is denied. Only meaningful for PreToolUse and PermissionRequest. The tool does not execute, and the model receives a <code>hook-blocking-error</code> system reminder explaining that the action was blocked.</li>
+<li><strong>Any other exit code</strong> – Error. The hook itself failed (crash, timeout, misconfiguration). For PreToolUse, the behavior depends on the failure mode: a hard failure may block the tool; a soft failure may log and continue.</li>
+</ul>
+<p>The choice of exit code 2 (rather than exit code 1) for blocking is deliberate. Exit code 1 is the universal “something went wrong” signal in Unix. Exit code 2 is conventionally used for “misuse of shell builtins” – a less common code that is unlikely to be produced accidentally by a hook script that crashes. This reduces false positives: a Python script that throws an unhandled exception exits with code 1 (error, not intentional block), while a script that deliberately decides to deny an action exits with code 2.</p>
+<hr>
+</section>
+<section id="the-feedback-loop-system-reminders" class="level2">
+<h2 class="anchored" data-anchor-id="the-feedback-loop-system-reminders">The Feedback Loop: System Reminders</h2>
+<p>The critical detail that makes hooks useful to the model – rather than merely useful to humans – is that hook outcomes are fed back into the conversation via <span class="kw-terra">system reminders</span>. Without this feedback, hooks would be invisible to the model. It would not know its Write was followed by a prettier pass, or that its Bash command was blocked by a safety hook.</p>
+<p>Four reminder types communicate what happened:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 35%">
+<col style="width: 23%">
+<col style="width: 41%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Reminder Type</th>
+<th>Meaning</th>
+<th>Model Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>hook-success</code></td>
+<td>Hook ran and approved</td>
+<td>Proceed normally</td>
+</tr>
+<tr class="even">
+<td><code>hook-blocking-error</code></td>
+<td>Hook denied the action</td>
+<td>Try a different approach</td>
+</tr>
+<tr class="odd">
+<td><code>hook-stopped-continuation</code></td>
+<td>Hook halted the session</td>
+<td>Stop and report</td>
+</tr>
+<tr class="even">
+<td><code>hook-additional-context</code></td>
+<td>Hook provided extra info</td>
+<td>Incorporate into reasoning</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>hook-additional-context</code> type is particularly powerful. A PostToolUse hook can run a linter on a file the model just wrote and inject the linter output as additional context. The model then sees the lint errors in its next turn and can fix them – creating a tight automated feedback loop without any human intervention. This is the same pattern as CI/CD pipelines that run checks on every commit, except the feedback loop is within a single agent session rather than across git pushes.</p>
+<hr>
+</section>
+<section id="use-cases-linting-logging-and-custom-permission-gates" class="level2">
+<h2 class="anchored" data-anchor-id="use-cases-linting-logging-and-custom-permission-gates">Use Cases: Linting, Logging, and Custom Permission Gates</h2>
+<p>The abstract architecture becomes concrete through use cases. The following examples illustrate the three primary patterns: <strong>enforcement</strong> (blocking unsafe actions), <strong>automation</strong> (running side effects), and <strong>auditing</strong> (recording what happened).</p>
+<section id="enforcement-blocking-production-database-writes" class="level3">
+<h3 class="anchored" data-anchor-id="enforcement-blocking-production-database-writes">Enforcement: Blocking Production Database Writes</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PreToolUse"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Bash"</span><span class="fu">,</span> <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"*production*"</span> <span class="fu">},</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"echo 'BLOCKED: production commands are not allowed' &amp;&amp; exit 2"</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Any Bash command containing “production” is blocked before execution. The model receives the blocking message and is told to try a different approach. This is the simplest form of policy enforcement – a pattern match on the command string with a hard deny.</p>
+</section>
+<section id="automation-auto-formatting-on-write" class="level3">
+<h3 class="anchored" data-anchor-id="automation-auto-formatting-on-write">Automation: Auto-Formatting on Write</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PostToolUse"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Write"</span><span class="fu">,</span> <span class="dt">"file"</span><span class="fu">:</span> <span class="st">"*.ts"</span> <span class="fu">},</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"prettier --write $FILE_PATH &amp;&amp; eslint --fix $FILE_PATH"</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every TypeScript file write is followed by Prettier formatting and ESLint auto-fixing. The model does not need to know about these tools or remember to run them. The hook ensures consistent formatting regardless of what the model produces. This is the <span class="kw-sage">Decorator pattern</span> applied at the tool level: the Write tool’s behavior is transparently enhanced without changing its interface.</p>
+</section>
+<section id="auditing-logging-all-tool-calls" class="level3">
+<h3 class="anchored" data-anchor-id="auditing-logging-all-tool-calls">Auditing: Logging All Tool Calls</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PostToolUse"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"echo </span><span class="ch">\"</span><span class="st">$(date -u) | $TOOL_NAME | $SESSION_ID</span><span class="ch">\"</span><span class="st"> &gt;&gt; /var/log/claude-audit.log"</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Every tool invocation is logged with a timestamp, tool name, and session ID. No matcher means the hook fires for every tool. This creates a complete audit trail of the agent’s actions – essential for enterprise compliance and debugging.</p>
+</section>
+<section id="composition-multiple-hooks-on-the-same-event" class="level3">
+<h3 class="anchored" data-anchor-id="composition-multiple-hooks-on-the-same-event">Composition: Multiple Hooks on the Same Event</h3>
+<p>Hooks compose naturally. A single PreToolUse event can have multiple hook entries with different matchers, and they execute sequentially:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"PreToolUse"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Bash"</span> <span class="fu">},</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span> <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span> <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"python3 validate_commands.py"</span> <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>      <span class="fu">{</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"matcher"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"tool"</span><span class="fu">:</span> <span class="st">"Bash"</span><span class="fu">,</span> <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"rm *"</span> <span class="fu">},</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span> <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span> <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"echo 'BLOCKED: rm not allowed' &amp;&amp; exit 2"</span> <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The first hook validates all Bash commands through a Python script. The second hook specifically blocks any <code>rm</code> command. If the first hook passes, the second still runs. If either returns exit 2, the tool is blocked. This sequential composition mirrors how middleware stacks work in web frameworks: each layer can pass, modify, or reject the request.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-hooks-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-hooks-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-hooks-pipeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  entry["&lt;b&gt;Tool Call Initiated&lt;/b&gt;"]
+  h1["Hook 1:&lt;br&gt;Command Validator"]
+  d1{"exit 0?"}
+  h2["Hook 2:&lt;br&gt;rm Blocker"]
+  d2{"exit 0?"}
+  proceed["Tool Executes"]
+  block1["Blocked&lt;br&gt;(hook 1)"]
+  block2["Blocked&lt;br&gt;(hook 2)"]
+
+  entry --&gt; h1 --&gt; d1
+  d1 -- "yes" --&gt; h2 --&gt; d2
+  d1 -- "exit 2" --&gt; block1
+  d2 -- "yes" --&gt; proceed
+  d2 -- "exit 2" --&gt; block2
+  style entry fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style h1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style d1 fill:#C2856E,color:#fff,stroke:#A06A54
+  style h2 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style d2 fill:#C4A882,color:#fff,stroke:#A08562
+  style proceed fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style block1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style block2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-hooks-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Hook composition as a sequential pipeline for PreToolUse events. Two hooks with different matchers execute in order: Hook 1 (a command validator) runs first, and if it passes (exit 0), Hook 2 (an rm blocker) runs next. If either hook returns exit 2, execution stops immediately and the tool is blocked. This sequential composition guarantees deterministic behavior and mirrors middleware stacks in web frameworks, where each layer can pass, modify, or reject the request.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top where a tool call is initiated. The flow passes through Hook 1 (Command Validator), then hits a diamond decision: if exit 0, execution continues to Hook 2 (rm Blocker); if exit 2, the tool is blocked immediately. Hook 2 follows the same pattern – exit 0 proceeds to tool execution, exit 2 blocks. The key insight is the sequential, short-circuit nature: any hook returning exit 2 halts the pipeline without running subsequent hooks.</p>
+<hr>
+</section>
+</section>
+<section id="stop-hooks-convergence-guards-for-the-agent-loop" class="level2">
+<h2 class="anchored" data-anchor-id="stop-hooks-convergence-guards-for-the-agent-loop">Stop Hooks – Convergence Guards for the Agent Loop</h2>
+<p><strong>Stop hooks are a special case in the hooks architecture: they fire when the model signals <code>end_turn</code>, but before the agent loop actually exits.</strong> Their job is to catch premature termination — situations where the model <em>thinks</em> it is done but has left work incomplete.</p>
+<p>The mechanism lives in the agent loop’s <code>CHECK STOP REASON</code> state (see <a href="./01-end-to-end-workflow.html">Part I.2: End-to-End Workflow</a>). When the model’s response has <code>stop_reason: "end_turn"</code>, the loop calls <code>handleStopHooks()</code> before returning control to the user. The stop hook handler inspects the conversation state and decides whether the model should continue.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-stop-hook-flow" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-stop-hook-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-stop-hook-flow">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  ET["Model returns&lt;br&gt;end_turn"]
+  CTR{"Stop hook&lt;br&gt;counter &lt; max?"}
+  CHECK["handleStopHooks()&lt;br&gt;&lt;i&gt;inspect conversation state&lt;/i&gt;"]
+  PASS{"All checks&lt;br&gt;pass?"}
+  EXIT["Exit agent loop&lt;br&gt;&lt;i&gt;return to user&lt;/i&gt;"]
+  INJECT["Inject corrective&lt;br&gt;message"]
+  RESUME["Resume from&lt;br&gt;Stage 3 (API call)"]
+  FORCE["Force exit&lt;br&gt;&lt;i&gt;counter exhausted&lt;/i&gt;"]
+
+  ET --&gt; CTR
+  CTR -- "yes" --&gt; CHECK --&gt; PASS
+  CTR -- "no" --&gt; FORCE
+  PASS -- "yes" --&gt; EXIT
+  PASS -- "no" --&gt; INJECT --&gt; RESUME
+  style ET fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style CTR fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style CHECK fill:#C2856E,color:#fff,stroke:#A06A54
+  style PASS fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style EXIT fill:#C4A882,color:#fff,stroke:#A08562
+  style INJECT fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style RESUME fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style FORCE fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-stop-hook-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Stop hook decision flow. When the model signals end_turn, the stop hook handler inspects conversation state — checking whether file edits were followed by test runs, whether the original task was addressed, and whether the model’s final message is a reasonable completion. If any check fails, a corrective message is injected and the loop resumes from the API call stage. A counter caps the number of times stop hooks can fire per session, preventing the convergence guard from itself diverging.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top where the model returns end_turn. The first diamond checks whether the stop hook counter has been exceeded – if yes, the loop force-exits to prevent infinite cycling. If the counter is under the cap, handleStopHooks() inspects conversation state. If all checks pass, the agent exits normally. If any check fails (e.g., files were edited but tests were not run), a corrective message is injected and the loop resumes from the API call stage. This creates a bounded self-correction loop.</p>
+<p><strong>What stop hooks check.</strong> The <code>handleStopHooks()</code> function examines the conversation history for patterns that indicate incomplete work:</p>
+<ul>
+<li><p><strong>Untested edits.</strong> If the model modified source files (via Edit or Write) but never invoked Bash to run tests, the stop hook injects a corrective message:</p>
+<blockquote class="blockquote">
+<p><em>“You modified source files but did not run the test suite. Please verify your changes.”</em></p>
+</blockquote>
+<p>This is the most common stop hook trigger.</p></li>
+<li><p><strong>Unverified builds.</strong> If the model changed configuration files (package.json, tsconfig.json, Makefile) but never ran a build command, the hook flags the gap.</p></li>
+<li><p><strong>Incomplete task signals.</strong> The <code>stopHookResult.preventContinuation</code> flag lets the hook explicitly prevent the loop from exiting, returning a reason string (e.g., <code>"stop_hook_prevented"</code>) that is logged for debugging.</p></li>
+</ul>
+<p><strong>The counter guard.</strong> Stop hooks can themselves cause divergence — the model runs tests, tests fail, model edits code, signals <code>end_turn</code>, stop hook fires again, and the cycle repeats. To prevent this, a counter tracks how many times stop hooks have fired in the current session. After the cap is reached, the loop exits regardless of hook results. This is a <span class="kw-sage">meta-termination guard</span>: a termination condition on the termination condition itself.</p>
+<hr>
+</section>
+<section id="the-notification-system-alerting-across-channels" class="level2">
+<h2 class="anchored" data-anchor-id="the-notification-system-alerting-across-channels">The Notification System – Alerting Across Channels</h2>
+<p><strong>The Notification lifecycle event is one of the core hook events, but behind it sits a full notification subsystem with five trigger types, configurable delivery channels, and idle-detection logic.</strong></p>
+<p>Notifications solve a specific UX problem: when Claude Code runs in the background – a sub-agent compiling a project, a teammate waiting for input – how does the user know something needs attention? The answer is a configurable notification pipeline that fires through the <code>Notification</code> hook event and delivers alerts through the user’s preferred channel.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-notification-flow" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-notification-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-notification-flow">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  t1["Task Complete"]
+  t2["Input Needed"]
+  t3["Agent Activity"]
+  t4["Message Idle"]
+  t5["Teammate Waiting"]
+
+  hub["&lt;b&gt;Notification&lt;br&gt;Hook Event&lt;/b&gt;"]
+
+  c1["System Desktop"]
+  c2["Terminal Bell"]
+  c3["IDE Notification"]
+
+  t1 --&gt; hub
+  t2 --&gt; hub
+  t3 --&gt; hub
+  t4 --&gt; hub
+  t5 --&gt; hub
+
+  hub --&gt; c1
+  hub --&gt; c2
+  hub --&gt; c3
+  style t1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style t2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style t3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style t4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style t5 fill:#C4A882,color:#fff,stroke:#A08562
+  style hub fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style c1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style c2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style c3 fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-notification-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Notification flow showing how five trigger types (task complete, input needed, agent activity, message idle, teammate waiting) converge on the Notification hook event and fan out to three configurable delivery channels (system desktop, terminal bell, IDE notification). The preferredNotifChannel setting controls routing, with ‘auto’ selecting the best channel based on execution context. Because notifications dispatch through hooks, users can intercept them for custom routing to Slack, email, or other services.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Five trigger types on the left (Task Complete, Input Needed, Agent Activity, Message Idle, Teammate Waiting) all converge on the central Notification Hook Event hub. From the hub, arrows fan out to three delivery channels on the right (System Desktop, Terminal Bell, IDE Notification). The structure is a funnel: many input signals are normalized through one hook event, then dispatched to the user’s preferred output channel.</p>
+<section id="five-notification-triggers" class="level3">
+<h3 class="anchored" data-anchor-id="five-notification-triggers">Five Notification Triggers</h3>
+<p>Each trigger type corresponds to a distinct user-attention scenario:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 21%">
+<col style="width: 35%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Trigger</th>
+<th>Setting</th>
+<th>Default</th>
+<th>When It Fires</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Task complete</strong></td>
+<td><code>taskCompleteNotifEnabled</code></td>
+<td><code>true</code></td>
+<td>Background sub-agent finishes execution</td>
+</tr>
+<tr class="even">
+<td><strong>Input needed</strong></td>
+<td><code>inputNeededNotifEnabled</code></td>
+<td><code>true</code></td>
+<td>Agent needs user input (permission prompt, question)</td>
+</tr>
+<tr class="odd">
+<td><strong>Agent activity</strong></td>
+<td><code>agentPushNotifEnabled</code></td>
+<td><code>true</code></td>
+<td>Teammate idle summaries, team coordination events</td>
+</tr>
+<tr class="even">
+<td><strong>Message idle</strong></td>
+<td><code>messageIdleNotifThresholdMs</code></td>
+<td><code>60000</code> (1 min)</td>
+<td>No user interaction for the configured threshold</td>
+</tr>
+<tr class="odd">
+<td><strong>Teammate waiting</strong></td>
+<td>(via agent push)</td>
+<td><code>true</code></td>
+<td>Persistent teammate goes idle, awaiting new work</td>
+</tr>
+</tbody>
+</table>
+<p>The idle notification is the most operationally interesting. The <code>messageIdleNotifThresholdMs</code> setting (default: <span class="kw-slate">60 seconds</span>) starts a timer when the agent finishes its response. If the user does not respond within the threshold, a notification fires. This catches a common scenario: the user switches to another window, forgets Claude Code is waiting, and minutes pass. The notification pulls them back.</p>
+</section>
+<section id="delivery-channels" class="level3">
+<h3 class="anchored" data-anchor-id="delivery-channels">Delivery Channels</h3>
+<p>The <code>preferredNotifChannel</code> setting (default: <code>"auto"</code>) controls how notifications reach the user:</p>
+<ul>
+<li><strong>System desktop</strong> – native OS notification (macOS Notification Center, Linux <code>notify-send</code>).</li>
+<li><strong>Terminal bell</strong> – <code>\a</code> character, which triggers the terminal emulator’s bell behavior (often a dock badge or title flash).</li>
+<li><strong>IDE notification</strong> – delivered through the VS Code or JetBrains extension’s notification API.</li>
+<li><strong>Auto</strong> – the system picks the best channel based on context: IDE notification when running inside an extension, system desktop when running in a standalone terminal.</li>
+</ul>
+</section>
+<section id="hook-integration" class="level3">
+<h3 class="anchored" data-anchor-id="hook-integration">Hook Integration</h3>
+<p>Because notifications dispatch through the <code>Notification</code> hook event, users can intercept and customize them. A hook configured for the <code>Notification</code> event receives the notification text and type as environment variables. This enables:</p>
+<ul>
+<li><strong>Custom routing</strong> – forward notifications to Slack, email, or a webhook.</li>
+<li><strong>Filtering</strong> – suppress notifications for certain trigger types.</li>
+<li><strong>Enrichment</strong> – add project context or links to the notification message.</li>
+</ul>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"Notification"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>      <span class="dt">"hooks"</span><span class="fu">:</span> <span class="ot">[</span><span class="fu">{</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"command"</span><span class="fu">,</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>        <span class="dt">"command"</span><span class="fu">:</span> <span class="st">"curl -X POST $SLACK_WEBHOOK -d '{</span><span class="ch">\"</span><span class="st">text</span><span class="ch">\"</span><span class="st">: </span><span class="ch">\"</span><span class="st">Claude Code: $NOTIFICATION_TEXT</span><span class="ch">\"</span><span class="st">}'"</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">]</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is the same extensibility model as the other hook events – shell commands with environment variable context – but applied to the alerting layer rather than the execution layer.</p>
+<p><strong>Notification system reminders.</strong> When notifications fire, the system injects reminders into the conversation as <code>&lt;system-reminder&gt;</code> tags. Five trigger types generate notifications: task completion, input needed, agent activity, message idle (after 60 seconds by default), and teammate waiting. Three delivery channels are available: system desktop notifications, terminal bell, and IDE notifications. The <code>preferredNotifChannel</code> setting (default: <code>"auto"</code>) selects the channel, and per-event settings (<code>taskCompleteNotifEnabled</code>, <code>inputNeededNotifEnabled</code>, <code>agentPushNotifEnabled</code>) provide fine-grained control.</p>
+<hr>
+</section>
+</section>
+<section id="hooks-in-the-broader-extension-architecture" class="level2">
+<h2 class="anchored" data-anchor-id="hooks-in-the-broader-extension-architecture">Hooks in the Broader Extension Architecture</h2>
+<p>Hooks occupy a unique position among Claude Code’s extension mechanisms. Where MCP adds new capabilities (see <a href="./10-model-context-protocol.html">Part VI.1</a>), skills modify reasoning (see <a href="./12-skills-system.html">Part VI.2</a>), and plugins compose the full stack (see <a href="./13-plugin-architecture.html">Part VI.3</a>), hooks are the <span class="kw-sage">only enforcement mechanism</span> in the entire system.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Mechanism</th>
+<th>What It Does</th>
+<th>Can Block?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>MCP</td>
+<td>Adds external tool capabilities</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>Skills</td>
+<td>Modifies agent behavior via prompt injection</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td>Custom Agents</td>
+<td>Creates isolated personas with restricted tools</td>
+<td>No</td>
+</tr>
+<tr class="even">
+<td>Slash Commands</td>
+<td>Gives users direct control</td>
+<td>No</td>
+</tr>
+<tr class="odd">
+<td><strong>Hooks</strong></td>
+<td><strong>Intercepts execution pipeline</strong></td>
+<td><strong>Yes (exit 2)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>This uniqueness is what makes hooks essential for enterprise deployments. Skills can <em>suggest</em> that the agent avoid certain actions. MCP can <em>provide</em> safer alternatives. But only hooks can <em>enforce</em> invariants. If your policy says “never delete production data,” a skill can ask the model to comply, but a hook can guarantee it. The difference between guidance and enforcement is the difference between a suggestion and a law.</p>
+<p>Hooks also interact with MCP tools seamlessly. A hook configured to match <code>mcp__github__*</code> will intercept every GitHub MCP tool call, applying the same audit logging and policy enforcement as for built-in tools. This is because MCP tools are first-class citizens in the tool registry – hooks see no difference between <code>Bash</code> and <code>mcp__github__create_issue</code>.</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>Claude Code’s hook system reveals several design principles applicable to any system that needs user-configurable behavior modification.</p>
+<p><strong>Hooks are shell commands, not plugins.</strong> This is a deliberate simplicity choice. Any language can serve as a hook handler. A one-line bash script and a complex Python validator are equally viable. The trade-off is power versus portability – shell commands are universally available but lack the type safety and composability of a plugin SDK. For an AI agent that must integrate with arbitrary developer workflows, the universality of shell commands outweighs the elegance of a typed API.</p>
+<p><strong>Exit code semantics must be unambiguous.</strong> The choice of exit code 2 for “block” (rather than exit code 1) prevents false positives from crashing scripts. In a system where a false positive means the agent cannot use a tool, this distinction matters. Every convention in the exit code scheme exists to minimize the risk of a hook accidentally blocking a legitimate action.</p>
+<p><strong>Feedback to the model is non-negotiable.</strong> A hook system that only operates behind the scenes – blocking tools without explanation, running formatters without acknowledgment – leaves the model confused about why its actions succeed or fail. System reminders close the loop: the model knows what happened, why, and what to do next. This transforms hooks from a human-facing policy mechanism into a model-facing collaboration protocol.</p>
+<p><strong>The only enforcement point is the most important one.</strong> Among Claude Code’s six extension mechanisms, hooks are the sole mechanism that can prevent an action. This concentration of enforcement into a single, well-defined system is deliberate: it means there is exactly one place to look when auditing what constraints are active, exactly one format for policy definitions, and exactly one execution model to reason about. Scattering enforcement across multiple mechanisms would make the system harder to audit and easier to bypass.</p>
+<hr>
+<hr>
+</section>
+<section id="appendix-full-list-of-hook-events" class="level2 column-page">
+<h2 class="anchored" data-anchor-id="appendix-full-list-of-hook-events">Appendix: Full List of Hook Events</h2>
+<p>The 10 events detailed above are the most operationally important, but the full SDK defines <span class="kw-slate">27 hook event types</span>. Many of the additional events are used internally for observability, coordination, and configuration tracking. Hook event types are defined in <code>src/utils/hooks/hookEvents.ts</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 12%">
+<col style="width: 18%">
+<col style="width: 20%">
+<col style="width: 29%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>#</th>
+<th>Event</th>
+<th>Category</th>
+<th>Can Block?</th>
+<th>Implementation</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td><strong>PreToolUse</strong></td>
+<td>Safety</td>
+<td>Yes (exit 2)</td>
+<td><code>src/utils/hooks/hookHelpers.ts</code></td>
+<td>Fires before every tool call</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><strong>PostToolUse</strong></td>
+<td>Audit</td>
+<td>No</td>
+<td><code>src/utils/hooks/hookHelpers.ts</code></td>
+<td>Fires after tool success</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td><strong>PostToolUseFailure</strong></td>
+<td>Audit</td>
+<td>No</td>
+<td><code>src/utils/hooks/hookHelpers.ts</code></td>
+<td>Fires after tool error</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td><strong>Notification</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/services/notifier.ts</code></td>
+<td>Alert delivery (desktop/bell/IDE)</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td><strong>UserPromptSubmit</strong></td>
+<td>Lifecycle</td>
+<td>Yes</td>
+<td><code>src/utils/hooks/execPromptHook.ts</code></td>
+<td>User submits a prompt</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td><strong>SessionStart</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/sessionHooks.ts</code></td>
+<td>Session begins</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td><strong>SessionEnd</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/sessionHooks.ts</code></td>
+<td>Session ends</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td><strong>Stop</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/postSamplingHooks.ts</code></td>
+<td>Agent stops (end_turn)</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td><strong>StopFailure</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/postSamplingHooks.ts</code></td>
+<td>Agent failed to stop cleanly</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td><strong>SubagentStart</strong></td>
+<td>Agent</td>
+<td>No</td>
+<td><code>src/utils/hooks/execAgentHook.ts</code></td>
+<td>Sub-agent spawned</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td><strong>SubagentStop</strong></td>
+<td>Agent</td>
+<td>No</td>
+<td><code>src/utils/hooks/execAgentHook.ts</code></td>
+<td>Sub-agent finished</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td><strong>PreCompact</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/services/compact/compact.ts</code></td>
+<td>Before context compaction</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td><strong>PostCompact</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/services/compact/compact.ts</code></td>
+<td>After context compaction</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td><strong>PermissionRequest</strong></td>
+<td>Safety</td>
+<td>Yes</td>
+<td><code>src/hooks/useCanUseTool.tsx</code></td>
+<td>Can auto-resolve permission</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td><strong>PermissionDenied</strong></td>
+<td>Safety</td>
+<td>No</td>
+<td><code>src/hooks/useCanUseTool.tsx</code></td>
+<td>Permission was denied</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td><strong>Setup</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/sessionHooks.ts</code></td>
+<td>Initial setup phase</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td><strong>TeammateIdle</strong></td>
+<td>Agent</td>
+<td>No</td>
+<td><code>src/tools/AgentTool/runAgent.ts</code></td>
+<td>Persistent teammate went idle</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td><strong>TaskCreated</strong></td>
+<td>Agent</td>
+<td>No</td>
+<td><code>src/tools/TaskCreateTool/</code></td>
+<td>Background task created</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td><strong>TaskCompleted</strong></td>
+<td>Agent</td>
+<td>No</td>
+<td><code>src/tools/TaskStopTool/</code></td>
+<td>Background task completed</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td><strong>Elicitation</strong></td>
+<td>Interaction</td>
+<td>No</td>
+<td><code>src/tools/AskUserQuestionTool/</code></td>
+<td>Agent asks clarifying question</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td><strong>ElicitationResult</strong></td>
+<td>Interaction</td>
+<td>No</td>
+<td><code>src/tools/AskUserQuestionTool/</code></td>
+<td>User responds to elicitation</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td><strong>ConfigChange</strong></td>
+<td>Configuration</td>
+<td>No</td>
+<td><code>src/utils/settings/settings.ts</code></td>
+<td>A setting was modified</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td><strong>WorktreeCreate</strong></td>
+<td>Git</td>
+<td>No</td>
+<td><code>src/tools/EnterWorktreeTool/</code></td>
+<td>Git worktree created</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td><strong>WorktreeRemove</strong></td>
+<td>Git</td>
+<td>No</td>
+<td><code>src/tools/ExitWorktreeTool/</code></td>
+<td>Git worktree removed</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td><strong>InstructionsLoaded</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/claudemd.ts</code></td>
+<td>CLAUDE.md / instructions parsed</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td><strong>CwdChanged</strong></td>
+<td>Lifecycle</td>
+<td>No</td>
+<td><code>src/utils/hooks/hookHelpers.ts</code></td>
+<td>Working directory changed</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td><strong>FileChanged</strong></td>
+<td>Filesystem</td>
+<td>No</td>
+<td><code>src/utils/hooks/fileChangedWatcher.ts</code></td>
+<td>Watched file changed on disk</td>
+</tr>
+</tbody>
+</table>
+<p>Most hook configurations will use the 10 core events from the main body of this post. The additional events are available for advanced observability, CI/CD integration, and multi-agent coordination workflows.</p>
+<hr>
+<p><em>Next in the series: <a href="./12-skills-system.html">Part VI.2: Skills System</a> – how SKILL.md files inject domain expertise into the system prompt, turning a general-purpose agent into a specialized one.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./17-memory-hierarchy.html" class="pagination-link" aria-label="III.3 — Memory Hierarchy">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">III.3 — Memory Hierarchy</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./05-tool-system.html" class="pagination-link" aria-label="IV.1 — Tool System &amp; Registry">
+        <span class="nav-page-text">IV.1 — Tool System &amp; Registry</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

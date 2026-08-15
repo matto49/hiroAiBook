@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>CLI, Commands &amp; Terminal UI – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./09-auth-providers-flags.html" rel="next">
+<link href="./06-safety-sandbox.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V. Invocation</a></li><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V.1 — CLI, Commands &amp; UI</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#why-react-in-a-terminal-declarative-vs.-imperative-ui" id="toc-why-react-in-a-terminal-declarative-vs.-imperative-ui" class="nav-link active" data-scroll-target="#why-react-in-a-terminal-declarative-vs.-imperative-ui">Why React in a Terminal? – Declarative vs.&nbsp;Imperative UI</a></li>
+  <li><a href="#component-hierarchy-atomic-design-in-a-terminal" id="toc-component-hierarchy-atomic-design-in-a-terminal" class="nav-link" data-scroll-target="#component-hierarchy-atomic-design-in-a-terminal">Component Hierarchy – Atomic Design in a Terminal</a></li>
+  <li><a href="#virtual-scrolling-ovisible-rendering" id="toc-virtual-scrolling-ovisible-rendering" class="nav-link" data-scroll-target="#virtual-scrolling-ovisible-rendering">Virtual Scrolling – O(visible) Rendering</a></li>
+  <li><a href="#the-ui-state-machine-five-states-event-driven-transitions" id="toc-the-ui-state-machine-five-states-event-driven-transitions" class="nav-link" data-scroll-target="#the-ui-state-machine-five-states-event-driven-transitions">The UI State Machine – Five States, Event-Driven Transitions</a></li>
+  <li><a href="#mode-cycling-plan-code-architect" id="toc-mode-cycling-plan-code-architect" class="nav-link" data-scroll-target="#mode-cycling-plan-code-architect">Mode Cycling – /plan, /code, /architect</a></li>
+  <li><a href="#the-command-system-over-80-shortcuts-bypassing-the-llm" id="toc-the-command-system-over-80-shortcuts-bypassing-the-llm" class="nav-link" data-scroll-target="#the-command-system-over-80-shortcuts-bypassing-the-llm">The Command System – Over 80 Shortcuts Bypassing the LLM</a></li>
+  <li><a href="#rich-output-rendering-beyond-console.log" id="toc-rich-output-rendering-beyond-console.log" class="nav-link" data-scroll-target="#rich-output-rendering-beyond-console.log">Rich Output Rendering – Beyond console.log</a></li>
+  <li><a href="#theming-five-variants-for-universal-access" id="toc-theming-five-variants-for-universal-access" class="nav-link" data-scroll-target="#theming-five-variants-for-universal-access">Theming – Five Variants for Universal Access</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  <li><a href="#appendix-slash-commands" id="toc-appendix-slash-commands" class="nav-link" data-scroll-target="#appendix-slash-commands">Appendix: Full Slash Command Inventory</a></li>
+  <li><a href="#appendix-a-prompt-suggestion-and-speculative-execution" id="toc-appendix-a-prompt-suggestion-and-speculative-execution" class="nav-link" data-scroll-target="#appendix-a-prompt-suggestion-and-speculative-execution">Appendix A: Prompt Suggestion and Speculative Execution</a>
+  <ul class="collapse">
+  <li><a href="#suggestion-generation" id="toc-suggestion-generation" class="nav-link" data-scroll-target="#suggestion-generation">Suggestion Generation</a></li>
+  <li><a href="#speculative-execution" id="toc-speculative-execution" class="nav-link" data-scroll-target="#speculative-execution">Speculative Execution</a></li>
+  </ul></li>
+  <li><a href="#appendix-b-product-ux-subsystems" id="toc-appendix-b-product-ux-subsystems" class="nav-link" data-scroll-target="#appendix-b-product-ux-subsystems">Appendix B: Product UX Subsystems</a>
+  <ul class="collapse">
+  <li><a href="#tips-system" id="toc-tips-system" class="nav-link" data-scroll-target="#tips-system">Tips System</a></li>
+  <li><a href="#project-onboarding" id="toc-project-onboarding" class="nav-link" data-scroll-target="#project-onboarding">Project Onboarding</a></li>
+  <li><a href="#claude-in-chrome" id="toc-claude-in-chrome" class="nav-link" data-scroll-target="#claude-in-chrome">Claude-in-Chrome</a></li>
+  <li><a href="#buddy-companion" id="toc-buddy-companion" class="nav-link" data-scroll-target="#buddy-companion">Buddy Companion</a></li>
+  <li><a href="#secure-storage" id="toc-secure-storage" class="nav-link" data-scroll-target="#secure-storage">Secure Storage</a></li>
+  <li><a href="#native-installer" id="toc-native-installer" class="nav-link" data-scroll-target="#native-installer">Native Installer</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content page-columns page-full" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V. Invocation</a></li><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V.1 — CLI, Commands &amp; UI</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">CLI, Commands &amp; Terminal UI</h1>
+<p class="subtitle lead">A React App in Your Terminal</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">cli</div>
+    <div class="quarto-category">ui</div>
+    <div class="quarto-category">terminal</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Open a terminal, type <code>claude</code>, and you are looking at a React application. Not a thin wrapper around <code>readline</code>. Not a blessed/curses UI. A full React component tree – <span class="kw-slate">389 files, 1,623 component patterns, 81,546 lines</span> of UI code – rendered to your TTY through ANSI escape codes. Claude Code’s terminal UI uses the same declarative component model as a modern web app: JSX, hooks, state management, reconciliation. The rendering target just happens to be a grid of characters instead of a grid of pixels.</p>
+<p>This architectural choice has profound implications. It means the terminal UI gets the same development ergonomics as a web application – component composition, local state, memoization, declarative updates – while running in the most universal display environment in computing. The post explores why React in a terminal works, how virtual scrolling makes long conversations performant, and how mode cycling turns the agent into a state machine.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-post-overview" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-post-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-post-overview">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  A["Why Declarative&lt;br&gt;Terminal UI?"] --- A1["Declarative UI for a&lt;br&gt;complex interface"]
+  B["The Rendering&lt;br&gt;Pipeline"] --- B1["Components to reconciler&lt;br&gt;to layout to terminal output"]
+  C["Component Hierarchy&lt;br&gt;as Design System"] --- C1["Atomic design in a&lt;br&gt;terminal context"]
+  D["Virtual Scrolling"] --- D1["O(visible) rendering&lt;br&gt;for infinite sessions"]
+  E["Mode Cycling&lt;br&gt;State Machine"] --- E1["/plan, /code, /architect&lt;br&gt;as state machine"]
+  F["The Command&lt;br&gt;System"] --- F1["Over 80 commands bypassing&lt;br&gt;the LLM entirely"]
+
+  A ~~~ B ~~~ C ~~~ D ~~~ E ~~~ F
+
+  style A fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style A1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style B fill:#C2856E,color:#fff,stroke:#A06A54
+  style B1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style C fill:#C4A882,color:#fff,stroke:#A08562
+  style C1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style D fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style D1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style E fill:#C2856E,color:#fff,stroke:#A06A54
+  style E1 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style F fill:#C4A882,color:#fff,stroke:#A08562
+  style F1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-post-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: Six topics covered in this post: why declarative terminal UI matters for managing complex concurrent state, the four-stage rendering pipeline from components to escape codes, the atomic design component hierarchy across 389 files, O(visible) virtual scrolling for long sessions, mode cycling as a state machine (/plan, /code, /architect), and over 80 slash commands that bypass the LLM entirely.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Each row pairs a topic (left box) with its one-line summary (right box), and the six rows are arranged top to bottom in the order they appear in the post. Read the left column for the section names and the right column for the key insight of each section. The invisible connectors (~) between rows indicate that these are independent topics unified by the common theme of terminal UI architecture.</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/components/App.tsx</code></td>
+<td>Root application component</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/components/Messages.tsx</code></td>
+<td>Virtual message list renderer</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/components/PromptInput/</code></td>
+<td>Multi-line input system</td>
+<td>12+ files</td>
+</tr>
+<tr class="even">
+<td><code>src/components/permissions/</code></td>
+<td>Permission dialogs and UI</td>
+<td>20+ files</td>
+</tr>
+<tr class="odd">
+<td><code>src/components/messages/</code></td>
+<td>Message type renderers (text, tool, error, compact)</td>
+<td>35+ files</td>
+</tr>
+<tr class="even">
+<td><code>src/components/Spinner/</code></td>
+<td>Animated braille-dot spinners</td>
+<td>~10 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/components/design-system/</code></td>
+<td>Shared UI primitives (Button, Box, Text)</td>
+<td>~15 files</td>
+</tr>
+<tr class="even">
+<td><code>src/commands/</code></td>
+<td>86+ slash command handlers</td>
+<td>103 directories</td>
+</tr>
+<tr class="odd">
+<td><code>src/hooks/useGlobalKeybindings.tsx</code></td>
+<td>Keyboard shortcut bindings</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/ink/</code></td>
+<td>Ink framework extensions (Box, Text, VirtualList)</td>
+<td>50 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/PromptSuggestion/</code></td>
+<td>Prompt prediction and speculative execution</td>
+<td>2 files</td>
+</tr>
+<tr class="even">
+<td><code>src/services/tips/</code></td>
+<td>Rotating educational tips in spinner</td>
+<td>3 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/buddy/</code></td>
+<td>Companion pet system (sprites, animation, rarity)</td>
+<td>6 files</td>
+</tr>
+<tr class="even">
+<td><code>src/projectOnboardingState.ts</code></td>
+<td>Two-step project onboarding flow</td>
+<td>~100 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/claudeInChrome/</code></td>
+<td>Browser automation via native messaging</td>
+<td>3 files</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/secureStorage/</code></td>
+<td>Platform-specific credential storage</td>
+<td>5 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/nativeInstaller/</code></td>
+<td>Binary distribution and atomic updates</td>
+<td>2 files, ~2,000 LOC</td>
+</tr>
+</tbody>
+</table>
+<section id="why-react-in-a-terminal-declarative-vs.-imperative-ui" class="level2">
+<h2 class="anchored" data-anchor-id="why-react-in-a-terminal-declarative-vs.-imperative-ui">Why React in a Terminal? – Declarative vs.&nbsp;Imperative UI</h2>
+<p><strong>The decision to use React for a terminal application is not about aesthetics – it is about managing complexity that would overwhelm imperative approaches.</strong></p>
+<p>Consider what Claude Code’s interface must handle simultaneously. Messages stream in token by token. Permission prompts overlay the conversation as modal dialogs. Tool outputs vary wildly – diffs, file trees, todo lists, tables, code blocks with syntax highlighting. <span class="kw-slate">Five distinct UI states</span> (requesting, thinking, responding, tool-input, tool-use) transition based on asynchronous streaming events. Long conversations accumulate hundreds of messages that must scroll efficiently.</p>
+<p>A traditional terminal approach – <code>process.stdout.write()</code> calls, manual cursor positioning, hand-managed ANSI codes – would collapse under this complexity. Every streaming event would require imperative logic to figure out which cells to update, which escape codes to emit, and how to handle the interaction between overlapping concerns (a permission prompt appearing during a streaming response, for example).</p>
+<p><span class="kw-terra">React Ink</span> solves this by applying React’s core insight: <em>the reconciler is not tied to the DOM</em>. React’s reconciler manages a tree of elements, diffs updates, and calls lifecycle methods. What happens after reconciliation – writing to the browser DOM, sending native view commands, or emitting terminal escape codes – is pluggable. React Ink plugs in a terminal backend.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-rendering-pipeline" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-rendering-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-rendering-pipeline">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  S1["&lt;b&gt;Stage 1: Components&lt;/b&gt;&lt;br&gt;Declarative primitives&lt;br&gt;Standard component API"]
+  S2["&lt;b&gt;Stage 2: Reconciler&lt;/b&gt;&lt;br&gt;Diff previous tree against&lt;br&gt;new tree. Minimal change set."]
+  S3["&lt;b&gt;Stage 3: Layout Engine&lt;/b&gt;&lt;br&gt;Flexbox subset.&lt;br&gt;Position + size calc&lt;br&gt;for terminal constraints."]
+  S4["&lt;b&gt;Stage 4: Terminal&lt;/b&gt;&lt;br&gt;Escape codes.&lt;br&gt;Only changed cells&lt;br&gt;are rewritten."]
+
+  S1 --&gt; S2 --&gt; S3 --&gt; S4
+
+  style S1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style S3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style S4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-rendering-pipeline-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The four-stage declarative rendering pipeline. Stage 1: components are declared using standard React JSX primitives (Box, Text, Static, Spacer). Stage 2: the reconciler diffs the previous tree against the new tree, producing a minimal change set. Stage 3: the Yoga layout engine computes flexbox positions and sizes within terminal width/height constraints. Stage 4: only changed terminal cells are rewritten via ANSI escape codes, minimizing stdout writes.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Follow the four stages left to right. Stage 1 (Components) is where developers write declarative JSX. Stage 2 (Reconciler) diffs the old and new component trees. Stage 3 (Layout Engine) computes positions using Yoga flexbox. Stage 4 (Terminal) emits ANSI escape codes, rewriting only changed cells. The key insight is that only the final stage is terminal-specific – the first three stages are identical to how React works in a browser.</p>
+<p>Ink’s primitive components map to terminal concepts: <code>&lt;Box&gt;</code> is a flex container (the terminal’s <code>&lt;div&gt;</code>), <code>&lt;Text&gt;</code> is styled text (the terminal’s <code>&lt;span&gt;</code>), <code>&lt;Static&gt;</code> renders content once and excludes it from future reconciliation, and <code>&lt;Spacer&gt;</code> is a flexbox spacer. <span class="kw-terra">Yoga</span> – Facebook’s cross-platform layout engine implementing a <span class="kw-sage">CSS Flexbox subset</span> – calculates positions given the terminal’s width and height constraints. This is why <code>&lt;Box&gt;</code> supports <code>flexDirection</code>, <code>alignItems</code>, <code>justifyContent</code> – they map directly to Yoga’s layout properties. ::: {.callout-warning title=“Trade-off”} React Ink gains declarative components and reconciliation efficiency but pays a cost in terminal rendering speed – stdout writes are synchronous and slower than DOM updates. Every unnecessary re-render shows up as flicker or lag. This constraint drives the performance optimizations discussed later. :::</p>
+<hr>
+</section>
+<section id="component-hierarchy-atomic-design-in-a-terminal" class="level2">
+<h2 class="anchored" data-anchor-id="component-hierarchy-atomic-design-in-a-terminal">Component Hierarchy – Atomic Design in a Terminal</h2>
+<p><strong>Claude Code’s 389 UI files form a design system with clear separation between structural containers, content renderers, and interactive elements.</strong></p>
+<p>The hierarchy follows a pattern recognizable from <span class="kw-sage">atomic design</span> methodology: atoms (primitives like <code>&lt;Text&gt;</code>, <code>&lt;Box&gt;</code>) compose into molecules (styled boxes, themed text), which compose into organisms (message renderers, permission dialogs), which compose into the full application.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-component-hierarchy" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-component-hierarchy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-component-hierarchy">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  App["&lt;b&gt;App&lt;/b&gt;&lt;br&gt;&lt;i&gt;root component&lt;/i&gt;"]
+
+  App --&gt; Msg["Messages&lt;br&gt;&lt;i&gt;virtual list&lt;/i&gt;"]
+  App --&gt; PI["PromptInput&lt;br&gt;&lt;i&gt;12+ files&lt;/i&gt;"]
+  App --&gt; Perm["Permissions&lt;br&gt;&lt;i&gt;20+ files&lt;/i&gt;"]
+  App --&gt; Spin["Spinner"]
+  App --&gt; DS["Design System"]
+
+  Msg --&gt; AM["AssistantMessage"]
+  Msg --&gt; UM["UserMessage"]
+  Msg --&gt; TUM["ToolUseMessage"]
+  Msg --&gt; TRM["ToolResultMessage"]
+  Msg --&gt; SM["SystemMessage"]
+
+  PI --&gt; TI["TextInput"]
+  PI --&gt; AC["AutoComplete"]
+  PI --&gt; HN["HistoryNav"]
+
+  Perm --&gt; PM["PermissionModal"]
+  Perm --&gt; SE["ShimmerEffect"]
+  Perm --&gt; KH["KeyboardHints"]
+
+  DS --&gt; SB["StyledBox"]
+  DS --&gt; TT["ThemedText"]
+  DS --&gt; ST["SpacingTokens"]
+  DS --&gt; LP["LayoutPatterns"]
+
+  style App fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Msg fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style PI fill:#C2856E,color:#fff,stroke:#A06A54
+  style Perm fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style Spin fill:#C4A882,color:#fff,stroke:#A08562
+  style DS fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style AM fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style UM fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style TUM fill:#C2856E,color:#fff,stroke:#A06A54
+  style TRM fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style SM fill:#C4A882,color:#fff,stroke:#A08562
+  style TI fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style AC fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style HN fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style PM fill:#C2856E,color:#fff,stroke:#A06A54
+  style SE fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style KH fill:#C4A882,color:#fff,stroke:#A08562
+  style SB fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style TT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style ST fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style LP fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-component-hierarchy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: The top three levels of Claude Code’s UI component tree. The root App component delegates to five subsystems: Messages (a virtual list rendering five message types including AssistantMessage, ToolUseMessage, and ToolResultMessage), PromptInput (multi-line editing with autocomplete and history navigation), Permissions (modal dialogs with shimmer effects and keyboard hints), Spinner, and a shared Design System providing StyledBox, ThemedText, SpacingTokens, and LayoutPatterns.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the root App node at the top and follow the arrows downward through three levels. The first level shows five major subsystems (Messages, PromptInput, Permissions, Spinner, Design System). The second level breaks each subsystem into its constituent components – for example, Messages fans out into five message types (AssistantMessage, UserMessage, etc.), while PromptInput contains TextInput, AutoComplete, and HistoryNav. This tree structure mirrors the actual React component hierarchy in the codebase.</p>
+<p>The <code>Messages</code> component is the most architecturally significant piece. It implements a <span class="kw-sage">virtual message list</span> – the terminal equivalent of virtual scrolling in web UIs (think <code>react-window</code> or <code>react-virtualized</code>). Rather than rendering every message in a long conversation, it renders only the messages visible in the current terminal viewport plus a small buffer. Messages outside the viewport are unmounted; new ones mount as the user scrolls. Render time stays O(visible) rather than O(total), which matters enormously when conversations accumulate hundreds of messages.</p>
+<p>The <code>PromptInput</code> system is not a simple <code>readline</code> wrapper. It supports multi-line editing, tab completion, history navigation, slash command auto-complete with fuzzy matching, and paste detection. The input component manages its own cursor position, selection state, and composition events – the same complexity as a browser text input, implemented for a terminal.</p>
+<hr>
+</section>
+<section id="virtual-scrolling-ovisible-rendering" class="level2">
+<h2 class="anchored" data-anchor-id="virtual-scrolling-ovisible-rendering">Virtual Scrolling – O(visible) Rendering</h2>
+<p><strong>The key performance insight: in a terminal, you cannot render 500 messages and rely on the scroll buffer. You must manage what is visible yourself.</strong></p>
+<p>In a web browser, you can render a long list and let the browser handle scrolling – the DOM and GPU take care of off-screen elements. In a terminal, there is no such luxury. Everything written to stdout is sent to the terminal emulator, which must process every character. Rendering 500 messages on every frame would be catastrophic for performance.</p>
+<p>Claude Code solves this with the same technique used by virtual list libraries in web UIs, adapted for terminal constraints:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-virtual-scrolling" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-virtual-scrolling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-virtual-scrolling">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph Static["Static Region (unmounted)"]
+    M1["Message 1"]
+    M2["Message 2"]
+    M3["..."]
+    M495["Message 495"]
+  end
+
+  subgraph Active["Active Region (live components)"]
+    M496["Message 496&lt;br&gt;&lt;i&gt;buffer&lt;/i&gt;"]
+    M497["Message 497&lt;br&gt;&lt;i&gt;visible&lt;/i&gt;"]
+    M498["Message 498&lt;br&gt;&lt;i&gt;visible&lt;/i&gt;"]
+    M499["Message 499&lt;br&gt;&lt;i&gt;visible&lt;/i&gt;"]
+    M500["Message 500&lt;br&gt;&lt;i&gt;current&lt;/i&gt;"]
+    PIn["PromptInput"]
+  end
+
+  Static -- "Rendered once, excluded&lt;br&gt;from reconciliation" --&gt; Active
+
+  style M1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style M2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style M3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style M495 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style M496 fill:#C4A882,color:#fff,stroke:#A08562
+  style M497 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style M498 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style M499 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style M500 fill:#C2856E,color:#fff,stroke:#A06A54
+  style PIn fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-virtual-scrolling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Virtual message list rendering showing the separation between the Static region (messages 1 through 495, rendered once then unmounted from React’s reconciliation tree) and the Active region (a small buffer plus visible messages 497-500 and the PromptInput). Only the Active region participates in reconciliation passes, keeping render time at O(visible) regardless of total conversation length.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The left subgraph (Static Region) represents all historical messages that have been rendered once and then unmounted from React’s reconciliation tree. The right subgraph (Active Region) shows the small window of live components – a buffer message, a few visible messages, and the PromptInput. The arrow between regions indicates that messages flow from active to static as the conversation progresses. Only the active region participates in re-renders, which is why performance stays O(visible) regardless of conversation length.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th>Without virtual list</th>
+<th>With virtual list</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Render time</strong></td>
+<td>O(total)</td>
+<td>O(visible)</td>
+</tr>
+<tr class="even">
+<td><strong>Messages processed</strong></td>
+<td>500 messages = slow</td>
+<td>~5 messages = constant</td>
+</tr>
+</tbody>
+</table>
+<p>Ink’s <code>&lt;Static&gt;</code> component is the key enabler. Once a message has been fully rendered and the conversation has moved past it, the message is wrapped in <code>&lt;Static&gt;</code>. This tells Ink the content will never change, so it is written to stdout once and excluded from future reconciliation passes. For a conversation with 200 messages, only the current message and input area participate in React’s reconciliation – the other 199 are frozen.</p>
+<p>This optimization, combined with memoized context assembly (caching expensive computations like <code>getSystemContext()</code>) and parallel startup side effects (prefetching keychain credentials and MDM data before React mounts), keeps the UI responsive despite the inherent slowness of terminal output.</p>
+<hr>
+</section>
+<section id="the-ui-state-machine-five-states-event-driven-transitions" class="level2">
+<h2 class="anchored" data-anchor-id="the-ui-state-machine-five-states-event-driven-transitions">The UI State Machine – Five States, Event-Driven Transitions</h2>
+<p><strong>At any moment, the terminal UI is in one of five states, each with distinct visual presentation. Transitions are driven by streaming API events – the UI never polls.</strong></p>
+<p>The five states map directly to what is happening in the agent loop:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-ui-state-machine" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ui-state-machine-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-ui-state-machine">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  IDLE(["IDLE"])
+  REQ(["REQUESTING"])
+  THINK(["THINKING"])
+  RESP(["RESPONDING"])
+  TI(["TOOL INPUT"])
+  TU(["TOOL USE"])
+
+  IDLE -- "user submits" --&gt; REQ
+  REQ -- "thinking block start" --&gt; THINK
+  REQ -- "text block start" --&gt; RESP
+  REQ -- "tool use block start" --&gt; TI
+  THINK -- "block stop" --&gt; RESP
+  RESP -- "msg stop + tools" --&gt; TU
+  RESP -- "msg stop, no tools" --&gt; IDLE
+  TI -- "block stop" --&gt; TU
+  TU -- "result, next call" --&gt; REQ
+  TU -- "result, no more tools" --&gt; IDLE
+
+  style IDLE fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style REQ fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style THINK fill:#C2856E,color:#fff,stroke:#A06A54
+  style RESP fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style TI fill:#C4A882,color:#fff,stroke:#A08562
+  style TU fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ui-state-machine-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: The UI state machine with six states (IDLE, REQUESTING, THINKING, RESPONDING, TOOL INPUT, TOOL USE) and their event-driven transitions. User submission triggers REQUESTING; SSE content_block_start events branch to THINKING, RESPONDING, or TOOL INPUT depending on block type. TOOL USE loops back to REQUESTING when more tool calls follow, or returns to IDLE when the turn completes. The UI never polls – all transitions are driven by push-based streaming events.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Begin at IDLE on the left – the resting state where the user types input. Follow “user submits” to REQUESTING, then observe the three-way branch: the API response can start a thinking block, a text block, or a tool use block, routing to THINKING, RESPONDING, or TOOL INPUT respectively. From RESPONDING and TOOL USE, follow the edges back: “msg stop, no tools” or “result, no more tools” return to IDLE, while “msg stop + tools” or “result, next call” loop through TOOL USE and REQUESTING for multi-tool turns.</p>
+<p><strong>IDLE</strong>: Awaiting user input. The prompt input is active.</p>
+<p><strong>REQUESTING</strong>: API request in flight. A braille-dot spinner (<code>⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏</code>) signals that the system is active, preventing users from assuming the app has frozen during the 1-3 second network latency.</p>
+<p><strong>THINKING</strong>: Extended chain-of-thought reasoning. A distinct visual indicator (not the spinner) communicates “model is reasoning, not waiting for network.” This distinction sets correct expectations when thinking takes 10-30 seconds.</p>
+<p><strong>RESPONDING</strong>: Text streaming in token by token with a typewriter effect. Markdown formatting is applied in real time. This is the most visually dynamic state.</p>
+<p><strong>TOOL-INPUT / TOOL-USE</strong>: A tool’s JSON parameters accumulate as they stream in, then the tool executes with live output. For long-running Bash commands, output streams in real time.</p>
+<p>Transitions are driven by <span class="kw-terra">SSE (Server-Sent Events)</span> from the Anthropic API. Each event type maps to a state change: <code>message_start</code> triggers REQUESTING, <code>content_block_start</code> with type “thinking” triggers THINKING, type “text” triggers RESPONDING, type “tool_use” triggers TOOL-INPUT. The UI is purely reactive – it reacts to a push-based stream, never polls.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is a <strong>finite state machine (FSM)</strong> driven by an event stream. Each state defines what the UI renders; each event triggers a transition. The FSM ensures the UI is always in a well-defined state, even when events arrive in unexpected orders. Compare to TCP’s state machine (LISTEN, SYN-SENT, ESTABLISHED, etc.) – same pattern, different domain.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="mode-cycling-plan-code-architect" class="level2">
+<h2 class="anchored" data-anchor-id="mode-cycling-plan-code-architect">Mode Cycling – /plan, /code, /architect</h2>
+<p><strong>Slash commands like <code>/plan</code>, <code>/code</code>, and <code>/architect</code> switch the agent between operating modes, each changing available tools and behavioral guidelines.</strong></p>
+<p>Mode cycling is a state machine layered on top of the UI state machine. While the UI state machine tracks <em>what is happening right now</em> (thinking, responding, executing), the mode state machine tracks <em>how the agent should behave overall</em>:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-mode-cycling" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-mode-cycling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-mode-cycling">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  START[ ] -- "default" --&gt; CODE
+
+  PLAN["&lt;b&gt;PLAN&lt;/b&gt;&lt;br&gt;&lt;i&gt;Read-only tools&lt;/i&gt;&lt;br&gt;&lt;i&gt;Explore + plan only&lt;/i&gt;"]
+  CODE["&lt;b&gt;CODE&lt;/b&gt;&lt;br&gt;&lt;i&gt;All tools available&lt;/i&gt;&lt;br&gt;&lt;i&gt;Standard dev flow&lt;/i&gt;"]
+  ARCH["&lt;b&gt;ARCHITECT&lt;/b&gt;&lt;br&gt;&lt;i&gt;Read-only + design guidance&lt;/i&gt;&lt;br&gt;&lt;i&gt;Focus on structure&lt;/i&gt;"]
+
+  CODE -- "/plan" --&gt; PLAN
+  PLAN -- "/code" --&gt; CODE
+  CODE -- "/architect" --&gt; ARCH
+  ARCH -- "/code" --&gt; CODE
+  PLAN -- "/architect" --&gt; ARCH
+  ARCH -- "/plan" --&gt; PLAN
+
+  style START fill:none,stroke:none
+  style PLAN fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style CODE fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style ARCH fill:#C2856E,color:#fff,stroke:#A06A54
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-mode-cycling-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Mode cycling state machine with three fully connected states. CODE (default) provides all tools and standard dev flow. PLAN restricts to read-only tools for exploration and planning only. ARCHITECT provides read-only tools plus design guidance focused on structure. Each transition atomically reconfigures the available tool set, system prompt behavioral guidelines, and permission level in a single operation.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The entry point arrow on the left shows that CODE is the default mode. The three states – PLAN, CODE, and ARCHITECT – are fully connected: every slash command transition (labeled on the edges) is available from every state. Each node lists what that mode provides: CODE has all tools, PLAN restricts to read-only for exploration, and ARCHITECT adds design guidance to the read-only constraint. Switching modes atomically reconfigures tools, prompts, and permissions in a single operation.</p>
+<p>Each mode modifies three aspects simultaneously: the set of available tools (plan mode restricts to read-only tools), the system prompt (injecting mode-specific behavioral guidelines), and the permission level (plan mode is the most restrictive). This means switching modes is not just a label change – it reconfigures the agent’s capabilities, instructions, and security posture in one <span class="kw-sage">atomic operation</span>.</p>
+<hr>
+</section>
+<section id="the-command-system-over-80-shortcuts-bypassing-the-llm" class="level2">
+<h2 class="anchored" data-anchor-id="the-command-system-over-80-shortcuts-bypassing-the-llm">The Command System – Over 80 Shortcuts Bypassing the LLM</h2>
+<p><strong>Slash commands provide deterministic, instant-response interactions for operations that do not require model intelligence.</strong></p>
+<p>Claude Code exposes <span class="kw-slate">over 80 slash commands</span> organized by function:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 31%">
+<col style="width: 28%">
+<col style="width: 40%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Examples</th>
+<th>What They Do</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Session</strong></td>
+<td><code>/clear</code>, <code>/compact</code>, <code>/status</code></td>
+<td>Manage conversation state</td>
+</tr>
+<tr class="even">
+<td><strong>Mode</strong></td>
+<td><code>/plan</code>, <code>/auto</code>, <code>/chat</code>, <code>/architect</code></td>
+<td>Switch agent operating mode</td>
+</tr>
+<tr class="odd">
+<td><strong>Code ops</strong></td>
+<td><code>/commit</code>, <code>/pr</code>, <code>/review-pr</code></td>
+<td>Git workflows without LLM</td>
+</tr>
+<tr class="even">
+<td><strong>Agent</strong></td>
+<td><code>/agent</code>, <code>/team</code>, <code>/task</code></td>
+<td>Spawn sub-agents, manage tasks</td>
+</tr>
+<tr class="odd">
+<td><strong>MCP</strong></td>
+<td><code>/mcp add</code>, <code>/mcp list</code>, <code>/mcp remove</code></td>
+<td>Manage MCP server connections</td>
+</tr>
+<tr class="even">
+<td><strong>Schedule</strong></td>
+<td><code>/schedule</code>, <code>/cron</code></td>
+<td>One-time or recurring tasks</td>
+</tr>
+<tr class="odd">
+<td><strong>Debug</strong></td>
+<td><code>/stuck</code>, <code>/debug</code></td>
+<td>Escape loops, inspect state</td>
+</tr>
+<tr class="even">
+<td><strong>Skills</strong></td>
+<td><code>/simplify</code>, <code>/loop</code>, <code>/code-review</code></td>
+<td>Activate domain-specific skills</td>
+</tr>
+</tbody>
+</table>
+<p>Commands are parsed by an <span class="kw-terra">argparse-inspired router</span> before the input reaches the LLM. If the input starts with <code>/</code>, it is intercepted and routed to the command handler. Unknown commands fall through to the model with a warning. This design ensures that <code>/compact</code> triggers immediate context compaction – no LLM round trip, no token cost, no latency.</p>
+<p>A subtle but important detail: commands can be queued while the agent is executing. If you type <code>/compact</code> during a tool execution, it does not interrupt the current operation. Instead, it enters a priority queue and executes between agent iterations. Safety-critical commands (mode changes, permission modifications) are processed before informational ones (status queries), preventing race conditions.</p>
+<hr>
+</section>
+<section id="rich-output-rendering-beyond-console.log" class="level2">
+<h2 class="anchored" data-anchor-id="rich-output-rendering-beyond-console.log">Rich Output Rendering – Beyond console.log</h2>
+<p><strong>Each type of tool output has its own specialized renderer, transforming structured data into terminal-native displays.</strong></p>
+<p>Claude Code does not dump raw text. File edits render as unified diffs with color-coded added/removed lines. Todo items render as expandable trees with checkmarks, spinners, and empty circles. Rate limits display as fill bars. Code blocks get syntax highlighting by language. Full markdown rendering supports headers, lists, bold/italic, links, and blockquotes – all reflowed to fit terminal width while maintaining semantic structure.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-output-renderers" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-output-renderers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-output-renderers">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  TR["&lt;b&gt;Tool Result&lt;/b&gt;"]
+  Diff["Diff Display&lt;br&gt;&lt;i&gt;Color-coded +/- lines&lt;/i&gt;"]
+  Todo["Todo List&lt;br&gt;&lt;i&gt;Checkmarks, spinners,&lt;br&gt;empty circles&lt;/i&gt;"]
+  Rate["Rate Limit&lt;br&gt;&lt;i&gt;Fill bar visualization&lt;/i&gt;"]
+
+  TR --&gt; Diff
+  TR --&gt; Todo
+  TR --&gt; Rate
+
+  style TR fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Diff fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Todo fill:#C2856E,color:#fff,stroke:#A06A54
+  style Rate fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-output-renderers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Specialized output renderers for different tool result types. File edits render as color-coded unified diffs with added/removed line indicators. Todo items render as expandable trees with checkmarks, spinners, and empty circles for tracking progress. Rate limits display as fill bar visualizations. Each renderer transforms structured data into a terminal-native display optimized for its content type.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the Tool Result box on the left, which represents the raw structured data returned by any tool execution. Follow the three arrows rightward to see how the result branches into specialized renderers: Diff Display for file edits (color-coded +/- lines), Todo List for task tracking (checkmarks and spinners), and Rate Limit for usage bars. Each renderer transforms the same structured input into a terminal-native visual format optimized for its content type.</p>
+<hr>
+</section>
+<section id="theming-five-variants-for-universal-access" class="level2">
+<h2 class="anchored" data-anchor-id="theming-five-variants-for-universal-access">Theming – Five Variants for Universal Access</h2>
+<p><strong>Five theme variants ensure Claude Code is usable across dark terminals, light terminals, and limited-color environments like SSH sessions and screen readers.</strong></p>
+<p>The theming system is not a foreground/background toggle. Each theme defines a complete color vocabulary: primary content, secondary content, accents, permission prompt colors, shimmer animation, syntax highlighting, and interactive elements. The <strong>ANSI theme</strong> is particularly important – it falls back to the 16 standard ANSI colors for terminals that do not support RGB, ensuring Claude Code works in constrained environments where <code>rgb(87,105,247)</code> would render as garbage.</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p><strong>React in a terminal is not a novelty – it is an engineering decision with concrete benefits.</strong> Declarative components, reconciliation-based updates, and Yoga flexbox layout give a terminal application the same development ergonomics as a web application. The 389 UI files and 81,546 lines of component code are evidence this is production-grade architecture, not an experiment. The key insight: React’s core abstraction is the reconciler, not the DOM.</p>
+<p><strong>Virtual scrolling is essential for long-lived agent sessions.</strong> Without it, rendering degrades linearly with conversation length. With it, performance stays constant regardless of how many messages have accumulated. The combination of virtual lists and Ink’s <code>&lt;Static&gt;</code> component transforms O(total) rendering into O(visible) – the same optimization that makes infinite scroll work in web UIs.</p>
+<p><strong>The UI state machine provides visual transparency into agent internals.</strong> Five states – requesting, thinking, responding, tool-input, tool-use – each with distinct visual presentation, ensure the user always knows what the system is doing. The state machine is driven by streaming SSE events, not polling, which means the UI reacts instantly to changes.</p>
+<p><strong>Mode cycling treats configuration as a state machine.</strong> Switching between <code>/plan</code>, <code>/code</code>, and <code>/architect</code> is not flipping a flag – it atomically reconfigures tools, prompts, and permissions. This ensures mode changes are always consistent, preventing the bugs that arise when related settings change independently.</p>
+<p><strong>The command system is a DSL for agent control.</strong> Over 80 slash commands provide deterministic, instant-response operations that bypass the LLM. This separation – LLM for intelligence, commands for control – means predictable operations never incur token cost or model latency.</p>
+</section>
+<section id="appendix-slash-commands" class="level2 column-page">
+<h2 class="anchored" data-anchor-id="appendix-slash-commands">Appendix: Full Slash Command Inventory</h2>
+<p>Claude Code ships <span class="kw-slate">86 slash commands</span> organized by functional area. Each command is implemented in its own directory under <code>src/commands/</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 21%">
+<col style="width: 38%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Command</th>
+<th>Implementation</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Session</strong></td>
+<td><code>/clear</code></td>
+<td><code>src/commands/clear/</code></td>
+<td>Clear conversation history</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/compact</code></td>
+<td><code>src/commands/compact/</code></td>
+<td>Trigger context compaction (API call)</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/exit</code></td>
+<td><code>src/commands/exit/</code></td>
+<td>Exit CLI</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/export</code></td>
+<td><code>src/commands/export/</code></td>
+<td>Export conversation</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/resume</code></td>
+<td><code>src/commands/resume/</code></td>
+<td>Resume previous session</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/session</code></td>
+<td><code>src/commands/session/</code></td>
+<td>Session management</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/share</code></td>
+<td><code>src/commands/share/</code></td>
+<td>Share conversation transcript</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/summary</code></td>
+<td><code>src/commands/summary/</code></td>
+<td>Conversation summary</td>
+</tr>
+<tr class="odd">
+<td><strong>Planning</strong></td>
+<td><code>/plan</code></td>
+<td><code>src/commands/plan/</code></td>
+<td>Toggle plan mode; open plan file</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/context</code></td>
+<td><code>src/commands/context/</code></td>
+<td>Inspect context window</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/diff</code></td>
+<td><code>src/commands/diff/</code></td>
+<td>View file diffs</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/files</code></td>
+<td><code>src/commands/files/</code></td>
+<td>List modified files</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/rewind</code></td>
+<td><code>src/commands/rewind/</code></td>
+<td>Rewind conversation turns</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/thinkback</code></td>
+<td><code>src/commands/thinkback/</code></td>
+<td>Review reasoning trace</td>
+</tr>
+<tr class="odd">
+<td><strong>Configuration</strong></td>
+<td><code>/config</code></td>
+<td><code>src/commands/config/</code></td>
+<td>Edit settings</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/env</code></td>
+<td><code>src/commands/env/</code></td>
+<td>Environment variables</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/model</code></td>
+<td><code>src/commands/model/</code></td>
+<td>Switch model</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/effort</code></td>
+<td><code>src/commands/effort/</code></td>
+<td>Set thinking depth</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/fast</code></td>
+<td><code>src/commands/fast/</code></td>
+<td>Toggle fast mode</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/permissions</code></td>
+<td><code>src/commands/permissions/</code></td>
+<td>Permission rules</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/privacy-settings</code></td>
+<td><code>src/commands/privacy-settings/</code></td>
+<td>Privacy controls</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/sandbox-toggle</code></td>
+<td><code>src/commands/sandbox-toggle/</code></td>
+<td>Toggle sandbox</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/theme</code></td>
+<td><code>src/commands/theme/</code></td>
+<td>UI theme</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/vim</code></td>
+<td><code>src/commands/vim/</code></td>
+<td>Vim mode</td>
+</tr>
+<tr class="odd">
+<td><strong>Git &amp; Code</strong></td>
+<td><code>/branch</code></td>
+<td><code>src/commands/branch/</code></td>
+<td>Git branch management</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/review</code></td>
+<td><code>src/commands/review/</code></td>
+<td>Code review (API call)</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/pr_comments</code></td>
+<td><code>src/commands/pr_comments/</code></td>
+<td>View PR comments</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/autofix-pr</code></td>
+<td><code>src/commands/autofix-pr/</code></td>
+<td>Auto-fix PR issues (API call)</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/issue</code></td>
+<td><code>src/commands/issue/</code></td>
+<td>GitHub issue integration</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/install-github-app</code></td>
+<td><code>src/commands/install-github-app/</code></td>
+<td>GitHub App setup (14 files)</td>
+</tr>
+<tr class="odd">
+<td><strong>MCP &amp; Plugins</strong></td>
+<td><code>/mcp</code></td>
+<td><code>src/commands/mcp/</code></td>
+<td>MCP server management</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/plugin</code></td>
+<td><code>src/commands/plugin/</code></td>
+<td>Plugin management (15 files)</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/reload-plugins</code></td>
+<td><code>src/commands/reload-plugins/</code></td>
+<td>Reload plugins</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/skills</code></td>
+<td><code>src/commands/skills/</code></td>
+<td>List available skills</td>
+</tr>
+<tr class="odd">
+<td><strong>Agents</strong></td>
+<td><code>/agents</code></td>
+<td><code>src/commands/agents/</code></td>
+<td>Agent management</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/tasks</code></td>
+<td><code>src/commands/tasks/</code></td>
+<td>Background task management</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/teleport</code></td>
+<td><code>src/commands/teleport/</code></td>
+<td>Transfer context to new agent</td>
+</tr>
+<tr class="even">
+<td><strong>Account &amp; Auth</strong></td>
+<td><code>/login</code></td>
+<td><code>src/commands/login/</code></td>
+<td>OAuth login</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/logout</code></td>
+<td><code>src/commands/logout/</code></td>
+<td>Clear credentials</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/usage</code></td>
+<td><code>src/commands/usage/</code></td>
+<td>Token usage stats</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/cost</code></td>
+<td><code>src/commands/cost/</code></td>
+<td>Session cost tracking</td>
+</tr>
+<tr class="even">
+<td><strong>IDE &amp; Desktop</strong></td>
+<td><code>/ide</code></td>
+<td><code>src/commands/ide/</code></td>
+<td>IDE integration</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/desktop</code></td>
+<td><code>src/commands/desktop/</code></td>
+<td>Desktop app integration</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/chrome</code></td>
+<td><code>src/commands/chrome/</code></td>
+<td>Chrome extension integration</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/voice</code></td>
+<td><code>src/commands/voice/</code></td>
+<td>Voice mode</td>
+</tr>
+<tr class="even">
+<td><strong>Remote</strong></td>
+<td><code>/remote-env</code></td>
+<td><code>src/commands/remote-env/</code></td>
+<td>Remote environment config</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/remote-setup</code></td>
+<td><code>src/commands/remote-setup/</code></td>
+<td>Remote session setup</td>
+</tr>
+<tr class="even">
+<td><strong>Memory</strong></td>
+<td><code>/memory</code></td>
+<td><code>src/commands/memory/</code></td>
+<td>Memory management</td>
+</tr>
+<tr class="odd">
+<td><strong>Hooks</strong></td>
+<td><code>/hooks</code></td>
+<td><code>src/commands/hooks/</code></td>
+<td>Hook configuration</td>
+</tr>
+<tr class="even">
+<td><strong>Diagnostics</strong></td>
+<td><code>/doctor</code></td>
+<td><code>src/commands/doctor/</code></td>
+<td>System diagnostics</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/stats</code></td>
+<td><code>src/commands/stats/</code></td>
+<td>Session statistics</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/status</code></td>
+<td><code>src/commands/status/</code></td>
+<td>Agent status</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/debug-tool-call</code></td>
+<td><code>src/commands/debug-tool-call/</code></td>
+<td>Debug tool invocations</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/heapdump</code></td>
+<td><code>src/commands/heapdump/</code></td>
+<td>Memory diagnostics</td>
+</tr>
+<tr class="odd">
+<td><strong>Misc</strong></td>
+<td><code>/help</code></td>
+<td><code>src/commands/help/</code></td>
+<td>Help system</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/feedback</code></td>
+<td><code>src/commands/feedback/</code></td>
+<td>Submit feedback</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/release-notes</code></td>
+<td><code>src/commands/release-notes/</code></td>
+<td>View release notes</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/upgrade</code></td>
+<td><code>src/commands/upgrade/</code></td>
+<td>Upgrade CLI version</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/onboarding</code></td>
+<td><code>src/commands/onboarding/</code></td>
+<td>First-run tutorial</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/rename</code></td>
+<td><code>src/commands/rename/</code></td>
+<td>Rename session</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/copy</code></td>
+<td><code>src/commands/copy/</code></td>
+<td>Copy to clipboard</td>
+</tr>
+<tr class="even">
+<td></td>
+<td><code>/add-dir</code></td>
+<td><code>src/commands/add-dir/</code></td>
+<td>Add directory to context</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td><code>/good-claude</code></td>
+<td><code>src/commands/good-claude/</code></td>
+<td>Positive reinforcement</td>
+</tr>
+</tbody>
+</table>
+<p>Most commands are lightweight UI operations that do not consume API tokens. Exceptions include <code>/compact</code> (triggers a summarization API call), <code>/review</code> (sends code to the model for review), and <code>/autofix-pr</code> (reads PR diff and generates fixes).</p>
+<hr>
+</section>
+<section id="appendix-a-prompt-suggestion-and-speculative-execution" class="level2 column-page">
+<h2 class="anchored" data-anchor-id="appendix-a-prompt-suggestion-and-speculative-execution">Appendix A: Prompt Suggestion and Speculative Execution</h2>
+<p>After each assistant turn, Claude Code can predict what the user will type next and display it as a gray placeholder in the prompt input. If the user accepts (Tab), the suggestion is submitted immediately. Behind the scenes, a <span class="kw-terra">speculation engine</span> may have already begun executing the predicted command in an isolated overlay filesystem.</p>
+<section id="suggestion-generation" class="level3">
+<h3 class="anchored" data-anchor-id="suggestion-generation">Suggestion Generation</h3>
+<p>The system uses a <span class="kw-sage">forked agent</span> — a lightweight subprocess that piggybacks on the parent’s prompt cache — with a carefully tuned prompt:</p>
+<blockquote class="blockquote">
+<p><em>Predict what THEY would type — not what you think they should do. THE TEST: Would they think “I was just about to type that”?</em></p>
+</blockquote>
+<p>The fork denies all tools (model can only generate text, not execute) and uses low effort. Suggestions pass through <span class="kw-slate">13 content filters</span> that reject meta-reasoning (“nothing found”), evaluative responses (“looks good”), Claude-voice phrases (“Let me…”), and suggestions outside a 2–12 word window. Single words are allowed only from a curated set (e.g., <code>push</code>, <code>commit</code>, <code>deploy</code>, <code>yes</code>, <code>no</code>).</p>
+<p><strong>Feature gating:</strong> <code>tengu_chomp_inflection</code> GrowthBook flag, disabled for non-interactive sessions and swarm teammates, user-toggleable via settings.</p>
+</section>
+<section id="speculative-execution" class="level3">
+<h3 class="anchored" data-anchor-id="speculative-execution">Speculative Execution</h3>
+<p>When a suggestion is displayed and speculation is enabled, Claude Code immediately begins executing the predicted command in a <span class="kw-terra">copy-on-write overlay filesystem</span> at <code>$CLAUDE_TEMP/speculation/{PID}/{id}</code>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 40%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tool Category</th>
+<th>Speculation Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Read-only (Read, Glob, Grep, LSP)</td>
+<td>Allowed; reads from overlay if file was previously written there, else from main CWD</td>
+</tr>
+<tr class="even">
+<td>Write (Edit, Write)</td>
+<td>Redirected to overlay; original copied on first write</td>
+</tr>
+<tr class="odd">
+<td>Bash (read-only)</td>
+<td>Allowed</td>
+</tr>
+<tr class="even">
+<td>Bash (write)</td>
+<td>Denied; sets boundary</td>
+</tr>
+<tr class="odd">
+<td>All others</td>
+<td>Denied; sets boundary</td>
+</tr>
+</tbody>
+</table>
+<p>Speculation is bounded: max 20 turns, max 100 messages. When speculation completes or hits a boundary (a denied tool call), it records a <code>CompletionBoundary</code> with type (<code>complete</code>, <code>bash</code>, <code>edit</code>, <code>denied_tool</code>). On acceptance, overlay files are copied to the real CWD and speculated messages are injected into the conversation history.</p>
+<p><strong>Pipelined suggestions.</strong> When speculation completes fully, the system immediately generates a <em>next</em> suggestion using the speculated work as context — creating a chain of predictions. The user sees the first suggestion; the second is ready the moment they accept.</p>
+<p><strong>Source files:</strong> <code>src/services/PromptSuggestion/promptSuggestion.ts</code> (suggestion lifecycle, 13 filters), <code>src/services/PromptSuggestion/speculation.ts</code> (overlay FS, speculative execution, pipelining), <code>src/hooks/usePromptSuggestion.ts</code> (React hook with engagement tracking).</p>
+</section>
+</section>
+<section id="appendix-b-product-ux-subsystems" class="level2 column-page">
+<h2 class="anchored" data-anchor-id="appendix-b-product-ux-subsystems">Appendix B: Product UX Subsystems</h2>
+<p>Several product UX subsystems operate alongside the core agent but are not part of the agent loop.</p>
+<section id="tips-system" class="level3">
+<h3 class="anchored" data-anchor-id="tips-system">Tips System</h3>
+<p>A rotating educational messaging system displayed in the spinner while Claude is thinking. The registry contains <span class="kw-slate">60+ built-in tips</span> with contextual relevance conditions (new-user warmup, IDE-specific tips, subscription nudges). Selection uses an LRU algorithm (show the tip not displayed for the longest time) with per-tip cooldown windows (3–30 sessions between repeats). Tips can be overridden via <code>spinnerTipsOverride.tips[]</code> in settings or disabled via <code>spinnerTipsEnabled: false</code>. Some tips are internal-only (<code>USER_TYPE === 'ant'</code>), and marketing nudges are gated by GrowthBook flags.</p>
+<p><strong>Source files:</strong> <code>src/services/tips/tipRegistry.ts</code>, <code>src/services/tips/tipScheduler.ts</code>, <code>src/services/tips/tipHistory.ts</code>.</p>
+</section>
+<section id="project-onboarding" class="level3">
+<h3 class="anchored" data-anchor-id="project-onboarding">Project Onboarding</h3>
+<p>A two-step project-level onboarding flow shown to new users: (1) create an app or clone a repo, (2) create a <code>CLAUDE.md</code> with <code>/init</code>. Shown at most 4 times per project, then permanently hidden. State is cached in <code>projectConfig.hasCompletedProjectOnboarding</code> to avoid filesystem checks on subsequent renders.</p>
+<p><strong>Source file:</strong> <code>src/projectOnboardingState.ts</code>.</p>
+</section>
+<section id="claude-in-chrome" class="level3">
+<h3 class="anchored" data-anchor-id="claude-in-chrome">Claude-in-Chrome</h3>
+<p>Browser automation integration via an MCP server named <code>computer-use</code> that controls Chrome/Chromium browsers through native messaging. Supports Chrome, Brave, Arc, Chromium, Edge, Vivaldi, and Opera. Enabled via <code>--chrome</code> CLI flag, <code>CLAUDE_CODE_ENABLE_CFC</code> env var, or auto-detected if the extension is installed (auto-enable gated by <code>tengu_chrome_auto_enable</code>). The system installs a native host manifest for the browser’s native messaging protocol, and a 60-line system prompt governs browser automation behavior.</p>
+<p><strong>Source files:</strong> <code>src/utils/claudeInChrome/common.ts</code> (browser detection), <code>src/utils/claudeInChrome/setup.ts</code> (MCP server setup, manifest installation), <code>src/utils/claudeInChrome/prompt.ts</code> (browser automation guidelines).</p>
+</section>
+<section id="buddy-companion" class="level3">
+<h3 class="anchored" data-anchor-id="buddy-companion">Buddy Companion</h3>
+<p>An AI-generated pet companion rendered beside the input box. Companions are <span class="kw-sage">deterministically generated</span> from a hash of the user ID — species, eyes, hats, stats, and rarity are derived from the hash, not random. Rarity distribution: common (60%), uncommon (25%), rare (10%), epic (4%), legendary (1%). The companion hatches via the <code>/buddy</code> command, displays speech bubbles, idle animations, and a pet-hearts burst effect. A teaser notification window ran April 1–7, 2026. Feature-gated via <code>feature('BUDDY')</code> build flag.</p>
+<p><strong>Source files:</strong> <code>src/buddy/companion.ts</code> (deterministic bone generation), <code>src/buddy/CompanionSprite.tsx</code> (sprite rendering, animation), <code>src/buddy/prompt.ts</code> (companion personality), <code>src/buddy/useBuddyNotification.tsx</code> (teaser notification).</p>
+</section>
+<section id="secure-storage" class="level3">
+<h3 class="anchored" data-anchor-id="secure-storage">Secure Storage</h3>
+<p>A credential storage abstraction with platform-specific backends: macOS Keychain (<code>macOsKeychainStorage.ts</code>), plaintext fallback for Linux/Windows (<code>plainTextStorage.ts</code>), and a cascading <code>fallbackStorage.ts</code> that tries the primary backend before falling back. A background <code>keychainPrefetch.ts</code> pre-caches credentials to avoid blocking startup. Linux <code>libsecret</code> support is not yet implemented.</p>
+<p><strong>Source files:</strong> <code>src/utils/secureStorage/index.ts</code> (factory), <code>src/utils/secureStorage/macOsKeychainStorage.ts</code>, <code>src/utils/secureStorage/plainTextStorage.ts</code>.</p>
+</section>
+<section id="native-installer" class="level3">
+<h3 class="anchored" data-anchor-id="native-installer">Native Installer</h3>
+<p>Production binary distribution with multi-process-safe installation. The installer (<code>installer.ts</code>, 1,700+ lines) manages symlinks, atomic updates (temp-then-rename pattern), PID-based file locking with stale-lock recovery, and version retention (keeps 2 most recent versions). Downloads use stall detection (60s timeout), 3 retries, and checksum verification. A server-side <code>maxVersion</code> kill switch can force downgrades. Platform support includes Linux (musl/glibc detection), macOS, and Windows (direct copy, no symlinks).</p>
+<p><strong>Source files:</strong> <code>src/utils/nativeInstaller/installer.ts</code> (installation, locking, cleanup), <code>src/utils/nativeInstaller/download.ts</code> (binary download, checksums).</p>
+<hr>
+<p><em>Next in the series: <a href="./09-auth-providers-flags.html">Part V.2: Auth, Providers &amp; Feature Flags</a> – OAuth for terminal apps, multi-provider adapters, and 88 feature flags enabling continuous delivery inside a CLI tool.</em></p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./06-safety-sandbox.html" class="pagination-link" aria-label="IV.2 — Safety &amp; Sandbox">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">IV.2 — Safety &amp; Sandbox</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./09-auth-providers-flags.html" class="pagination-link" aria-label="V.2 — Auth, Providers &amp; Flags">
+        <span class="nav-page-text">V.2 — Auth, Providers &amp; Flags</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

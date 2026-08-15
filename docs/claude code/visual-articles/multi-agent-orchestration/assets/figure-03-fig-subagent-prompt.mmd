@@ -1,0 +1,20 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  P1["<b>Part I</b><br>Agent-Specific Prompt<br><i>3 KB to 20 KB</i>"] --> ASM["<b>dQ6()</b><br>Assembled Prompt"]
+  P2["<b>Part II</b><br>Thread Notes<br><i>Absolute paths, no emojis</i>"] --> ASM
+  P3["<b>Part III</b><br>Environment Info<br><i>CWD, git, platform</i>"] --> ASM
+  ASM --> TE["Explore: ~3 KB"]
+  ASM --> TP["Plan: ~3 KB"]
+  ASM --> TC["Custom: varies"]
+  ASM --> TS["Subagent: ~5 KB"]
+  ASM --> TT["Teammate: ~20 KB"]
+
+  style P1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style P2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style P3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style ASM fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style TE fill:#C4A882,color:#fff,stroke:#A08562
+  style TP fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style TC fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style TS fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style TT fill:#C2856E,color:#fff,stroke:#A06A54

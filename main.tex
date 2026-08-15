@@ -23,6 +23,7 @@
 \usepackage{fancyhdr}
 \usepackage{enumitem}
 \usepackage{placeins}
+\usepackage{caption}
 \usepackage{microtype}
 \usepackage{tikz}
 \usepackage{listings}
@@ -65,7 +66,8 @@
     urlcolor=accent,
     citecolor=black,
 }
-\setcounter{tocdepth}{1}
+% 合刊目录只列文章，不展开文章内部的小剧场、各节与参考文献。
+\setcounter{tocdepth}{0}
 
 % JIS B5 技术同人志正文：控制每行字数，并给公式、图表和代码留出空间。
 \makeatletter
@@ -86,6 +88,18 @@
 \setlength{\floatsep}{7pt plus 2pt minus 2pt}
 \setlength{\textfloatsep}{9pt plus 2pt minus 2pt}
 \setlength{\intextsep}{7pt plus 2pt minus 2pt}
+
+% 全书图注：与正文拉开层级，长图注保持自然的左对齐换行。
+\captionsetup[figure]{
+    font=small,
+    labelfont={bf,color=primary},
+    textfont={color=black!85},
+    labelsep=quad,
+    justification=raggedright,
+    singlelinecheck=false,
+    margin=0.6em,
+    skip=5pt
+}
 
 % 章节标题样式
 \renewcommand{\thesection}{\arabic{section}}
@@ -154,6 +168,20 @@
     ] {HIRO AI CLASS};
     \draw[line width=0.4pt] (-3.2,-0.62) -- (3.2,-0.62);
   \end{tikzpicture}%
+}
+
+% 合刊按实际翻页顺序连续排版：封面后直接是目录，目录后直接进正文。
+% 保留 book 的前置/正文语义与页码切换，但不自动补空白偶数页。
+\newcommand{\hirofrontmatter}{%
+  \clearpage%
+  \@mainmatterfalse%
+  \pagenumbering{roman}%
+}
+
+\newcommand{\hiromainmatter}{%
+  \clearpage%
+  \@mainmattertrue%
+  \pagenumbering{arabic}%
 }
 
 \newcommand{\hirotoc}{%
@@ -285,24 +313,19 @@
 \end{tikzpicture}}
 \clearpage
 
-% --- 前言 ---
-\frontmatter
+% --- 目录 ---
+\hirofrontmatter
 \hypersetup{pageanchor=true}%
 \hirotoc
-\input{chapters/frontmatter}
 
 % --- 正文 ---
-\mainmatter
+\hiromainmatter
 
 \input{chapters/ch02}
 \input{chapters/ch03}
 \input{chapters/ch04}
 \input{chapters/ch05}
-\input{chapters/ch06}
 \input{chapters/ch07}
-
-% --- 附录 & 结语 ---
-\input{chapters/backmatter}
 
 \fi
 

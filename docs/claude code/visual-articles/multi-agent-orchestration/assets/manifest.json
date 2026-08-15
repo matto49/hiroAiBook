@@ -1,0 +1,50 @@
+[
+  {
+    "index": 1,
+    "kind": "mermaid",
+    "label": "fig-post-territory",
+    "file": "figure-01-fig-post-territory.png",
+    "source": "figure-01-fig-post-territory.mmd",
+    "caption": "Figure 1: The four pillars of multi-agent orchestration covered in this post – five agent types, git worktree isolation, coordination models (Coordinator vs. Teammate), and resource management (token budgets, model selection, cleanup) – all feed into a final result synthesis and merge step where the parent agent integrates child outputs."
+  },
+  {
+    "index": 2,
+    "kind": "mermaid",
+    "label": "fig-agent-types",
+    "file": "figure-02-fig-agent-types.png",
+    "source": "figure-02-fig-agent-types.mmd",
+    "caption": "Figure 2: Five agent types arranged along a cost-capability spectrum. Explore agents are read-only with the cheapest Haiku model and fire-and-forget semantics. Plan agents are also read-only but produce structured implementation strategies. Custom agents are YAML-defined with configurable tool subsets. Subagents get full tool access for self-contained tasks. Teammates are persistent, named agents with bidirectional messaging via SendMessage. Cost and capability increase left to right."
+  },
+  {
+    "index": 3,
+    "kind": "mermaid",
+    "label": "fig-subagent-prompt",
+    "file": "figure-03-fig-subagent-prompt.png",
+    "source": "figure-03-fig-subagent-prompt.mmd",
+    "caption": "Figure 3: Subagent prompt assembly via the dQ6() function. Three parts compose into a type-specific system prompt: Part I is the agent-specific prompt (varying from 3 KB for Explore to 20 KB for Teammate), Part II contains thread notes with behavioral constraints (absolute paths, no emojis), and Part III provides runtime environment info (CWD, git status, platform). The 7x size difference between Explore and Teammate prompts is a primary lever for cost control at fleet scale."
+  },
+  {
+    "index": 4,
+    "kind": "mermaid",
+    "label": "fig-worktree",
+    "file": "figure-04-fig-worktree.png",
+    "source": "figure-04-fig-worktree.mmd",
+    "caption": "Figure 4: Git worktree isolation for parallel agent work. The main repository and two worktrees (A and B) share the same .git object database but maintain independent working directories. Agent A modifies auth.ts while Agent B modifies api.ts, with no interference – analogous to copy-on-write virtual memory where pages are shared until written. Conflict resolution defers to merge time, mirroring how human developers use branches."
+  },
+  {
+    "index": 5,
+    "kind": "mermaid",
+    "label": "fig-coordinator",
+    "file": "figure-05-fig-coordinator.png",
+    "source": "figure-05-fig-coordinator.mmd",
+    "caption": "Figure 5: Coordinator Mode’s four-phase workflow (Research, Synthesis, Implementation, Verification) paired with its hub-and-spoke topology. Workers investigate the codebase in parallel during Research, the Coordinator synthesizes findings into implementation specs, workers make targeted changes, then workers verify the changes compile and pass tests. Workers are invisible to each other – all communication routes through the central Coordinator, making this a MapReduce-style orchestration pattern."
+  },
+  {
+    "index": 6,
+    "kind": "mermaid",
+    "label": "fig-cache-forking",
+    "file": "figure-06-fig-cache-forking.png",
+    "source": "figure-06-fig-cache-forking.mmd",
+    "caption": "Figure 6: Cache-aware forking exploits LLM prompt caching. All fork children start with a byte-identical prefix (system prompt + tool descriptions + conversation history + fork boilerplate). Child 1 pays the full prompt cost. Children 2 through N get cache hits on the shared prefix, paying only for their unique task directive. This transforms multi-agent cost from O(N x M) to approximately O(M + N x delta), yielding 70-85% cost reduction at scale."
+  }
+]

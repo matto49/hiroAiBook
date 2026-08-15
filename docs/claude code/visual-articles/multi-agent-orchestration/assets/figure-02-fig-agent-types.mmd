@@ -1,0 +1,12 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  E["<b>Explore</b><br>Read-only<br>Haiku model<br>Fire-and-forget"] --> P["<b>Plan</b><br>Read-only<br>Inherited model<br>Strategy output"]
+  P --> C["<b>Custom</b><br>YAML-defined<br>Configurable model<br>Any tool subset"]
+  C --> S["<b>Subagent</b><br>All tools<br>Full capability<br>Fire-and-forget"]
+  S --> T["<b>Teammate</b><br>All tools + SendMessage<br>Persistent, named<br>Peer messaging"]
+
+  style E fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style P fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style C fill:#C2856E,color:#fff,stroke:#A06A54
+  style S fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style T fill:#C4A882,color:#fff,stroke:#A08562

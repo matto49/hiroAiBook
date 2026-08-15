@@ -362,8 +362,8 @@ a^r\equiv1\pmod N
 \begin{tikzpicture}[x=2.15cm,y=2.0cm,font=\scriptsize,>=Latex]
 \draw[->,thick,draw=primary] (-0.45,0) -- (3.75,0)
   node[right] {测量整数 $y$};
-\draw[->,thick,draw=primary] (-0.25,-0.02) -- (-0.25,1.28)
-  node[above,align=center] {理想化\\概率峰};
+\draw[->,thick,draw=primary] (-0.25,-0.02) -- (-0.25,1.28);
+\node[rotate=90,text=primary] at (-0.50,0.63) {测量概率 $P(y)$};
 \foreach \x/\value/\phase in {
   0/0/0,
   1/64/{1/4},
@@ -372,7 +372,11 @@ a^r\equiv1\pmod N
 {
   \draw[very thick,draw=accent] (\x,0) -- (\x,1.02);
   \fill[accent] (\x,1.02) circle (1.5pt);
-  \node[below=3pt] at (\x,0) {$\value$};
+  \ifnum\x=0
+    \node[below=3pt,xshift=2pt] at (\x,0) {$\value$};
+  \else
+    \node[below=3pt] at (\x,0) {$\value$};
+  \fi
   \node[above=2pt,text=primary] at (\x,1.02) {$y/Q=\phase$};
 }
 \draw[dashed,draw=black!30] (0,0.51) -- (3,0.51);

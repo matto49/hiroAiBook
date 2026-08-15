@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Safety &amp; Sandboxing – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./08-cli-commands-ui.html" rel="next">
+<link href="./05-tool-system.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-tool-system.html">IV. Tools</a></li><li class="breadcrumb-item"><a href="./06-safety-sandbox.html">IV.2 — Safety &amp; Sandbox</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#the-trust-problem-why-shell-access-changes-everything" id="toc-the-trust-problem-why-shell-access-changes-everything" class="nav-link active" data-scroll-target="#the-trust-problem-why-shell-access-changes-everything">The Trust Problem – Why Shell Access Changes Everything</a></li>
+  <li><a href="#the-three-tier-permission-architecture-firewall-ids-analyst" id="toc-the-three-tier-permission-architecture-firewall-ids-analyst" class="nav-link" data-scroll-target="#the-three-tier-permission-architecture-firewall-ids-analyst">The Three-Tier Permission Architecture – Firewall, IDS, Analyst</a></li>
+  <li><a href="#the-security-ux-spectrum-seven-permission-modes" id="toc-the-security-ux-spectrum-seven-permission-modes" class="nav-link" data-scroll-target="#the-security-ux-spectrum-seven-permission-modes">The Security-UX Spectrum – Seven Permission Modes</a></li>
+  <li><a href="#os-level-sandboxing-the-concrete-bunker-walls" id="toc-os-level-sandboxing-the-concrete-bunker-walls" class="nav-link" data-scroll-target="#os-level-sandboxing-the-concrete-bunker-walls">OS-Level Sandboxing – The Concrete Bunker Walls</a></li>
+  <li><a href="#command-risk-classification-the-ml-layer" id="toc-command-risk-classification-the-ml-layer" class="nav-link" data-scroll-target="#command-risk-classification-the-ml-layer">Command Risk Classification – The ML Layer</a></li>
+  <li><a href="#prompt-level-guardrails-the-outermost-defense" id="toc-prompt-level-guardrails-the-outermost-defense" class="nav-link" data-scroll-target="#prompt-level-guardrails-the-outermost-defense">Prompt-Level Guardrails – The Outermost Defense</a></li>
+  <li><a href="#the-complete-safety-stack-putting-it-together" id="toc-the-complete-safety-stack-putting-it-together" class="nav-link" data-scroll-target="#the-complete-safety-stack-putting-it-together">The Complete Safety Stack – Putting It Together</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./05-tool-system.html">IV. Tools</a></li><li class="breadcrumb-item"><a href="./06-safety-sandbox.html">IV.2 — Safety &amp; Sandbox</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Safety &amp; Sandboxing</h1>
+<p class="subtitle lead">Defense in Depth for AI Agents</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">safety</div>
+    <div class="quarto-category">permissions</div>
+    <div class="quarto-category">sandbox</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Hand an AI agent a shell and you have created something powerful – and something dangerous. A single hallucinated <code>rm -rf /</code> stands between a productive coding session and catastrophe. Claude Code’s safety architecture tackles this with a strategy borrowed from network security: <span class="kw-sage">defense in depth</span>. <span class="kw-slate">Three tiers</span> of permission checks, <span class="kw-mauve">two ML classifiers</span>, and OS-level sandboxing form concentric barriers, each catching what the previous layer missed. This is <span class="kw-sage">mandatory access control (MAC)</span> – a concept from operating systems – reimagined for AI agents.</p>
+<p>This post maps the permission architecture, explains the security-UX trade-off that drives every design choice, and connects the sandbox to OS-level isolation primitives from containers and seccomp profiles.</p>
+<blockquote class="blockquote">
+<p><strong>This post covers:</strong></p>
+<ul>
+<li>The Trust Problem – why shell access demands layered defense</li>
+<li>Three-Tier Permission Architecture – config rules, ML classifiers, human approval</li>
+<li>OS-Level Sandboxing – Seatbelt (macOS) / Bubblewrap (Linux)</li>
+<li>The Security-UX Spectrum – seven modes from read-only to YOLO</li>
+<li>Command Risk Classification – tree-sitter AST + ML classifiers</li>
+</ul>
+</blockquote>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/utils/permissions/permissions.ts</code></td>
+<td>Core permission engine (allow/deny/ask evaluation)</td>
+<td>~500 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/permissions/bashClassifier.ts</code></td>
+<td>ML-based command risk classification</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/permissions/dangerousPatterns.ts</code></td>
+<td>Dangerous command pattern matching</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/permissions/permissionsLoader.ts</code></td>
+<td>Permission rules loader from settings</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/permissions/yoloClassifier.ts</code></td>
+<td>Auto-approve classifier for trusted commands</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/tools/BashTool/bashSecurity.ts</code></td>
+<td>Bash-specific security checks</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/tools/BashTool/bashPermissions.ts</code></td>
+<td>Bash permission evaluation</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/tools/BashTool/destructiveCommandWarning.ts</code></td>
+<td>Destructive command warnings</td>
+<td>~150 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/settings/settings.ts</code></td>
+<td>Settings management (allow/deny/ask rules)</td>
+<td>~500 LOC</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<section id="the-trust-problem-why-shell-access-changes-everything" class="level2">
+<h2 class="anchored" data-anchor-id="the-trust-problem-why-shell-access-changes-everything">The Trust Problem – Why Shell Access Changes Everything</h2>
+<p><strong>An AI agent with <code>exec()</code> is fundamentally different from a chatbot.</strong> The moment you grant shell access, every LLM failure mode becomes a system security event.</p>
+<p>Think about what a coding agent needs to do its job. It must read your files, write new ones, run build commands, install dependencies, and query the network. These are the same capabilities a remote attacker would want. The difference is intent – but intent is hard to verify when your “user” is a language model that occasionally hallucinates.</p>
+<p>This is not a hypothetical concern. <span class="kw-terra">Prompt injection</span> – where malicious content in a file or webpage tricks the model into running unintended commands – is a known attack vector. A <code>README.md</code> containing hidden instructions could direct the agent to exfiltrate environment variables or modify source code in subtle ways.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-capability-risk" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-capability-risk-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-capability-risk">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  subgraph PROD["&lt;b&gt;Maximum Productivity&lt;/b&gt;"]
+    P1["Read any file"]
+    P2["Write/edit code"]
+    P3["Run shell commands"]
+    P4["Access network"]
+  end
+  subgraph RISK["&lt;b&gt;Maximum Risk&lt;/b&gt;"]
+    R1["Data exfiltration"]
+    R2["Code tampering"]
+    R3["Arbitrary execution"]
+    R4["Lateral movement"]
+  end
+
+  P1 --&gt;|enables| R1
+  P2 --&gt;|enables| R2
+  P3 --&gt;|enables| R3
+  P4 --&gt;|enables| R4
+
+  style PROD fill:#9CAF8822,stroke:#7A8D68
+  style RISK fill:#C2856E22,stroke:#A06A54
+  style P1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style P2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style P3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style P4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style R1 fill:#C4A882,color:#fff,stroke:#A08562
+  style R2 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style R3 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style R4 fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-capability-risk-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The fundamental tension between agent productivity and security risk. Each capability the agent needs – file reading, code writing, shell execution, network access – maps directly to a corresponding attack vector (data exfiltration, code tampering, arbitrary execution, lateral movement). Designing a safe agent requires managing all four channels simultaneously.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The left box lists capabilities the agent needs for productivity; the right box lists the attack vectors those same capabilities enable. Each horizontal arrow labeled “enables” connects a capability to its corresponding risk – for example, “Read any file” enables “Data exfiltration.” The takeaway is that every productive capability is simultaneously an attack surface, and the safety architecture must manage all four channels at once.</p>
+<p>A naive solution asks the user about every action. Safe, but so slow nobody would use it. The opposite extreme – auto-approve everything – is one bad hallucination away from disaster. Claude Code’s answer is <strong>defense in depth</strong>: multiple independent layers, each with different strengths, so that no single failure is catastrophic.</p>
+<hr>
+</section>
+<section id="the-three-tier-permission-architecture-firewall-ids-analyst" class="level2">
+<h2 class="anchored" data-anchor-id="the-three-tier-permission-architecture-firewall-ids-analyst">The Three-Tier Permission Architecture – Firewall, IDS, Analyst</h2>
+<p><strong>Every tool invocation passes through a deterministic decision tree with three tiers: static rules, ML classifiers, and human approval.</strong></p>
+<p>The analogy to network security is precise. Each tier handles different kinds of threats at different speeds:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-three-tier-permissions" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-three-tier-permissions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-three-tier-permissions">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  INPUT["Tool Invocation&lt;br&gt;&lt;i&gt;e.g. Bash: npm test&lt;/i&gt;"]
+  T1["&lt;b&gt;TIER 1: Static Rules&lt;/b&gt; (Firewall)&lt;br&gt;Deny rules checked first, always wins&lt;br&gt;Allow rules for known-safe patterns&lt;br&gt;&lt;i&gt;Resolves in microseconds&lt;/i&gt;"]
+  T2["&lt;b&gt;TIER 2: ML Classifiers&lt;/b&gt; (IDS)&lt;br&gt;BASH CLASSIFIER: command semantics&lt;br&gt;TRANSCRIPT CLASSIFIER: conversation context&lt;br&gt;&lt;i&gt;Runs speculatively, overlaps with Tier 1&lt;/i&gt;"]
+  T3["&lt;b&gt;TIER 3: Human Approval&lt;/b&gt; (Analyst)&lt;br&gt;Allow / Deny / Always Allow&lt;br&gt;&lt;i&gt;Always Allow persists as new Tier 1 rule&lt;/i&gt;"]
+  PERMIT["&lt;b&gt;PERMIT&lt;/b&gt;"]
+  BLOCK["&lt;b&gt;BLOCK&lt;/b&gt;"]
+
+  INPUT --&gt; T1
+  T1 --&gt;|allow match| PERMIT
+  T1 --&gt;|deny match| BLOCK
+  T1 --&gt;|inconclusive| T2
+  T2 --&gt;|safe| PERMIT
+  T2 --&gt;|dangerous| BLOCK
+  T2 --&gt;|uncertain| T3
+  T3 --&gt;|user allows| PERMIT
+  T3 --&gt;|user denies| BLOCK
+
+  style PERMIT fill:#9CAF88,color:#ffffff,stroke:#7A8D68
+  style BLOCK fill:#C2856E,color:#ffffff,stroke:#A06A54
+  style INPUT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style T1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style T2 fill:#C2856E,color:#fff,stroke:#A06A54
+  style T3 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style PERMIT fill:#C4A882,color:#fff,stroke:#A08562
+  style BLOCK fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-three-tier-permissions-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: The three-tier permission decision tree for every tool invocation. Tier 1 (static rules) resolves known patterns in microseconds with deny-rules-always-win semantics. Tier 2 (ML classifiers) handles novel commands via speculative execution overlapping with Tier 1. Tier 3 (human approval) decides genuinely uncertain cases, with ‘Always Allow’ feeding back into Tier 1 as a learning loop.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at “Tool Invocation” at the top and follow the arrows downward through three tiers. Each tier either resolves the decision (arrows to PERMIT or BLOCK on the sides) or passes it to the next tier via “inconclusive” or “uncertain.” Tier 1 (static rules) resolves the fastest. Tier 2 (ML classifiers) handles novel commands. Tier 3 (human approval) is the final arbiter, and its “Always Allow” option feeds learned patterns back into Tier 1 as new static rules.</p>
+<p>The decision flow follows strict <span class="kw-sage">priority ordering</span>. Deny rules are evaluated first and cannot be overridden – they represent unconditional policy boundaries. <span class="kw-terra">Hook overrides</span> come next (a <code>PreToolUse</code> hook can return Allow, Deny, or Ask). Then ask rules, which force a user prompt even in permissive modes. Finally, allow rules and the current <span class="kw-sage">permission mode</span> resolve the remainder.</p>
+<p>The rule format uses a <code>ToolName(argument_pattern)</code> syntax with wildcard support:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode json code-with-copy"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(npm test:*)"</span><span class="ot">,</span> <span class="st">"Bash(git:*)"</span><span class="ot">,</span> <span class="st">"Read"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(rm -rf:*)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git push:*)"</span><span class="ot">]</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When a user chooses “Always Allow” at the permission prompt, the tool+argument pattern is persisted to <code>settings.json</code> as a new Tier 1 allow rule. This creates a <span class="kw-sage">learning loop</span>: a new user on an unfamiliar codebase is prompted frequently, but after a few sessions, common patterns are auto-approved. The system adapts to the user’s workflow without sacrificing safety for genuinely novel commands.</p>
+<hr>
+</section>
+<section id="the-security-ux-spectrum-seven-permission-modes" class="level2">
+<h2 class="anchored" data-anchor-id="the-security-ux-spectrum-seven-permission-modes">The Security-UX Spectrum – Seven Permission Modes</h2>
+<p><strong>Claude Code offers seven permission modes, each representing a different point on the trade-off between security and productivity.</strong></p>
+<p>This is not an accident – it reflects the reality that “the right level of security” depends entirely on context. Reviewing a stranger’s open-source project demands different constraints than running tests in a Docker container that gets destroyed after every CI job.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-seven-modes" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-seven-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-seven-modes">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart LR
+  P["&lt;b&gt;plan&lt;/b&gt;&lt;br&gt;Read-only&lt;br&gt;&lt;i&gt;Explore + plan&lt;/i&gt;"]
+  A["&lt;b&gt;ask&lt;/b&gt;&lt;br&gt;Ask for every tool&lt;br&gt;&lt;i&gt;Maximum caution&lt;/i&gt;"]
+  BU["&lt;b&gt;bubble&lt;/b&gt;&lt;br&gt;Subagent mode&lt;br&gt;&lt;i&gt;Escalate to parent&lt;/i&gt;"]
+  D["&lt;b&gt;default&lt;/b&gt;&lt;br&gt;Standard mode&lt;br&gt;&lt;i&gt;Ask for destructive&lt;/i&gt;"]
+  AE["&lt;b&gt;acceptEdits&lt;/b&gt;&lt;br&gt;Auto-approve edits&lt;br&gt;&lt;i&gt;Still ask for Bash&lt;/i&gt;"]
+  DA["&lt;b&gt;dontAsk&lt;/b&gt;&lt;br&gt;Auto-approve all&lt;br&gt;&lt;i&gt;Deny rules honored&lt;/i&gt;"]
+  BY["&lt;b&gt;bypass&lt;/b&gt;&lt;br&gt;Skip ALL checks&lt;br&gt;&lt;i&gt;YOLO mode, CI only&lt;/i&gt;"]
+
+  P --&gt; A --&gt; BU --&gt; D --&gt; AE --&gt; DA --&gt; BY
+
+  style P fill:#9CAF88,color:#ffffff,stroke:#7A8D68
+  style A fill:#9CAF88,color:#ffffff,stroke:#7A8D68
+  style BU fill:#8B9DAF,color:#ffffff,stroke:#6E7F91
+  style D fill:#B5A99A,color:#4A4A4A,stroke:#8A7F72
+  style AE fill:#B5A99A,color:#4A4A4A,stroke:#8A7F72
+  style DA fill:#C2856E,color:#ffffff,stroke:#A06A54
+  style BY fill:#A06A54,color:#ffffff,stroke:#8B5642
+  style P fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style A fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style BU fill:#C2856E,color:#fff,stroke:#A06A54
+  style D fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style AE fill:#C4A882,color:#fff,stroke:#A08562
+  style DA fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style BY fill:#8B9DAF,color:#fff,stroke:#6E7F91
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-seven-modes-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: The seven permission modes arranged from most restrictive to least restrictive. Plan mode is read-only; ask mode prompts for every tool; bubble mode escalates to a parent agent; default mode asks only for destructive actions; acceptEdits auto-approves file writes; dontAsk auto-approves everything while still honoring deny rules; bypass skips all checks entirely. All seven share a single PermissionPolicy engine with different default policies.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The seven boxes are arranged left to right from most restrictive (plan: read-only) to least restrictive (bypass: skip all checks). Follow the arrows to see the progression of increasing trust. Each box names the mode and summarizes its policy in italics. The key insight is that all seven modes share a single PermissionPolicy engine – only the default policy changes, not the underlying security logic.</p>
+<p>The key insight is that these modes share a single underlying permission engine – a <span class="kw-terra">PermissionPolicy</span> object with a configurable mode. The engine evaluates every request identically; only the default policy changes. This means the security logic is tested once but deployed in <span class="kw-slate">seven configurations</span>, reducing the chance that a permissive mode introduces a bug absent in restrictive modes.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Trade-off">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Trade-off
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <code>acceptEdits</code> mode illustrates a principled boundary. File edits are reversible via <code>git checkout</code>, so auto-approving them is a reasonable risk. Shell commands may not be reversible (a database migration, a deployed binary), so they still require approval. The reversibility of an action determines its default permission level.</p>
+</div>
+</div>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is the <strong>Policy pattern</strong> – a family of interchangeable strategies behind a uniform interface. The seven modes are seven policy instances, all implementing the same <code>authorize()</code> method.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="os-level-sandboxing-the-concrete-bunker-walls" class="level2">
+<h2 class="anchored" data-anchor-id="os-level-sandboxing-the-concrete-bunker-walls">OS-Level Sandboxing – The Concrete Bunker Walls</h2>
+<p><strong>Even if every software check fails, the OS sandbox constrains what an executed command can actually do.</strong></p>
+<p>The permission system operates at the application layer. If a prompt injection exploits a parser bug or a race condition, the executed command runs with the user’s full privileges – unless the OS prevents it. This is why Claude Code implements OS-level sandboxing as its final defensive layer.</p>
+<p>The Bash tool is the primary attack surface. It is the only tool that can execute arbitrary code, spawn processes, and access the network without constraint. File tools (Read, Write, Edit) operate through Claude Code’s own I/O layer with built-in path validation. But Bash is a direct conduit to the operating system.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-sandbox-architecture" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-sandbox-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-sandbox-architecture">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  BT["&lt;b&gt;Bash Tool&lt;/b&gt;&lt;br&gt;&lt;i&gt;primary attack surface&lt;/i&gt;"]
+  CHK{"shouldUseSandbox?"}
+  MAC["&lt;b&gt;Apple Seatbelt&lt;/b&gt;&lt;br&gt;(sandbox-exec)&lt;br&gt;FS: project dir read/write only&lt;br&gt;Network: deny by default&lt;br&gt;Process: child inherits limits&lt;br&gt;Dynamic .sb profile per cmd"]
+  LIN["&lt;b&gt;Bubblewrap / unshare&lt;/b&gt;&lt;br&gt;(namespace isolation)&lt;br&gt;User namespace&lt;br&gt;Mount: bind mounts&lt;br&gt;IPC/PID/UTS: isolated&lt;br&gt;Network: --net&lt;br&gt;Isolated HOME/TMPDIR"]
+  OVR["&lt;b&gt;dangerouslyDisableSandbox&lt;/b&gt;&lt;br&gt;Per-command override&lt;br&gt;Requires explicit user approval&lt;br&gt;&lt;i&gt;Name is deliberately alarming&lt;/i&gt;"]
+
+  BT --&gt; CHK
+  CHK --&gt;|macOS| MAC
+  CHK --&gt;|Linux| LIN
+  MAC --&gt; OVR
+  LIN --&gt; OVR
+
+  style MAC fill:#9CAF88,color:#ffffff,stroke:#7A8D68
+  style LIN fill:#8B9DAF,color:#ffffff,stroke:#6E7F91
+  style OVR fill:#C2856E,color:#ffffff,stroke:#A06A54
+  style BT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style CHK fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style MAC fill:#C2856E,color:#fff,stroke:#A06A54
+  style LIN fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style OVR fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-sandbox-architecture-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: OS-level sandbox architecture showing platform-specific isolation mechanisms. On macOS, Apple Seatbelt generates a dynamic .sb profile per command restricting filesystem, network, and process capabilities. On Linux, Bubblewrap/unshare creates isolated user, mount, IPC, PID, UTS, and network namespaces. Both platforms support per-command bypass via the deliberately alarming dangerouslyDisableSandbox flag, which requires explicit user approval.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at “Bash Tool” at the top and follow the arrow to the platform decision diamond. The flow branches left to macOS (Apple Seatbelt with dynamic .sb profiles) or right to Linux (Bubblewrap/unshare with namespace isolation). Both branches converge at the bottom on “dangerouslyDisableSandbox,” the per-command escape hatch that requires explicit user approval. The diagram shows that regardless of platform, the sandbox architecture follows the same pattern: detect the OS, apply platform-native isolation, and provide a controlled override path.</p>
+<p>On macOS, Claude Code leverages Apple’s <span class="kw-terra">Seatbelt</span> framework – the same technology that sandboxes App Store applications. Each Bash command gets a dynamically generated sandbox profile restricting filesystem access to the project directory and TMPDIR, denying network access by default, and controlling process spawning. The profile adapts to the current working directory, so the sandbox fits the project rather than applying a one-size-fits-all policy.</p>
+<p>On Linux, the sandbox uses <span class="kw-sage">namespace isolation</span> via <code>unshare</code> – the same primitive that powers Docker containers. The implementation creates isolated namespaces for <span class="kw-slate">user, mount, IPC, PID, UTS, and network</span>. The sandboxed process appears to run as root but has no actual root privileges on the host. ### Evidence-Based Bypass Detection</p>
+<p>Sometimes the sandbox is too restrictive for a legitimate command. Claude Code implements evidence-based detection: when a command fails with signatures like “Operation not permitted” or “Access denied” for paths outside allowed directories, the system infers a sandbox-caused failure and offers to retry with <code>dangerouslyDisableSandbox: true</code> – but only with explicit user approval.</p>
+<p>The per-command granularity is important. Disabling the sandbox for one <code>npm install</code> does not disable it for the next <code>rm -rf</code>. Each command is evaluated independently.</p>
+<hr>
+</section>
+<section id="command-risk-classification-the-ml-layer" class="level2">
+<h2 class="anchored" data-anchor-id="command-risk-classification-the-ml-layer">Command Risk Classification – The ML Layer</h2>
+<p><strong>Two machine learning classifiers augment the static rules, analyzing both command semantics and conversation context.</strong></p>
+<p>Static rules handle known patterns well, but real-world agent usage generates novel commands constantly. A developer asking Claude Code to “set up the project” produces commands the allow list has never seen. This is where ML classifiers fill the gap.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-ml-classifiers" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-ml-classifiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-ml-classifiers">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  INPUT["&lt;b&gt;Bash Command Input&lt;/b&gt;&lt;br&gt;&lt;i&gt;e.g. rm -rf node modules&lt;/i&gt;"]
+  BC["&lt;b&gt;BASH CLASSIFIER&lt;/b&gt;&lt;br&gt;(45 references)&lt;br&gt;Analyzes command syntax:&lt;br&gt;Filesystem mods? Network? Destructive?&lt;br&gt;&lt;i&gt;AST-level parsing via tree-sitter&lt;/i&gt;"]
+  TC["&lt;b&gt;TRANSCRIPT CLASSIFIER&lt;/b&gt;&lt;br&gt;(107 references)&lt;br&gt;Analyzes dialogue history:&lt;br&gt;Context lowers/raises risk&lt;br&gt;&lt;i&gt;Intent classification&lt;/i&gt;"]
+  RESULT["&lt;b&gt;Risk classification&lt;/b&gt;&lt;br&gt;safe / uncertain / dangerous"]
+
+  INPUT --&gt; BC
+  INPUT --&gt; TC
+  BC --&gt; RESULT
+  TC --&gt; RESULT
+
+  style BC fill:#9CAF88,color:#ffffff,stroke:#7A8D68
+  style TC fill:#8B9DAF,color:#ffffff,stroke:#6E7F91
+  style RESULT fill:#C2856E,color:#ffffff,stroke:#A06A54
+  style INPUT fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style BC fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style TC fill:#C2856E,color:#fff,stroke:#A06A54
+  style RESULT fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-ml-classifiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: The dual-classifier architecture for command risk assessment. The BASH CLASSIFIER (45 codebase references) parses command syntax via tree-sitter AST analysis, categorizing along dimensions like filesystem modification, network access, and destructiveness. The TRANSCRIPT CLASSIFIER (107 references) analyzes the full conversation history to assess intent in context. Both classifiers run speculatively in parallel with static rules, adding zero latency when static rules resolve the decision.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> A single bash command input at the top feeds into two classifiers running in parallel: the Bash Classifier (which analyzes command syntax via tree-sitter AST) and the Transcript Classifier (which analyzes the full conversation history for intent). Both arrows converge at the bottom into a single risk classification output with three possible labels: safe, uncertain, or dangerous. The dual-path design means the system evaluates both what the command does and why the model is running it.</p>
+<p>The <span class="kw-mauve">BASH_CLASSIFIER</span> focuses on command semantics. Given a shell command string, it categorizes along safety dimensions: does it modify the filesystem? Access the network? Is it destructive? Reversible? The classifier uses <span class="kw-terra">tree-sitter</span> – an incremental parsing library – to build an Abstract Syntax Tree (AST) of the command, enabling analysis that goes beyond naive string matching. It can distinguish <code>rm -rf node_modules</code> (deleting a regenerable directory) from <code>rm -rf /</code> (destroying the filesystem).</p>
+<p>The <span class="kw-mauve">TRANSCRIPT_CLASSIFIER</span> takes a wider view. It analyzes the full conversation history to classify intent and risk in context. The same command – <code>rm -rf node_modules</code> – gets different risk scores depending on whether the conversation is about “clean up and reinstall dependencies” versus a suspicious sequence suggesting prompt injection.</p>
+<p>The critical performance optimization is <span class="kw-sage">speculative execution</span>. Both classifiers start running in parallel with the static rule evaluation. If static rules resolve the decision, the classifier result is discarded – zero added latency. If static rules are inconclusive and the classifier has completed, its result informs the decision. If the classifier is still running, the system falls back to the interactive prompt. This overlap means the ML tier never slows down the common case.</p>
+<p>Both classifiers are <span class="kw-sage">feature-flagged</span>, meaning they can be enabled, disabled, or adjusted server-side without a client update. This is essential for safety infrastructure – if a classifier starts producing false positives, Anthropic can tune it within minutes.</p>
+<div class="callout callout-style-default callout-important callout-titled" title="Key Insight">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Insight
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Static rules and ML classifiers are complementary, not competing. Rules handle known patterns at zero cost. Classifiers handle novel patterns with some cost. Speculative execution ensures you pay the ML cost only when static rules cannot resolve the decision. This is the same optimization as branch prediction in CPUs – speculate on the common case, recover when wrong.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="prompt-level-guardrails-the-outermost-defense" class="level2">
+<h2 class="anchored" data-anchor-id="prompt-level-guardrails-the-outermost-defense">Prompt-Level Guardrails – The Outermost Defense</h2>
+<p><strong>The final layer operates not at code level but at prompt level, shaping the model’s behavior before any tool is invoked.</strong></p>
+<p>Claude Code’s system prompt includes several safety fragments. The <code>system-prompt-censoring-assistance-with-malicious-activities</code> fragment establishes a baseline refusal to assist with malware, exploitation, or social engineering. The coding guidelines embed OWASP top 10 awareness, steering the model away from SQL injection, XSS, and path traversal in generated code.</p>
+<p>A <span class="kw-sage">reversibility and blast-radius framework</span> instructs the model to prefer reversible actions over irreversible ones, small-scope changes over large-scope, and read-before-write patterns over blind overwrites. For auto-mode (unattended operation), additional fragments inject a <span class="kw-mauve">security monitoring persona</span> that continuously evaluates for prompt injection attempts.</p>
+<p>These prompt-level guardrails are the outermost and least reliable layer – prompt constraints can be circumvented by clever adversarial inputs. This is precisely why the system does not rely on them alone. They are the first line of defense and the broadest in scope, catching the most common issues while deeper layers handle what slips through.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Trade-off">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Trade-off
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Prompt-level safety is cheap (no runtime cost beyond tokens) and broad (covers all model behavior) but soft (bypassable by adversarial inputs). OS-level sandboxing is expensive (process overhead) and narrow (only constrains Bash) but hard (kernel-enforced). A complete system needs both.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="the-complete-safety-stack-putting-it-together" class="level2">
+<h2 class="anchored" data-anchor-id="the-complete-safety-stack-putting-it-together">The Complete Safety Stack – Putting It Together</h2>
+<p><strong>Five layers form concentric barriers, each with different strengths, ensuring no single failure is catastrophic.</strong></p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-safety-stack" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-safety-stack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-safety-stack">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  L1["&lt;b&gt;Layer 1: Prompt Guardrails&lt;/b&gt; (SOFTEST)&lt;br&gt;OWASP awareness, malicious-activity refusal,&lt;br&gt;reversibility framework, security-monitor persona"]
+  L2["&lt;b&gt;Layer 2: ML Classifiers&lt;/b&gt;&lt;br&gt;TRANSCRIPT CLASSIFIER + BASH CLASSIFIER&lt;br&gt;Feature-flagged, speculative execution"]
+  L3["&lt;b&gt;Layer 3: Permission Engine&lt;/b&gt;&lt;br&gt;7 modes, allow/deny/ask rules,&lt;br&gt;hook overrides, Always Allow learning"]
+  L4["&lt;b&gt;Layer 4: Lifecycle Hooks&lt;/b&gt;&lt;br&gt;PreToolUse gates, PostToolUse audit,&lt;br&gt;custom enforcement"]
+  L5["&lt;b&gt;Layer 5: OS Sandbox&lt;/b&gt; (HARDEST)&lt;br&gt;Seatbelt / Bubblewrap&lt;br&gt;Kernel-enforced isolation"]
+
+  L1 --&gt;|"Softer"| L2
+  L2 --&gt; L3
+  L3 --&gt; L4
+  L4 --&gt;|"Harder"| L5
+
+  style L1 fill:#F5F0E8,color:#4A4A4A,stroke:#B5A99A
+  style L2 fill:#D5CFC5,color:#4A4A4A,stroke:#B5A99A
+  style L3 fill:#B5A99A,color:#4A4A4A,stroke:#8A7F72
+  style L4 fill:#8B9DAF,color:#ffffff,stroke:#6E7F91
+  style L5 fill:#6E7F91,color:#ffffff,stroke:#4A5A6A
+  style L1 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style L2 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style L3 fill:#C2856E,color:#fff,stroke:#A06A54
+  style L4 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style L5 fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-safety-stack-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: The complete five-layer safety stack arranged from softest to hardest enforcement. Layer 1 (prompt guardrails) shapes model behavior via OWASP awareness and reversibility heuristics. Layer 2 (ML classifiers) runs speculative risk assessment with feature-flagged control. Layer 3 (permission engine) applies seven configurable modes with allow/deny/ask rules. Layer 4 (lifecycle hooks) enables custom PreToolUse gates and PostToolUse audit. Layer 5 (OS sandbox) provides kernel-enforced Seatbelt or Bubblewrap isolation. An attack must penetrate all five concentric layers to cause harm.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at Layer 1 (Prompt Guardrails) at the top – the softest, broadest defense – and follow the arrows downward through increasingly hard enforcement to Layer 5 (OS Sandbox) at the bottom – the hardest, narrowest defense. Each layer catches threats that slip past the layer above it. An attack must penetrate all five concentric layers to cause harm, which is the essence of defense in depth.</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p><strong>Safety in AI agents is an architecture problem, not a feature.</strong> Claude Code’s five-layer defense is not a checklist of security features bolted on after the fact. It is a structural element woven through every tool invocation, from the broadest prompt-level guidelines to the narrowest kernel-enforced sandbox. Each layer is independently valuable, but their power comes from composition.</p>
+<p><strong>The security-UX trade-off is a spectrum, not a binary.</strong> Seven permission modes let users choose friction levels appropriate to context. The same engine powers all seven – only the default policy changes. This is the Policy pattern applied to security, and it means security logic is tested once but deployed in seven configurations.</p>
+<p><strong>Static rules and ML classifiers are complementary, not competing.</strong> Rules handle the known at zero cost; classifiers handle the novel with some cost. Speculative execution ensures the ML layer adds latency only when needed. This parallels how CPUs use branch prediction – speculate on the common case, recover when wrong.</p>
+<p><strong>The OS sandbox is the layer of last resort.</strong> When every software check has been bypassed – through bugs, blind spots, or social engineering – the sandbox constrains what is physically possible. It is the concrete bunker walls behind the security guards. The evidence-based bypass detection ensures the sandbox does not make the tool unusable, while the deliberately alarming <code>dangerouslyDisableSandbox</code> name prevents casual misuse.</p>
+<p><strong>The system learns from its users.</strong> Every “Always Allow” at the permission prompt becomes a new static rule, reducing future friction. A new user on an unfamiliar codebase is prompted frequently; after a few sessions, the same user is rarely interrupted. The permission system adapts to workflows without requiring explicit configuration.</p>
+<hr>
+<p><em>Next in the series: <a href="./11-hooks-lifecycle.html">Part II.3: Hooks &amp; Lifecycle</a> and <a href="./10-model-context-protocol.html">Part VI.1: Model Context Protocol</a> – Claude Code’s extension points and the design patterns that make a single binary serve diverse workflows.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./05-tool-system.html" class="pagination-link" aria-label="IV.1 — Tool System &amp; Registry">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">IV.1 — Tool System &amp; Registry</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./08-cli-commands-ui.html" class="pagination-link" aria-label="V.1 — CLI, Commands &amp; UI">
+        <span class="nav-page-text">V.1 — CLI, Commands &amp; UI</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>

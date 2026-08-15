@@ -1,6 +1,6 @@
-% ==================== 章节2：从 GPT-2 到 Kimi K3 ====================
+% ==================== 章节2：从 GPT-2 到 Kimi K3——模型是怎么记住越来越多东西的 ====================
 
-\hirochapter{从 GPT-2 到 Kimi K3}
+\hirochapter{从 GPT-2 到 Kimi K3——模型是怎么记住越来越多东西的}
 
 % Compact vector diagrams for the B5 page.
 \tikzset{
@@ -64,7 +64,7 @@
 
 “不对，我觉得是 AI 酱和我们一样做了各种各样的练习，变得更厉害了”
 
-“呼呼，答案都不正确。”广打开两个新的github仓库，“语料库、训练方法、agent架构……都有很大的进步，我们今天来就最重要的模型架构来讲起吧”
+“呼呼，答案都不正确。”广边说边用浏览器打开两个github仓库，“语料库、训练方法、agent架构…等等，其实都有很大的进步呢，我们今天来就最重要的模型架构来讲起吧”
 
 屏幕左右各放着一份结构说明：2019 年的 GPT-2，以及 2026 年的 Kimi K3。
 
@@ -95,8 +95,6 @@ return logits
 
 我们暂时不关心批量计算，先忽略注释里的 $B$。$T$ 表示这次读入多少个 token，$C$ 表示每个 token 用多长的向量来表示。词嵌入的形状是 $(B,T,C)$；位置嵌入没有批量维，会复用到同一批的每条序列上。后面的 block 始终接收并返回类型不变的 \texttt{x}。
 
-被反复加工内容的是 \texttt{x = block(x)}。一个 block 里，因果自注意力毁让较后的 token 利用已经出现的前文，MLP 再逐个位置处理汇集后的特征。计算结果通过残差连接加回原表示，所以每一层做的更像是在已有理解上补一笔，而不是把整句话推倒重算。
-
 \begin{lstlisting}[language=Python,caption={带注意力与 MLP 的 Transformer block}]
 class Block(nn.Module):
     def __init__(self, config):
@@ -111,6 +109,9 @@ class Block(nn.Module):
         x = x + self.mlp(self.ln_2(x))
         return x
 \end{lstlisting}
+
+
+被反复加工内容的是 \texttt{x = block(x)}。一个 block 里，因果自注意力毁让较后的 token 利用已经出现的前文，MLP 再逐个位置处理汇集后的特征。计算结果通过残差连接加回原表示，所以每一层做的更像是在已有理解上补一笔，而不是把整句话推倒重算。
 
 \begin{figure}[htbp]
 \centering
@@ -202,9 +203,9 @@ Key 决定“从哪里取”，Value 决定“取回什么”，两者分工不�
 
 上面的公式只是一次注意力计算。一条完整回复会反复运行公式计算：每得到一个 token，就把它接到已有序列末尾，再计算下一个。“下车以后再跑”看起来是一句话，模型实际完成的是若干次这样的续写。
 
-第一次运行时，提示词、人物说明和聊天记录都已经存在。模型会一次处理这段输入，并算出各层、各个位置的 Key 和 Value；这一阶段叫作 \textit{prefill}。此后进入 \textit{decode}。每一轮只多出一个 token：它经过模型各层，与此前内容计算注意力，最后一个位置的 logits 再交给解码程序选出后续 token。新结果接回序列，下一轮继续。
+模型在收到用户发送的消息后，会把提示词、人物说明和聊天记录都全部作为前置的输入，一次性并算出各层、各个位置的 Key 和 Value；这一阶段叫作 \textit{prefill}。此后进入 \textit{decode}。每一轮只多出一个 token：它经过模型各层，与此前内容计算注意力做结合，生成最后一个位置的 logits 再交给解码程序选出后续 token。新结果接回序列，下一轮继续。
 
-如果每轮都从头计算，提示词和已经生成的回复会被反复投影成同样的 Key 和 Value。KV Cache 把各层已经算出的 Key 和 Value 留下来。decode 时只需计算新 token 的投影，让它的 Query 读取缓存中的历史，再把新得到的 Key、Value 追加到末尾。
+由此可以看出，在一个任务中，由于前置的输入是累加的，会有大量的重复计算。如果把这些相同的计算重复做一遍，效率会很低。GPT-2 对于这个问题，有一个很重要的优化：KV Cache。它通过把各层已经算出的 Key 和 Value 储存下来，使得在下一轮 decode 时只需计算新 token 的投影，从而加快计算速度。
 
 \begin{lstlisting}[language=Python,caption={带 KV Cache 的 Softmax 注意力核心}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -223,20 +224,20 @@ out = attn @ v
 return self.o_proj(merge_heads(out)), (k, v)
 \end{lstlisting}
 
-KV Cache 能够节省重复计算的成本，但是没法省掉记录历史信息的成本。序列每增加一个 token，缓存仍要增加一组 Key 和 Value；上下文越长，decode 时需要保存和读取的内容也越多。随着问题的复杂化，接下来问题的是：能不能不再逐个保存这些 K、V，却仍让后面的 token 用到前文？
+KV Cache 能够节省重复计算的成本，但是也相应增加了历史信息记录的成本。序列每增加一个 token，缓存就要增加一组 Key 和 Value；上下文越长，decode 时需要保存和读取的内容也越多。随着问题的复杂化，另一个问题随即浮现：能不能不再逐个保存这些 K、V，却仍让后面的 token 用到前文？
 
 \section{线性注意力与固定状态}
 
-线性注意力给出的办法，是不再为每个早期 token 保留独立的 Key 和 Value，而是把它们逐步合并到一个固定大小的状态中。缓存不再随序列长度增长，代价是注意力的计算方式也必须改变。\cite{linear-transformer}
+线性注意力给出的办法是，不再为每个早期 token 保留独立的 Key 和 Value，选择对它们做压缩处理，把它们合并到一个固定大小的抽象状态中。这样缓存不会随序列长度增长，而相应的也意味着注意力的算法也会随之改变。\cite{linear-transformer}
 
-标准注意力先计算 $QK^{\mathsf T}$，再做 Softmax。由于 Softmax 位于两次矩阵乘法之间，不能简单地把计算改写成 $Q(K^{\mathsf T}V)$。线性注意力改为分别映射 Query 和 Key，例如：
+标准注意力先计算 $QK^{\mathsf T}$，再做 Softmax。由于 Softmax 位于两次矩阵乘法之间，所以没法简单地把计算改写成 $Q(K^{\mathsf T}V)$。但是我们可以把注意力改为分别映射 Query 和 Key，例如：
 
 \[
 \phi(q)=\operatorname{ELU}(q)+1,\qquad
 \phi(k)=\operatorname{ELU}(k)+1.
 \]
 
-映射后的结果为正，后续归一化也可以拆开计算。此前的 Key 和 Value 便能先合并为两个状态：
+映射后的结果为正，后续归一化也可以拆开计算。这样此前的 Key 和 Value 便能先合并为两个状态：
 
 \[
 S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
@@ -244,7 +245,7 @@ S_t=\sum_{i=1}^{t}\phi(k_i)^{\mathsf T}v_i,
 z_t=\sum_{i=1}^{t}\phi(k_i),
 \]
 
-第 $t$ 个 Query 再从中计算输出：
+有了这两个状态，第 $t$ 个 Query 就可以直接计算输出：
 
 \[
 o_t=
@@ -252,11 +253,11 @@ o_t=
      {\phi(q_t)z_t}.
 \]
 
-这里的 $S_t$ 累积 Key 与 Value 的外积，$z_t$ 累积映射后的 Key，用于分母中的归一化。只要 head 维度不变，两者的形状就不会随序列长度改变。decode 不再携带全部 K、V，只需携带当前的 $S_t$ 和 $z_t$。
+可以把 $S_t$ 和 $z_t$ 看成两本随读取不断更新的账。$S_t$ 是内容账本：每读入一个 token，就按照它的 Key 特征，把对应的 Value 累加进去。$z_t$ 是权重账本，它只累加同一批 Key 特征，不保存 Value。
 
-$S_t$ 记录的是“各个 Key 方向累计写入了哪些 Value”，$z_t$ 则记录这些方向一共积累了多少权重。Query 乘上 $S_t$ 得到加权后的 Value 总量，再除以 Query 乘上 $z_t$ 得到的权重总量。少了 $z_t$，序列越长，状态中累积的数值通常也会越大，输出就不再对应归一化的加权平均。
+读取时，当前 Query 用 $\phi(q_t)S_t$ 从内容账本中取出与自己匹配的 Value 总量，再用 $\phi(q_t)z_t$ 算出这些内容对应的权重总量。两者相除，就能得到归一化后的输出。
 
-$\operatorname{ELU}+1$ 只是一种可拆分计算的非负特征映射，并不等同于 Softmax。两种方法都会归一化分数并对 Value 求加权和，但它们产生权重的方式不同，不能把线性注意力理解成对标准注意力的等价改写。
+因此，decode 不必继续携带此前每个 token 的 K、V，只需保留固定大小的 $S_t$ 和 $z_t$。$\operatorname{ELU}+1$ 的作用，是把 Query 和 Key 映射成非负特征，使上面的累计与归一化可以拆开计算。它产生的权重并不是 Softmax 权重，所以线性注意力不是标准注意力的等价改写。
 
 \begin{lstlisting}[language=Python,caption={把历史 K、V 折叠进固定状态}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -322,11 +323,11 @@ return self.o_proj(merge_heads(out)), (S, z)
 \label{fig:ch02-cache-vs-state}
 \end{figure}
 
-固定状态节省空间的方式，是把不同位置的信息写入同一个矩阵。它无法像 KV Cache 那样，始终为每个 token 保留一份相互分离的 Key 和 Value。写入次数超过状态可以清楚区分的范围后，不同关联就会互相干扰。
+固定状态之所以省空间，是因为它不再保留每个 token 各自的 K、V，而是把所有 Key--Value 关联累加到同一个矩阵 $S_t$ 中。但这样做也是有代价的，$S_t$ 只留下合并后的结果，看不出某一部分由哪个 token 写入，也不能按 token 把它单独删掉。
 
-这种干扰可以从更新式直接看出来。若两个 Key 的方向接近，它们的外积会写入 $S_t$ 的相近部分；纯加法只会把新的 Value 继续叠上去，不能先移除旧关联。之后沿这个方向查询时，输出便可能同时包含新旧两次写入的成分。
+假设前文已经沿某个 Key 方向写入旧 Value，后文又用相近的 Key 写入新 Value。两次外积会修改 $S_t$ 中重叠的部分，而纯加法只会把新内容叠在旧内容上，不会判断新值是在补充旧值，还是应该替换旧值。之后再用相近的 Query 读取，输出就可能同时带有新旧 Value 的成分。随着写入继续累积，这类重叠会越来越多，固定状态也就出现容量过载。
 
-因此，固定状态带来了新的问题：在不恢复逐 token 缓存的前提下，怎样修改已经写入的关联？
+就这样的，为了保证上下文于的快速处理，出现了一个新的问题：“怎样在不恢复逐 token 缓存的情况下，能够灵活地改写其中一条关联？”
 
 \subsection{Delta Rule}
 
@@ -336,7 +337,7 @@ return self.o_proj(merge_heads(out)), (S, z)
 S_t=S_{t-1}+k_t^{\mathsf T}v_t,
 \]
 
-Delta Rule 修改了写入动作。它先用当前 Key 从状态中读出旧值，再计算目标 Value 与旧值的差，只把这部分差写回状态。\cite{fast-weight}
+Delta Rule 改的正是这一步。它不再把新的 Value 直接加进状态，而是先用当前 Key 读出旧值，再比较旧值与目标 Value，最后只把两者的差写回去。\cite{fast-weight}
 
 \begin{lstlisting}[language=Python,caption={带逐 token 写入强度的 Delta 更新}]
 q, k, v = split_heads(self.qkv_proj(x))
@@ -353,15 +354,15 @@ out = q @ S
 return self.o_proj(merge_heads(out)), S
 \end{lstlisting}
 
-这里的 $\beta$ 控制本次更新的强度。Key 经过归一化后，如果状态中只有关联 $k^{\mathsf T}v$，再用同一个 $k$ 读取，就会得到 $v$。因此，$v-v_{\mathrm{old}}$ 表示当前读出与目标值之间的误差。
+代码中的 $u$ 就是这次真正要写入的修正量，$\beta$ 控制修正的幅度。Key 经过归一化后，如果状态中只写有 $k^{\mathsf T}v$ 这一条关联，再用同一个 $k$ 读取，就能取回 $v$。因此，$v-v_{\mathrm{old}}$ 衡量的是“当前读到的内容”距离“现在想写入的内容”还有多远。
 
-从同一个 Key 方向把更新式再读一次，效果会更清楚。记 $v_{\mathrm{old}}=k_tS_{t-1}$，并令 $\lVert k_t\rVert=1$，则
+沿同一个 Key 方向读取更新后的状态，可以直接看出这次修正的结果。记 $v_{\mathrm{old}}=k_tS_{t-1}$，并令 $\lVert k_t\rVert=1$，则
 
 \[
 k_tS_t=(1-\beta_t)v_{\mathrm{old}}+\beta_t v_t.
 \]
 
-$\beta_t=0$ 时状态不变；$\beta_t=1$ 时，当前 Key 方向的读出更新为目标 Value；中间值则在两者之间插值。这个结论依赖单位 Key 的简化条件，相近方向上的其他关联仍可能受到更新影响。
+$\beta_t=0$ 时，仍然读到旧值；$\beta_t=1$ 时，这个 Key 方向会被改写成目标 Value；取中间值时，新旧内容按比例过渡。这里假设 Key 已归一化，而且只考察当前方向。实际状态中若还有相近的 Key，它们对应的关联仍可能被这次更新波及。
 
 \begin{figure}[htbp]
 \centering
@@ -407,7 +408,7 @@ $\beta_t=0$ 时状态不变；$\beta_t=1$ 时，当前 Key 方向的读出更新
 
 \subsection{分块并行}
 
-Delta Rule 可以修改已有的关联，但第 $i$ 个 token 的更新仍然依赖第 $i-1$ 步留下的状态。按 token 顺序实现时，代码很直接：
+Delta Rule 使得线性计算可以改写关联，但是计算顺序也因此变得更难拆开。第 $i$ 个 token 必须先看到第 $i-1$ 步更新后的状态，才能知道自己应该写入多少差值。
 
 \begin{lstlisting}[language=Python,caption={顺序执行的 Delta 更新}]
 S = torch.zeros(B, H, D, D) if cache is None else cache
@@ -423,11 +424,11 @@ for i in range(T):
 out = torch.cat(outs, dim=2)
 \end{lstlisting}
 
-这种顺序依赖在 decode 阶段不是主要问题，因为下一个 token 本来就要等上一个 token 生成。训练和 prefill 则不同：整段输入已经给出，如果每个位置仍要等待前一个位置更新完状态，就无法充分并行计算。
+在 decode 阶段时，Delta Rule 带来的顺序计算问题不成问题，因为 token 本来就是逐个生成的。真正的困难出现在 prefill 和训练阶段，由于会一次性出现整段输入，这个时候如果状态仍要按 token 逐步更新，就无法充分利用 GPU 的并行计算。
 
-一种实现办法是把序列切成若干 chunk。块与块之间继续顺序传递状态，块内则把递归更新重新参数化成矩阵运算。于是，一个块的输出由两部分组成：从前一个块继承的状态，以及当前块内较早位置产生的更新。
+解决办法是把序列切成若干 chunk。chunk 之间仍按顺序传递最终状态，chunk 内部则把连续的 Delta 更新改写成矩阵运算。这样，每个位置读取的信息可以分成两部分：进入当前 chunk 以前已经积累的状态，以及当前 chunk 中更早位置刚刚写入的内容。
 
-难点在于，块内第二个位置的修正已经受第一个位置影响，不能把所有 Delta 当成彼此独立的外积一次相加。下面的 \texttt{Tmat} 正是用来整理这种块内依赖：它把较早 Key 对较晚更新的影响吸收到 $W$ 和 $U$ 中。外层仍按块推进，块内才有机会改写成适合矩阵乘法的计算。
+不过，只把序列切块还不够。chunk 内第二个位置的修正已经受到第一个位置影响，因此不能把所有 Delta 当作互不相关的外积直接相加。下面的 \texttt{Tmat} 会先整理这些先后依赖，再把结果吸收到 $W$ 和 $U$ 中。外层循环仍然逐个处理 chunk，块内的多个位置则可以一起进入矩阵计算。
 
 \begin{lstlisting}[language=Python,caption={重参数化后的 chunk Delta 核心}]
 Q, K, V = map(lambda x: x.reshape(-1, C, D), (Q, K, V))
@@ -490,21 +491,21 @@ for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
 \label{fig:ch02-chunk}
 \end{figure}
 
-若一个 chunk 覆盖整段序列，块内交互会回到二次计算量，但其中执行的仍是 Delta 更新，并不等同于标准 Softmax 注意力。若 chunk 只含一个 token，算法就退化为完全递归的实现。chunk 大小由此决定块内并行与块间顺序更新的比例。
+chunk 越大，块内可以同时计算的位置越多，$QK^{\mathsf T}$ 的开销也越高。若一个 chunk 覆盖整段序列，块内计算量会回到二次规模，但执行的仍是 Delta 更新，并不等同于标准 Softmax 注意力；若每个 chunk 只有一个 token，就回到了完全递归的实现。
 
-图中的两项对应代码里的两个输出：$\texttt{out\_inter}=Q_iS_{i-1}$ 读取进入当前块以前的状态，$\texttt{out\_intra}$ 用带因果掩码的 $Q_iK_i^{\mathsf T}$ 汇总块内较早位置的更新。两部分相加得到当前块的输出。
+代码也按这两部分组织。\texttt{out\_inter} 用 $Q_iS_{i-1}$ 读取当前 chunk 开始以前的历史；\texttt{out\_intra} 使用带因果掩码的 $Q_iK_i^{\mathsf T}$，汇总同一 chunk 内已经发生的更新。两者相加，才是当前位置能够看到的完整信息。
 
-chunk 规定的是计算粒度，不是上下文窗口。一个块结束后，最终状态仍会交给下一个块，因此较早信息不会仅因跨过块边界而被丢弃。
+chunk 只是计算时的分组，不是新的上下文窗口。一个 chunk 结束后，最终状态会继续交给下一个 chunk，早期信息不会因为跨过边界就自动消失。
 
-Delta 更新之所以难以直接并行，是因为每次修正都要先知道更新前的读出。论文使用广义 Householder 转移矩阵重新参数化块内的连续更新，把它们整理成可以批量计算的矩阵。状态仍在块间递归，块内计算则可以使用矩阵运算并行完成。
+因此，分块没有取消 Delta Rule 的递归，而是把递归留在 chunk 之间。广义 Householder 转移矩阵负责把 chunk 内连续的“先读再改”重新参数化，让这些修正能够批量计算。模型仍然沿序列传递状态，只是不再需要为每个 token 单独启动一次计算。
 
 \section{门控与 KDA}
 
 \subsection{Gated DeltaNet}
 
-Delta Rule 只会在新的 Key 到来时修正相关方向。如果上下文已经切换，一些旧关联可能再也等不到对应的新值，却仍保留在固定状态中。要释放这部分容量，还需要让旧状态随时间衰减。
+Delta Rule 只有在新的 Key 到来时，才会修正与它相关的方向。可一旦话题切换，有些旧关联不会再等到明确的新值，却仍占着固定状态的容量。此时只会“改写”还不够，状态还需要主动遗忘。
 
-Gated DeltaNet 为旧状态增加了保留系数 $\alpha_t$。\cite{gated-delta}
+Gated DeltaNet 就是来实现“遗忘”功能的，它用保留系数 $\alpha_t$ 控制每一步还留下多少旧状态。\cite{gated-delta}
 
 \[
 S_t=
@@ -521,7 +522,7 @@ u = beta * (v - v_old)
 S = alpha * S_old + k.transpose(-1, -2) @ u
 \end{lstlisting}
 
-式中，$\alpha_t$ 先缩放整个旧状态，$\beta_t$ 再控制当前 Key 方向上的 Delta 更新强度。前者决定旧状态整体保留多少，后者决定本次误差修正多少。两项计算共同得到新的 $S_t$。
+这个更新式同时做两件事。$\alpha_t$ 先缩放整个 $S_{t-1}$，决定旧内容保留多少；$\beta_t$ 再控制当前 Key 方向的修正幅度。前者负责遗忘，后者负责把眼前这条关联改到更接近目标 Value 的位置。
 
 \begin{figure}[htbp]
 \centering
@@ -589,17 +590,17 @@ S = alpha * S_old + k.transpose(-1, -2) @ u
 \label{fig:ch02-gated-delta}
 \end{figure}
 
-$\alpha_t=1$ 时，旧状态在这一步不发生衰减；$\alpha_t$ 越接近零，旧状态保留得越少。一项信息从第 $r$ 步保留到第 $t$ 步，要连续经过中间每一步的门控，因此累计保留比例近似为：
+$\alpha_t=1$ 时，这一步完整保留旧状态；$\alpha_t$ 越接近零，遗忘得越多。一项信息若在第 $r$ 步写入，要留到第 $t$ 步，就必须连续通过中间的每一道门，因此累计保留比例近似为：
 
 \[
 \prod_{i=r+1}^{t}\alpha_i.
 \]
 
-连续一百步都取 $\alpha=0.99$，累计保留比例约为 $0.366$；若取 $0.999$，则约为 $0.905$。即使单步门值都接近 1，长序列上的累计差异也会很明显。
+例如，连续一百步都取 $\alpha=0.99$，最初的信息最后只剩约 $0.366$；若改为 $0.999$，则还能保留约 $0.905$。两个门值看起来都很接近 1，但是在经历数轮的反复相乘之后，却是天壤之别。
 
 \subsection{Kimi Delta Attention}
 
-Gated DeltaNet 同时具备误差修正和状态衰减，但每个 token、每个 head 的 $\alpha_t$ 仍是一个标量。在同一个时间步内，该 head 的所有状态通道都按相同比例缩放。Kimi Delta Attention（KDA）把标量门改成向量门，让不同通道使用不同的保留系数。\cite{kimi-linear}
+Gated DeltaNet 已经能一边修正关联、一边衰减旧状态，但它的 $\alpha_t$ 仍是标量。对同一个 token 和 head 来说，所有状态通道只能一起保留，或一起遗忘。Kimi Delta Attention（KDA）把这个标量换成向量，让每个通道拥有自己的保留系数。\cite{kimi-linear}
 
 \[
 \boldsymbol{\alpha}_t
@@ -610,7 +611,7 @@ S_t=
 +\Delta S_t.
 \]
 
-对角矩阵的写法表示，$S_{t-1}$ 的不同行可以乘上不同的系数。于是，同一个 head 在同一步里也能让一部分通道缓慢遗忘，让另一部分通道迅速让位给新内容。Delta 项仍负责修正当前 Key 指向的关联；KDA 改变的是旧状态被保留的粒度。
+$\operatorname{diag}(\boldsymbol{\alpha}_t)$ 表示 $S_{t-1}$ 的不同行可以分别乘上不同系数。同一个 head 因而能够让一部分通道长期保留信息，同时让另一部分通道更快腾出空间。右侧的 $\Delta S_t$ 仍负责修正当前关联；KDA 改变的是遗忘旧状态时的控制粒度。
 
 \begin{figure}[htbp]
 \centering
@@ -642,17 +643,17 @@ S = alpha[..., None, None] * S + delta  # scalar gate
 S = alpha[..., :, None] * S + delta     # channel gate
 \end{lstlisting}
 
-向量门没有增加状态矩阵的大小，改变的是各通道的衰减粒度。训练后，一些通道可以保留较大的门值，让信息经过更多 token；另一些通道可以更快衰减，减少较早内容对当前状态的影响。至于各通道最终承担什么功能，并没有预先规定。
+状态矩阵并没有因此变大，模型只是获得了更细的遗忘控制。训练可以让某些通道保持较大的门值，使信息延续更多 token；也可以让另一些通道迅速衰减，少受早期内容干扰。哪些通道承担长期或短期记忆，并不是事先指定的。
 
-到这里，固定状态已经可以累积信息、按误差修正关联，并以逐通道门控衰减旧内容。不过，状态大小仍然固定，被合并的位置细节不会因为门控更精细而重新出现。这正是 Kimi Linear 仍然保留 Softmax 注意力的原因。
+KDA 能累积信息、修正关联，也能逐通道清理旧内容，却没有改变固定状态本身的容量。早期 token 一旦被合并，原来的位置细节不会因为门控更精细而重新出现。若模型仍需要按位置回看完整上下文，就要保留另一条检索路径。
 
 \section{Kimi Linear 与 Kimi K3}
 
 \subsection{KDA 与 Kimi Linear}
 
-Kimi Linear 将 KDA 与 Multi-head Latent Attention（MLA）交错排列。多数层使用 KDA，在固定状态上完成读写；每隔三层插入一层 MLA，对 token 序列执行一次 Softmax 注意力。前者控制大部分层的缓存大小，后者保留按位置检索上下文的能力。
+Kimi Linear 没有要求固定状态独自承担全部记忆，而是把 KDA 与 Multi-head Latent Attention（MLA）交错排列。连续三层使用 KDA，通过固定大小的状态处理大部分读写；随后插入一层 MLA，对 token 序列执行 Softmax 注意力。KDA 控制主要的缓存开销，MLA 则定期补回按位置检索完整上下文的能力。
 
-Kimi Linear 论文报告，在其受控实验中，这种混合结构的质量超过对应的全注意力基线，解码吞吐量最高提升 6 倍。该结果依赖论文给定的模型、任务与硬件条件，不能直接外推到所有部署。\cite{kimi-linear}
+在 Kimi Linear 论文的受控实验中，这种混合结构在相同训练配置下取得了更好的模型质量。面对 1M token 的上下文时，它还将 KV Cache 用量最多减少 75\%，解码吞吐量最高提升 6 倍。这些结果说明，KDA 与 MLA 的混合结构能够降低长上下文推理的成本。
 
 \begin{figure}[htbp]
 \centering
@@ -666,7 +667,7 @@ Kimi Linear 论文报告，在其受控实验中，这种混合结构的质量�
   (lc) at (6.50,1.85) {KDA\\$\downarrow$\\MoE};
 \node[chbox,fill=orange!16,minimum width=2.15cm,minimum height=1.12cm]
   (ld) at (9.10,1.85) {MLA\\$\downarrow$\\MoE};
-\draw[chflow] (la) -- (lb);
+\draw[chflow] (la) -- (lb);22
 \draw[chflow] (lb) -- (lc);
 \draw[chflow] (lc) -- (ld);
 \node[chnote,anchor=west] at (10.35,1.85) {继续下一周期};
@@ -700,15 +701,15 @@ Kimi Linear 论文报告，在其受控实验中，这种混合结构的质量�
 
 \subsection{Kimi K3}
 
-Kimi K3 沿用了 Kimi Linear 的混合方式。前 92 层由 23 个四层周期组成，每个周期依次包含三层 KDA 和一层 Gated MLA；第 93 层再使用一层 Gated MLA。整条主干因此共有 69 个 KDA 层和 24 个 Gated MLA 层。\cite{kimi-k3}
+Kimi K3 把这套混合方式扩展成 93 层主干。前 92 层组成 23 个四层周期，每个周期依次放置三层 KDA 和一层 Gated MLA；最后的第 93 层再使用一层 Gated MLA。合计下来，模型包含 69 个 KDA 层和 24 个 Gated MLA 层。\cite{kimi-k3}
 
-在每个周期中，前三层通过 KDA 读取并更新固定状态；第四层通过 MLA 访问按位置保存的 token 上下文。MLA 的输出还要经过门控，模型可以调节这次检索结果写入残差流的比例。两种注意力分别保留固定状态的空间优势和 Softmax 注意力的位置检索能力。
+四层周期把两种记忆路径固定成一种节奏：前三层连续更新压缩状态，第四层重新查看按位置保存的 token。Gated MLA 还会给检索结果加一道输出门，决定其中有多少进入残差流。模型因此不必在“固定状态”与“完整上下文”之间二选一，而是让它们承担不同频率的读取任务。
 
-每层注意力之后还有前馈网络。第 1 层使用稠密前馈网络，其余层使用 LatentMoE。LatentMoE 包含 896 个路由专家和 2 个共享专家：共享专家始终参与，路由器再为每个 token 选择 16 个路由专家。Kimi K3 的总参数量为 2.8 万亿，但每个 token 只激活约 1040 亿参数。MoE 由此把模型的总参数容量与单个 token 实际经过的计算量分开。\cite{kimi-k3}
+注意力之后还要经过前馈网络。Kimi K3 只有第 1 层使用稠密前馈网络，其余层都使用 LatentMoE。它包含 2 个始终参与计算的共享专家，以及 896 个由路由器选择的专家；每个 token 只会调用其中 16 个路由专家。模型共有 2.8 万亿参数，但一次只为每个 token 激活约 1040 亿参数。\cite{kimi-k3}
 
-这里的两个参数量不能互相替代。2.8 万亿描述模型拥有的全部专家权重，部署时仍要容纳这些权重；约 1040 亿描述一个 token 经过路由以后实际调用的部分。MoE 节省的是每次前向传播都遍历全部参数的计算，并不是把整个模型缩成了 1040 亿参数。
+这两个数字描述的不是同一件事。2.8 万亿是全部专家权重，部署时仍需保存；约 1040 亿是一个 token 经过路由后实际使用的参数。MoE 减少的是单次前向传播需要参与计算的权重，并没有把模型的存储规模缩成 1040 亿参数。
 
-Gated MLA 还使用 Query LoRA 压缩 Query 投影，并在输出进入残差流以前增加门控。Query LoRA 减少这一分支的参数与计算，输出门则调节注意力结果的写入强度。
+Gated MLA 的 Query 投影还经过 LoRA 压缩，并在输出进入残差流前增加门控。前者缩小 Query 分支的参数与计算，后者控制本次检索结果对后续表示产生多大影响。
 
 \begin{figure}[htbp]
 \centering
@@ -748,7 +749,7 @@ Gated MLA 还使用 Query LoRA 压缩 Query 投影，并在输出进入残差流
 \label{fig:ch02-k3-cycle}
 \end{figure}
 
-注意力更新完成后，token 表示进入前馈网络。Kimi K3 的专家使用 SiTU 激活函数：输入沿最后一维分成 gate 与 up 两部分，两条分支都可以用可学习参数控制双曲正切的饱和范围。
+进入前馈网络后，token 表示会被送入选中的专家。Kimi K3 的专家使用 SiTU 激活函数：输入沿最后一维分成 gate 和 up 两部分，两条分支都用可学习参数控制双曲正切的饱和范围。
 
 \begin{lstlisting}[language=Python,caption={SiTU 激活函数}]
 d = x.shape[-1] // 2
@@ -765,7 +766,7 @@ if self.linear_beta is not None:
 return (situ_a * up).to(x.dtype)
 \end{lstlisting}
 
-式中的 $\beta\tanh(x/\beta)$ 在零附近近似 $x$，输入的绝对值增大后则趋近 $\pm\beta$。Gate 分支还要乘以 sigmoid，up 分支可以使用另一组参数完成同样的限制。路由器负责选择专家，SiTU 负责专家内部的非线性变换，两者处在不同层次。
+在 $x$ 接近零时，$\beta\tanh(x/\beta)$ 近似于 $x$；随着 $|x|$ 增大，输出逐渐限制在 $\pm\beta$ 附近。gate 分支还会乘上 sigmoid，up 分支则可以用另一组参数限制幅度。路由器决定一个 token 进入哪些专家，SiTU 决定专家内部怎样变换输入，二者不要混为一谈。
 
 \begin{figure}[htbp]
 \centering
@@ -826,23 +827,21 @@ return (situ_a * up).to(x.dtype)
 \label{fig:ch02-latent-moe}
 \end{figure}
 
-图中的 down projection 先把输入压到较低维的潜空间，专家完成计算后，up projection 再把结果映射回模型维度。专家路由减少每个 token 实际调用的专家数量，潜空间投影则减少每个专家内部的计算宽度。
+图中的 down projection 先把输入压到较低维的潜空间，专家在这个空间中完成计算，再由 up projection 映射回模型维度。路由减少每个 token 调用的专家数量，潜空间投影减少每个专家处理的向量宽度；两项设计分别从专家数量和专家内部规模上控制计算量。
 
 \subsection{AttnRes}
 
-KDA 与 MLA 处理的是 token 序列上的信息传递。Kimi K3 有 93 层，表示在网络深度上的传递也需要处理：后面的层怎样使用较早层产生的表示？
+KDA 与 MLA 都沿 token 序列读取信息，但 Kimi K3 还有 93 层网络深度。同一个 token 穿过这些层时，表示会被反复加工，浅层结果也会逐渐混入后续残差流。深层如果想重新取用某个较早的表示，就需要另一条读取路径。AttnRes 处理的正是这个问题：MLA 检索早期 token，AttnRes 检索早期层，二者的对象并不相同。
 
-这是另一条轴。KDA 和 MLA 讨论同一层里，当前 token 怎样取得前面 token 的信息；接下来的 AttnRes 讨论同一个 token 穿过许多层以后，深层计算怎样重新取用浅层表示。两种机制都使用“注意力”，检索的对象却不同。
-
-普通残差网络不断累加此前各层的输出。用简化写法表示，第 $l$ 层看到的是
+普通残差连接会把此前各层的输出一路相加。简化以后，第 $l$ 层接收到的表示可以写成
 
 \[
 h_l=h_1+\sum_{i=1}^{l-1}f_i(h_i).
 \]
 
-其中，$f_i(h_i)$ 表示第 $i$ 个子层的输出。普通残差连接以相同系数累加这些结果，第 $l$ 层无法直接调节某个早期子层所占的比例。网络越深，需要合并的历史层输出也越多。
+其中，$f_i(h_i)$ 是第 $i$ 个子层的输出。普通残差连接默认每一项都以系数 1 加入总和，第 $l$ 层不能直接选择某个早期子层多保留一些、另一个少保留一些。层数增加以后，送到深层的表示也会混入越来越多历史输出。
 
-Attention Residual（AttnRes）把固定求和改为带权混合：
+Attention Residual（AttnRes）把这次固定求和改成了带权混合：
 
 \nopagebreak[4]
 
@@ -854,7 +853,7 @@ h_l=
 \sum_i\alpha_i=1.
 \]
 
-AttnRes 为每个子层学习一个 pseudo-query，较早的残差表示同时作为 Key 和 Value。pseudo-query 与这些 Key 计算分数，Softmax 沿网络深度归一化，随后按权重合并对应的 Value。这样，第 $l$ 层接收的不再是固定的历史层总和，而是由模型学习各个早期表示的权重。
+计算权重时，当前子层使用一个学习得到的 pseudo-query。它是一组专门用于选择深度表示的参数，并不来自序列中的某个 token。较早的残差表示同时充当 Key 和 Value。pseudo-query 先与各个 Key 计算分数，Softmax 再沿网络深度归一化，最后按这些权重混合对应的 Value。深层由此可以偏向当前更有用的早期表示，而不必始终接受同一份固定总和。
 
 \begin{lstlisting}[language=Python,caption={blockwise AttnRes 的核心操作}]
 V = torch.stack(blocks + [partial_block])  # [N+1,B,T,D]
@@ -866,7 +865,7 @@ h = torch.einsum(
 return h
 \end{lstlisting}
 
-代码把保存的 block 放在最前面的 $N$ 维。第一次 \texttt{einsum} 为每个 block、每个 token 算一个分数，Softmax 也沿这条深度维归一化；第二次再按权重合并表示。输出仍是 $(B,T,D)$，因此后续层收到的张量形状没有变化，只是其中混入浅层表示的比例不再固定。
+代码先把保存的 block 堆叠到最前面的 $N$ 维。第一次 \texttt{einsum} 为每个 token 计算它与各个深度 block 的分数，Softmax 沿 $N$ 维归一化；第二次 \texttt{einsum} 再按权重混合这些 block。输出形状仍是 $(B,T,D)$，所以后续层的接口没有改变，改变的只是它从不同深度取回信息的比例。
 
 \begin{figure}[htbp]
 \centering
@@ -910,9 +909,12 @@ return h
 \label{fig:ch02-attnres}
 \end{figure}
 
-保存并检索每一层的表示会带来较高开销，因此 Kimi K3 采用 blockwise AttnRes，每 12 层保存一次块级表示，共形成 8 个 block。后续边界只在这些块级表示之间计算权重。MLA 沿序列维度检索较早的 token，AttnRes 沿深度维度选择较早的 block；二者处理的是不同方向上的信息传递。
+若保存并检索每一层，额外开销会随深度迅速增加。Kimi K3 因而采用 blockwise AttnRes：每 12 层汇总并保存一次块级表示，共形成 8 个 block，后续只在这些 block 之间计算权重。这样做降低了检索粒度，却避免了逐层保存与读取的成本。
 
-回看整条主干，GPT-2 中的 decoder-only 结构、注意力、前馈网络和残差连接仍然存在。Kimi K3 改变了这些部件的具体组织方式：KDA 用固定状态处理大部分序列信息，MLA 定期执行 Softmax 检索，AttnRes 在网络深度上选择早期表示，MoE 则让每个 token 只调用一部分专家参数。
+把 GPT-2 和 Kimi K3 放在一起看，它们的基本任务并没有改变：都是 decoder-only 模型，都根据已经出现的 token 预测下一个 token；注意力、前馈网络和残差连接也仍然构成每一层的主体。不同之处在于，GPT-2 的结构比较直接：标准注意力按位置保存并检索前文，稠密前馈网络让每个 token 经过同一组参数，残差连接则把各层结果一路累加。
+Kimi K3 基于这套骨架，做了不少优化：沿序列方向，多数层使用 KDA，把前文压进固定大小的状态，并通过 Delta Rule 和门控完成改写与遗忘；每隔几层再用 MLA 回到按位置保存的上下文，补回精确检索能力。沿计算方向，LatentMoE 为模型准备了大量专家，却只让每个 token 调用其中一小部分。沿网络深度，AttnRes 不再平等累加所有早期表示，而是从保存下来的 block 中选择当前更有用的部分。
+因此，从 GPT-2 到 Kimi K3，真正变化的不是模型突然拥有了一个更大的“记忆盒子”。它学会了用不同方式处理不同信息：有些内容压进固定状态，随读取不断改写；有些内容保留原来的位置，需要时再精确查找。
+就这样，AI酱看起来也越来越聪明，角色扮演说出来的话也渐渐的真的像初星学院的小伙伴...一样呢。
 
 \bigskip
 

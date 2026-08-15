@@ -1,0 +1,25 @@
+%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph PHASES ["Four-Phase Workflow"]
+    direction LR
+    R["<b>Research</b><br><i>Workers investigate<br>codebase in parallel</i>"] --> S["<b>Synthesis</b><br><i>Coordinator crafts<br>implementation specs</i>"]
+    S --> I["<b>Implementation</b><br><i>Workers make<br>targeted changes</i>"]
+    I --> V["<b>Verification</b><br><i>Workers test<br>changes work</i>"]
+  end
+
+  subgraph HUB ["Hub-and-Spoke Topology"]
+    COORD["<b>Coordinator</b>"] --> W1(("W1"))
+    COORD --> W2(("W2"))
+    COORD --> W3(("W3"))
+  end
+
+  PHASES --> HUB
+
+  style R fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style S fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style I fill:#C2856E,color:#fff,stroke:#A06A54
+  style V fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style COORD fill:#C4A882,color:#fff,stroke:#A08562
+  style W1 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style W2 fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style W3 fill:#9CAF88,color:#fff,stroke:#7A8D68

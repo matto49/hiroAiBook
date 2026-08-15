@@ -1,0 +1,42 @@
+[
+  {
+    "index": 1,
+    "kind": "mermaid",
+    "label": "fig-pipeline-overview",
+    "file": "figure-01-fig-pipeline-overview.png",
+    "source": "figure-01-fig-pipeline-overview.mmd",
+    "caption": "Figure 1: The seven stages of a query’s journey through Claude Code. Stages 3 and 4 form a loop: the model reasons, calls a tool, observes the result, and repeats until the task is complete or a termination guard fires."
+  },
+  {
+    "index": 2,
+    "kind": "mermaid",
+    "label": "fig-prompt-assembly",
+    "file": "figure-02-fig-prompt-assembly.png",
+    "source": "figure-02-fig-prompt-assembly.mmd",
+    "caption": "Figure 2: System prompt assembly. Static fragments (identity, safety, style, memory) and dynamic fragments (tool schemas, CLAUDE.md, git status, skills) merge into a single ~15K-token system prompt. The prompt is split into two cache blocks: Block 1 holds core instructions that are identical across turns; Block 2 holds per-project configuration that changes only when the user edits CLAUDE.md."
+  },
+  {
+    "index": 3,
+    "kind": "mermaid",
+    "label": "fig-react-loop",
+    "file": "figure-03-fig-react-loop.png",
+    "source": "figure-03-fig-react-loop.mmd",
+    "caption": "Figure 3: The ReAct loop. Each iteration calls the model, parses its response, and either executes tools (looping back) or terminates. Error recovery handles context overflow and API failures."
+  },
+  {
+    "index": 4,
+    "kind": "mermaid",
+    "label": "fig-tool-execution",
+    "file": "figure-04-fig-tool-execution.png",
+    "source": "figure-04-fig-tool-execution.mmd",
+    "caption": "Figure 4: Tool execution flow for a typical bug-fix query. Each turn invokes one tool with a different permission path: Read is auto-allowed (read-only), Edit triggers the permission gate (file mutation), and Bash is scored by the ML classifier (arbitrary shell command). Tool results are appended to the conversation history, giving the model new observations for the next reasoning step."
+  },
+  {
+    "index": 5,
+    "kind": "mermaid",
+    "label": "fig-permission-gate",
+    "file": "figure-05-fig-permission-gate.png",
+    "source": "figure-05-fig-permission-gate.mmd",
+    "caption": "Figure 5: The three-tier permission gate with OS-level sandbox as a containment backstop. Tier 1 checks static configuration rules; Tier 2 runs an ML classifier on shell commands; Tier 3 prompts the user for interactive approval. At each tier, a definitive verdict (allow, deny, safe) short-circuits the remaining checks. The OS-level sandbox constrains blast radius regardless of the permission outcome."
+  }
+]

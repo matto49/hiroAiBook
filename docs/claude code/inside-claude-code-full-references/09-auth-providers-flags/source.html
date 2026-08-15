@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Auth, Providers &amp; Feature Flags – Inside Claude Code</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./10-model-context-protocol.html" rel="next">
+<link href="./08-cli-commands-ui.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-4486e80548b20dd029182ccec781b91c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-f2aa3fcab4a3c0cbb1a885f128e95a4e.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-89366f393ab88770656785fe4740de67.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-e429c51d478a3f7fe436edff7d8b5e18.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<meta name="mermaid-theme" content="neutral">
+<script src="site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Palatino+Linotype&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+
+
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Inside Claude Code</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link active" href="./index.html" aria-current="page"> 
+<span class="menu-text">Series Home</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="./explorer-dist/index.html" target="_blank"> 
+<span class="menu-text">Code Explorer</span></a>
+  </li>  
+</ul>
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/ZhuoranYang/claude_code_analysis"> <i class="bi bi-github" role="img">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V. Invocation</a></li><li class="breadcrumb-item"><a href="./09-auth-providers-flags.html">V.2 — Auth, Providers &amp; Flags</a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Inside Claude Code</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./explorer-dist/index.html" class="sidebar-item-text sidebar-link" target="_blank">
+ <span class="menu-text">Code Explorer</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false">
+ <span class="menu-text">I. Overview</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00-birds-eye-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.1 — Bird’s Eye Architecture</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-end-to-end-workflow.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">I.2 — End-to-End Workflow</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false">
+ <span class="menu-text">II. Agent Harness</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-agent-loop-query-engine.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.1 — Agent Loop &amp; Query Engine</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15-agent-sdk-structured-io.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.2 — Agent SDK &amp; Structured I/O</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-multi-agent-orchestration.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.3 — Multi-Agent Orchestration</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19-plan-mode.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">II.4 — Plan Mode</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false">
+ <span class="menu-text">III. Context Engineering</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-prompt-assembly.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.1 — Prompt Assembly</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-context-compaction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.2 — Context Compaction</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17-memory-hierarchy.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.3 — Memory Hierarchy</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11-hooks-lifecycle.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">III.4 — Hooks &amp; Lifecycle</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false">
+ <span class="menu-text">IV. Tools</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-tool-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.1 — Tool System &amp; Registry</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-safety-sandbox.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IV.2 — Safety &amp; Sandbox</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">V. Invocation</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08-cli-commands-ui.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">V.1 — CLI, Commands &amp; UI</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09-auth-providers-flags.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text">V.2 — Auth, Providers &amp; Flags</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false">
+ <span class="menu-text">VI. Extensions</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10-model-context-protocol.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.1 — Model Context Protocol</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12-skills-system.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.2 — Skills System</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13-plugin-architecture.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VI.3 — Plugin Architecture</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false">
+ <span class="menu-text">VII. Remote Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16-remote-runtime-bridge.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VII.1 — Remote Runtime &amp; Bridge</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false">
+ <span class="menu-text">VIII. Native Runtime</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18-native-runtime-voice-portability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">VIII.1 — Native Runtime, Voice &amp; Portability</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false">
+ <span class="menu-text">IX. Transparency &amp; Trust</span></a>
+          <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="false" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 ">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14-hidden-costs-context-manipulation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">IX.1 — Transparency &amp; Trust</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#oauth-for-terminal-apps-when-there-is-no-browser" id="toc-oauth-for-terminal-apps-when-there-is-no-browser" class="nav-link active" data-scroll-target="#oauth-for-terminal-apps-when-there-is-no-browser">OAuth for Terminal Apps – When There Is No Browser</a>
+  <ul class="collapse">
+  <li><a href="#pkce-the-localhost-trick" id="toc-pkce-the-localhost-trick" class="nav-link" data-scroll-target="#pkce-the-localhost-trick">PKCE: The Localhost Trick</a></li>
+  <li><a href="#credential-storage" id="toc-credential-storage" class="nav-link" data-scroll-target="#credential-storage">Credential Storage</a></li>
+  </ul></li>
+  <li><a href="#multi-provider-support-the-adapter-pattern-in-action" id="toc-multi-provider-support-the-adapter-pattern-in-action" class="nav-link" data-scroll-target="#multi-provider-support-the-adapter-pattern-in-action">Multi-Provider Support – The Adapter Pattern in Action</a>
+  <ul class="collapse">
+  <li><a href="#provider-selection-a-priority-chain" id="toc-provider-selection-a-priority-chain" class="nav-link" data-scroll-target="#provider-selection-a-priority-chain">Provider Selection: A Priority Chain</a></li>
+  <li><a href="#model-id-normalization-the-translation-layer" id="toc-model-id-normalization-the-translation-layer" class="nav-link" data-scroll-target="#model-id-normalization-the-translation-layer">Model ID Normalization: The Translation Layer</a></li>
+  </ul></li>
+  <li><a href="#feature-flags-as-deployment-infrastructure" id="toc-feature-flags-as-deployment-infrastructure" class="nav-link" data-scroll-target="#feature-flags-as-deployment-infrastructure">Feature Flags as Deployment Infrastructure</a>
+  <ul class="collapse">
+  <li><a href="#tier-1-build-time-flags-dead-code-elimination" id="toc-tier-1-build-time-flags-dead-code-elimination" class="nav-link" data-scroll-target="#tier-1-build-time-flags-dead-code-elimination">Tier 1: Build-Time Flags – Dead Code Elimination</a></li>
+  <li><a href="#tier-2-runtime-flags-gradual-rollout" id="toc-tier-2-runtime-flags-gradual-rollout" class="nav-link" data-scroll-target="#tier-2-runtime-flags-gradual-rollout">Tier 2: Runtime Flags – Gradual Rollout</a></li>
+  </ul></li>
+  <li><a href="#cost-tracking-one-interface-four-pricing-models" id="toc-cost-tracking-one-interface-four-pricing-models" class="nav-link" data-scroll-target="#cost-tracking-one-interface-four-pricing-models">Cost Tracking – One Interface, Four Pricing Models</a></li>
+  <li><a href="#the-configuration-hierarchy-five-levels-of-override" id="toc-the-configuration-hierarchy-five-levels-of-override" class="nav-link" data-scroll-target="#the-configuration-hierarchy-five-levels-of-override">The Configuration Hierarchy – Five Levels of Override</a></li>
+  <li><a href="#retry-and-error-recovery-not-all-failures-are-equal" id="toc-retry-and-error-recovery-not-all-failures-are-equal" class="nav-link" data-scroll-target="#retry-and-error-recovery-not-all-failures-are-equal">Retry and Error Recovery – Not All Failures Are Equal</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./08-cli-commands-ui.html">V. Invocation</a></li><li class="breadcrumb-item"><a href="./09-auth-providers-flags.html">V.2 — Auth, Providers &amp; Flags</a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Auth, Providers &amp; Feature Flags</h1>
+<p class="subtitle lead">OAuth, Adapters, and Continuous Delivery Infrastructure</p>
+  <div class="quarto-categories">
+    <div class="quarto-category">auth</div>
+    <div class="quarto-category">providers</div>
+    <div class="quarto-category">flags</div>
+  </div>
+  </div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>How do you log a user into a terminal application that has no browser? How does one codebase talk to four different cloud providers, each with its own authentication scheme, model ID format, and feature timeline? And how do you ship 88 experimental features inside a CLI tool without breaking production? These three problems – authentication, multi-provider support, and <span class="kw-sage">feature flags</span> – form the invisible infrastructure layer that separates a demo from a product. None of them involve clever prompts or agent loops, but all of them are essential to making Claude Code work at enterprise scale.</p>
+<p>This post covers the three pillars of Claude Code’s infrastructure: OAuth flows adapted for terminal environments, the <span class="kw-sage">Adapter pattern</span> applied to LLM providers, and a two-tier feature flag system that enables <span class="kw-sage">continuous delivery</span> in a CLI tool.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-infrastructure-overview" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-infrastructure-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-infrastructure-overview">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  OAuth["&lt;b&gt;OAuth and Auth Flows&lt;/b&gt;"]
+  Prov["&lt;b&gt;Multi-Provider Adapters&lt;/b&gt;"]
+  Flags["&lt;b&gt;Feature Flags (88+50+)&lt;/b&gt;"]
+  Unified["&lt;b&gt;Unified API Call&lt;/b&gt;"]
+
+  OAuth --&gt; Unified
+  Prov --&gt; Unified
+  Flags --&gt; Unified
+
+  style OAuth fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Prov fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Flags fill:#C2856E,color:#fff,stroke:#A06A54
+  style Unified fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-infrastructure-overview-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: The three infrastructure pillars – authentication, multi-provider adapters, and feature flags – converge into a unified API call path. Each pillar solves a distinct enterprise requirement (identity, portability, and safe deployment), yet all three must cooperate on every API request. Removing any one pillar would reduce Claude Code from a production system to a prototype.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Three boxes at the top represent the three infrastructure pillars – OAuth and Auth Flows, Multi-Provider Adapters, and Feature Flags – each solving a distinct enterprise requirement. All three arrows converge on the single Unified API Call box at the bottom, showing that every API request must pass through all three systems. Removing any one pillar would break the production chain.</p>
+<p><strong>Source files covered in this post:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 42%">
+<col style="width: 28%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>File</th>
+<th>Purpose</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>src/utils/auth.ts</code></td>
+<td>Authentication utilities (token management, keyring)</td>
+<td>~800 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/oauth/</code></td>
+<td>OAuth 2.0 PKCE + device code flows</td>
+<td>5 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/model/model.ts</code></td>
+<td>Model selection and routing logic</td>
+<td>~400 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/utils/model/providers.ts</code></td>
+<td>Multi-provider support (Anthropic, Bedrock, Vertex, Azure)</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/model/bedrock.ts</code></td>
+<td>AWS Bedrock-specific adapter</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/api/getModel.ts</code></td>
+<td>Runtime model selection (<code>getRuntimeMainLoopModel()</code>)</td>
+<td>~200 LOC</td>
+</tr>
+<tr class="odd">
+<td><code>src/services/analytics/growthbook.ts</code></td>
+<td>GrowthBook feature flag client</td>
+<td>~300 LOC</td>
+</tr>
+<tr class="even">
+<td><code>src/services/analytics/</code></td>
+<td>Telemetry, Datadog metrics, event logging</td>
+<td>9 files</td>
+</tr>
+<tr class="odd">
+<td><code>src/utils/settings/settings.ts</code></td>
+<td>Settings management (user/project/local/managed)</td>
+<td>~500 LOC</td>
+</tr>
+</tbody>
+</table>
+<section id="oauth-for-terminal-apps-when-there-is-no-browser" class="level2">
+<h2 class="anchored" data-anchor-id="oauth-for-terminal-apps-when-there-is-no-browser">OAuth for Terminal Apps – When There Is No Browser</h2>
+<p><strong>CLI applications face a unique authentication challenge: the standard “redirect to browser, get a callback” flow assumes a GUI that terminal apps do not have.</strong></p>
+<p>Think about how you log into a web application. You click “Sign in with Google,” a browser opens, you approve, and the browser redirects back to the application. This works because the web app has a URL the authorization server can redirect to. A terminal application has no URL. It has <code>stdin</code> and <code>stdout</code>. This mismatch between OAuth’s browser-centric design and the terminal’s text-only interface is the core UX challenge Claude Code must solve.</p>
+<p>Claude Code implements two OAuth flows, each targeting a different environment. The choice is not a preference – it is dictated by whether a browser is physically available.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-oauth-selection" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-oauth-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-oauth-selection">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  Start["User runs claude&lt;br&gt;&lt;i&gt;no valid API key&lt;/i&gt;"]
+  Check{"Browser&lt;br&gt;available?"}
+  PKCE["PKCE Flow&lt;br&gt;&lt;i&gt;Browser opens locally&lt;/i&gt;"]
+  Device["Device Code Flow&lt;br&gt;&lt;i&gt;Any device with a browser&lt;/i&gt;"]
+
+  Start --&gt; Check
+  Check -- "Yes" --&gt; PKCE
+  Check -- "No" --&gt; Device
+
+  style Start fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Check fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style PKCE fill:#C2856E,color:#fff,stroke:#A06A54
+  style Device fill:#B39EB5,color:#fff,stroke:#8E7A93
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-oauth-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: OAuth flow selection logic – a single binary decision (browser available or not) routes the user to one of two authentication paths. PKCE opens a local browser and captures the callback on localhost, while Device Code displays a short code the user enters on any browser-equipped device. This branching ensures every developer environment, from a GUI laptop to a headless SSH session, has a viable authentication path.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top where the user runs <code>claude</code> without a valid API key. The diamond decision node asks a single question: is a browser available? The “Yes” branch leads to the PKCE flow (browser opens locally on the same machine), while the “No” branch leads to the Device Code flow (user enters a short code on any device with a browser). This binary decision ensures every environment – from GUI laptops to headless SSH sessions – has a viable authentication path.</p>
+<section id="pkce-the-localhost-trick" class="level3">
+<h3 class="anchored" data-anchor-id="pkce-the-localhost-trick">PKCE: The Localhost Trick</h3>
+<p><span class="kw-terra">PKCE</span> (Proof Key for Code Exchange) – a protocol that lets public clients (applications that cannot store secrets, like CLI tools) authenticate securely – is the primary flow for developers at their laptops.</p>
+<p>The trick is simple but clever: Claude Code spins up a temporary HTTP server on <code>localhost</code>, then opens the user’s browser to the authorization URL. When the user approves, the authorization server redirects back to <code>http://localhost:{PORT}/callback</code>, where Claude Code’s ephemeral server is listening. The CLI captures the authorization code, shuts down the server, and exchanges the code for tokens.</p>
+<p>The “proof key” part adds a critical security layer. Before opening the browser, Claude Code generates a random <span class="kw-terra">code_verifier</span> and sends only its SHA-256 hash (the <span class="kw-terra">code_challenge</span>) to the authorization server. When exchanging the authorization code for tokens, Claude Code proves it originated the request by presenting the original verifier. Even if an attacker intercepts the authorization code, they cannot exchange it without the verifier.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-pkce-flow" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pkce-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-pkce-flow">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+sequenceDiagram
+  participant CC as Claude Code
+  participant BR as Browser
+  participant AUTH as Auth Server
+
+  CC-&gt;&gt;CC: Generate verifier + SHA-256 challenge
+  CC-&gt;&gt;BR: Open browser (+ challenge)
+  BR-&gt;&gt;AUTH: GET /authorize
+  AUTH-&gt;&gt;BR: Consent screen
+  BR-&gt;&gt;AUTH: User approves
+  AUTH-&gt;&gt;BR: Redirect (code + state)
+  BR-&gt;&gt;CC: localhost callback (auth code)
+  CC-&gt;&gt;AUTH: POST /token + code verifier
+  AUTH-&gt;&gt;CC: access token + refresh token
+  CC-&gt;&gt;CC: Store in ~/.claude/oauth/
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pkce-flow-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: PKCE flow sequence showing the full seven-step handshake between Claude Code, the user’s browser, and the authorization server. The critical security property is the commitment-scheme structure: the SHA-256 challenge is sent before approval, and the original verifier is revealed only during the token exchange, preventing authorization-code interception attacks. Tokens are stored locally in ~/.claude/oauth/ for silent re-authentication.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Time flows downward in this sequence diagram. The three participants (Claude Code, Browser, Auth Server) exchange messages in a seven-step handshake. Start at the top where Claude Code generates the verifier and challenge, then follow the arrows down through the browser redirect flow. The critical security property is visible in the asymmetry: the SHA-256 challenge is sent early (step 2), but the original verifier is only revealed at the token exchange (step 8), preventing interception attacks. The flow ends with tokens stored locally for silent re-authentication. ### Device Code Flow: For Headless Environments</p>
+<p>The PKCE flow requires a local browser. For SSH sessions, remote servers, CI pipelines, and Docker containers, Claude Code falls back to the <span class="kw-terra">Device Code flow</span> – a protocol designed for devices with limited input, like smart TVs, that maps perfectly to “I am SSHed into a server with no GUI.”</p>
+<p>The flow decouples the two parties entirely. Claude Code requests a device code from the server, then displays a URL and a short code in the terminal:</p>
+<pre><code>Visit: https://claude.ai/device
+Enter code: ABCD-1234</code></pre>
+<p>The user opens that URL on <em>any</em> device with a browser – their phone, another laptop, a tablet – and enters the code. Meanwhile, Claude Code polls the token endpoint at regular intervals, waiting for approval. Once the user approves on their phone, the next poll returns the tokens.</p>
+<p>This is the same pattern Netflix uses when you sign in on a new TV. The insight is that authentication does not require the authenticating device and the authorizing device to be the same machine.</p>
+</section>
+<section id="credential-storage" class="level3">
+<h3 class="anchored" data-anchor-id="credential-storage">Credential Storage</h3>
+<p>Both flows store credentials identically: <code>~/.claude/oauth/credentials.json</code> with <span class="kw-sage">atomic writes</span> and file permission checks. A refresh token enables silent re-authentication when the access token expires. For containerized environments where mounting files is awkward, <code>CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR</code> passes the token via a file descriptor – a Unix-native pattern that avoids touching the filesystem entirely.</p>
+<hr>
+</section>
+</section>
+<section id="multi-provider-support-the-adapter-pattern-in-action" class="level2">
+<h2 class="anchored" data-anchor-id="multi-provider-support-the-adapter-pattern-in-action">Multi-Provider Support – The Adapter Pattern in Action</h2>
+<p><strong>Claude Code supports <span class="kw-slate">four API providers</span> through a single internal interface. This is the Adapter pattern from your design patterns textbook, applied at the scale of cloud infrastructure.</strong></p>
+<p>The motivation is competitive, not just technical. Enterprise customers do not want to create new vendor relationships when they already have AWS or Google Cloud contracts with negotiated pricing, compliance certifications, and existing billing. Multi-provider support lets Claude Code meet customers where their infrastructure already lives.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-provider-adapters" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-provider-adapters-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-provider-adapters">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  Core["&lt;b&gt;Claude Code Core&lt;/b&gt;&lt;br&gt;&lt;i&gt;model, messages, tools&lt;/i&gt;"]
+  Iface["&lt;b&gt;Unified Interface: createMessage()&lt;/b&gt;"]
+
+  Core --&gt; Iface
+
+  Anth["&lt;b&gt;Anthropic API&lt;/b&gt;&lt;br&gt;API key / OAuth&lt;br&gt;claude-opus-4-6"]
+  Bed["&lt;b&gt;AWS Bedrock&lt;/b&gt;&lt;br&gt;IAM / SSO&lt;br&gt;anthropic.claude-opus-4-6-v1:0"]
+  Vert["&lt;b&gt;Google Vertex&lt;/b&gt;&lt;br&gt;Google OAuth&lt;br&gt;claude-opus-4-6@20251001"]
+  Azure["&lt;b&gt;Azure Foundry&lt;/b&gt;&lt;br&gt;Azure AD&lt;br&gt;claude-opus-4-6"]
+
+  Iface --&gt; Anth
+  Iface --&gt; Bed
+  Iface --&gt; Vert
+  Iface --&gt; Azure
+
+  style Core fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Iface fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Anth fill:#C2856E,color:#fff,stroke:#A06A54
+  style Bed fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style Vert fill:#C4A882,color:#fff,stroke:#A08562
+  style Azure fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-provider-adapters-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: Multi-provider adapter architecture showing how a single createMessage() interface dispatches to four cloud backends. Each backend differs in authentication scheme (API key, IAM/SSO, Google OAuth, Azure AD) and model identifier format, yet the core engine never sees these differences. The adapter layer translates canonical model names and normalizes response formats at the boundary.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top with Claude Code Core, which produces a generic request (model, messages, tools). The arrow passes through the Unified Interface (createMessage()), which is the single point of abstraction. From there, four arrows fan out to the four provider backends, each showing its distinct authentication scheme and model ID format. The core engine never sees provider-specific differences – all translation happens at this adapter boundary.</p>
+<section id="provider-selection-a-priority-chain" class="level3">
+<h3 class="anchored" data-anchor-id="provider-selection-a-priority-chain">Provider Selection: A Priority Chain</h3>
+<p>The selection logic is a simple priority chain, implemented in <code>getAPIProvider()</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> <span class="fu">getAPIProvider</span>()<span class="op">:</span> <span class="st">'anthropic'</span> <span class="op">|</span> <span class="st">'bedrock'</span> <span class="op">|</span> <span class="st">'vertex'</span> <span class="op">|</span> <span class="st">'3p'</span> {</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">CLAUDE_CODE_USE_BEDROCK</span>) <span class="cf">return</span> <span class="st">'bedrock'</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">CLAUDE_CODE_USE_VERTEX</span>) <span class="cf">return</span> <span class="st">'vertex'</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="bu">process</span><span class="op">.</span><span class="at">env</span><span class="op">.</span><span class="at">ANTHROPIC_BASE_URL</span>) <span class="cf">return</span> <span class="st">'3p'</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">return</span> <span class="st">'anthropic'</span>  <span class="co">// default</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The order matters. If both <code>CLAUDE_CODE_USE_BEDROCK</code> and <code>CLAUDE_CODE_USE_VERTEX</code> are set (a misconfiguration), Bedrock wins. The <code>3p</code> (third-party) provider is a catch-all for any Anthropic-compatible API – local proxies, compliance gateways, or alternative deployments.</p>
+<div class="callout callout-style-default callout-caution callout-titled" title="Pattern Spotted">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Caution</span>Pattern Spotted
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is the <span class="kw-sage">Chain of Responsibility</span> pattern. Each provider check is a handler in a chain. The first handler that matches takes ownership. Compare this to how Express middleware resolves routes, or how Java exception handlers walk up the catch chain.</p>
+</div>
+</div>
+</section>
+<section id="model-id-normalization-the-translation-layer" class="level3">
+<h3 class="anchored" data-anchor-id="model-id-normalization-the-translation-layer">Model ID Normalization: The Translation Layer</h3>
+<p>Each provider uses a different format for model identifiers. The internal name <code>claude-opus-4-6</code> must be translated per-provider before every API call:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 27%">
+<col style="width: 22%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Internal ID</th>
+<th>Anthropic</th>
+<th>Bedrock</th>
+<th>Vertex</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>claude-opus-4-6</code></td>
+<td><code>claude-opus-4-6</code></td>
+<td><code>anthropic.claude-opus-4-6-v1:0</code></td>
+<td><code>claude-opus-4-6@20251001</code></td>
+</tr>
+<tr class="even">
+<td><code>claude-sonnet-4-6</code></td>
+<td><code>claude-sonnet-4-6</code></td>
+<td><code>anthropic.claude-sonnet-4-6-v1:0</code></td>
+<td><code>claude-sonnet-4-6@20251001</code></td>
+</tr>
+</tbody>
+</table>
+<p><em>The normalization layer also handles fallback chains: Opus falls back to Sonnet, Sonnet to Haiku. A configuration that works on the Anthropic API still functions on Bedrock even if the exact model version is not yet available.</em></p>
+<p>This normalization function (<span class="kw-terra">normalizeModelStringForAPI()</span>) is the core of the Adapter pattern. Claude Code’s internal code never thinks about provider-specific formats. It uses canonical model names everywhere, and the adapter layer translates at the boundary. ### Intelligent Model Selection</p>
+<p>Claude Code does not use a single model for all operations. The <code>getRuntimeMainLoopModel()</code> function implements <span class="kw-mauve">cost-aware routing</span>:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-model-selection" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-model-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-model-selection">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  Start["&lt;b&gt;Model Selection&lt;/b&gt;"]
+  Q1{"Is this&lt;br&gt;compaction?"}
+  Haiku["Haiku&lt;br&gt;&lt;i&gt;cheapest&lt;/i&gt;"]
+  Q2{"Subagent model&lt;br&gt;override?"}
+  Override["Agent's specified model"]
+  Q3{"Plan mode +&lt;br&gt;over 200K tokens?"}
+  Sonnet["Sonnet&lt;br&gt;&lt;i&gt;demoted&lt;/i&gt;"]
+  Default["User's configured model&lt;br&gt;&lt;i&gt;default: Sonnet&lt;/i&gt;"]
+
+  Start --&gt; Q1
+  Q1 -- "Yes" --&gt; Haiku
+  Q1 -- "No" --&gt; Q2
+  Q2 -- "Yes" --&gt; Override
+  Q2 -- "No" --&gt; Q3
+  Q3 -- "Yes" --&gt; Sonnet
+  Q3 -- "No" --&gt; Default
+
+  style Start fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Q1 fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Haiku fill:#C2856E,color:#fff,stroke:#A06A54
+  style Q2 fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style Override fill:#C4A882,color:#fff,stroke:#A08562
+  style Q3 fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style Sonnet fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Default fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-model-selection-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;5: Model selection decision tree implementing cost-aware routing across three decision points. Compaction is routed to Haiku (cheapest), subagent overrides are honored when set, and planning sessions exceeding 200K tokens are demoted from Opus to Sonnet. This tiered strategy optimizes global session cost rather than per-turn quality, reflecting the insight that not every agent operation demands the most capable model.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Start at the top “Model Selection” node and follow the decision tree downward through three diamond-shaped decision points. At each branch, the “Yes” path exits to a specific model (Haiku for compaction, the agent’s override model, Sonnet for long planning sessions), while the “No” path continues to the next check. If all three checks fail, the flow reaches the default: the user’s configured model. The key takeaway is that cost optimization happens automatically – cheaper models are selected whenever the task does not require frontier reasoning.</p>
+<p>The plan-mode demotion is a pragmatic cost decision. Long planning sessions accumulate hundreds of thousands of tokens, and paying Opus pricing for every turn would be prohibitively expensive. Sonnet handles plan reasoning at a fraction of the cost. Compaction always uses Haiku – summarizing conversation history is a well-structured task that does not require deep reasoning.</p>
+<div class="callout callout-style-default callout-warning callout-titled" title="Trade-off">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Trade-off
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This tiered model routing trades optimal quality for cost predictability. A user on Opus still gets Haiku for compaction and Sonnet for long planning sessions. The system optimizes globally (minimize total session cost) rather than locally (use the best model for every turn).</p>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="feature-flags-as-deployment-infrastructure" class="level2">
+<h2 class="anchored" data-anchor-id="feature-flags-as-deployment-infrastructure">Feature Flags as Deployment Infrastructure</h2>
+<p><strong>Claude Code ships <span class="kw-slate">88+ build-time feature flags and 50+ runtime flags</span>. This is not technical debt – it is the continuous delivery infrastructure that lets a small team ship weekly to millions of users without breaking production.</strong></p>
+<p>Feature flags are standard in web applications – Netflix showing you a redesigned homepage while your neighbor sees the old one. What is unusual about Claude Code is the scale of feature flagging inside a CLI tool and the two-tier architecture that makes it work.</p>
+<section id="tier-1-build-time-flags-dead-code-elimination" class="level3">
+<h3 class="anchored" data-anchor-id="tier-1-build-time-flags-dead-code-elimination">Tier 1: Build-Time Flags – Dead Code Elimination</h3>
+<p>Build-time flags are evaluated by the Bun bundler at compilation time. They are not just conditional checks – they are <span class="kw-sage">tree-shaking boundaries</span>. When a flag evaluates to <code>false</code>, the bundler eliminates the entire code path, including all imports, string literals, and side effects:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">feature</span>(<span class="st">'VOICE_MODE'</span>)) {</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// When VOICE_MODE is false, this block AND the</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ./voice module are eliminated from the bundle</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">const</span> voice <span class="op">=</span> <span class="cf">await</span> <span class="im">import</span>(<span class="st">'./voice'</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  voice<span class="op">.</span><span class="fu">startStreaming</span>()</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>This is more aggressive than runtime feature flags. A runtime flag keeps the code in the bundle and skips it at execution time. A build-time flag removes the code entirely, reducing bundle size and ensuring that unreleased features cannot be reverse-engineered from the shipped binary.</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-feature-flag-tiers" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-feature-flag-tiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-feature-flag-tiers">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  subgraph T1["TIER 1: BUILD-TIME (bundler)"]
+    Src["Source Code"]
+    BF{"flag = true?"}
+    InB["Code IN the bundle"]
+    Rem["Code REMOVED entirely"]
+
+    Src --&gt; BF
+    BF -- "Yes" --&gt; InB
+    BF -- "No" --&gt; Rem
+  end
+
+  subgraph T2["TIER 2: RUNTIME (feature service)"]
+    App["Running App"]
+    RF{"User in rollout?"}
+    Act["Feature ACTIVE&lt;br&gt;+ metrics collected"]
+    Inact["Feature INACTIVE&lt;br&gt;default value"]
+
+    App --&gt; RF
+    RF -- "Yes" --&gt; Act
+    RF -- "No" --&gt; Inact
+  end
+
+  style Src fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style BF fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style InB fill:#C2856E,color:#fff,stroke:#A06A54
+  style Rem fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style App fill:#C4A882,color:#fff,stroke:#A08562
+  style RF fill:#8E9B7A,color:#fff,stroke:#6E7B5A
+  style Act fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Inact fill:#9CAF88,color:#fff,stroke:#7A8D68
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-feature-flag-tiers-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;6: Two-tier feature flag lifecycle showing how build-time and runtime gates serve complementary purposes. Tier 1 (build-time) uses the Bun bundler to tree-shake disabled features out of the binary entirely, preventing reverse engineering. Tier 2 (runtime) evaluates flags against user identity and rollout percentages after the code has shipped, enabling gradual activation and instant rollback without redeployment.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> The two subgraphs represent the two tiers operating at different stages of the software lifecycle. In Tier 1 (left, build-time), source code passes through a bundler flag check: “true” includes the code in the binary, “false” removes it entirely via tree-shaking. In Tier 2 (right, runtime), the running app checks whether the user is in the rollout: “yes” activates the feature with metrics, “no” falls back to the default. The two tiers are complementary – Tier 1 controls what ships in the binary, Tier 2 controls what activates for each user.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Result (Tier 1)</th>
+<th>Result (Tier 2)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Smaller bundle</td>
+<td>Per-user targeting</td>
+</tr>
+<tr class="even">
+<td>No dead code paths</td>
+<td>Gradual rollout (5% to 50%)</td>
+</tr>
+<tr class="odd">
+<td>Features invisible</td>
+<td>A/B testing</td>
+</tr>
+<tr class="even">
+<td>88+ flags</td>
+<td>Instant rollback, 50+ flags</td>
+</tr>
+</tbody>
+</table>
+<p>The most heavily gated features (in a v2.1.88 snapshot; counts shift between releases) reveal Claude Code’s roadmap:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 34%">
+<col style="width: 46%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Approx. References</th>
+<th>What It Gates</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="kw-mauve"><strong>KAIROS</strong></span></td>
+<td><span class="kw-slate">~154</span></td>
+<td>Asynchronous background agent work</td>
+</tr>
+<tr class="even">
+<td><span class="kw-mauve"><strong>TRANSCRIPT_CLASSIFIER</strong></span></td>
+<td><span class="kw-slate">~107</span></td>
+<td>ML-based auto-mode decision making</td>
+</tr>
+<tr class="odd">
+<td><strong>TEAMMEM</strong></td>
+<td>~51</td>
+<td>Team memory synchronization</td>
+</tr>
+<tr class="even">
+<td><strong>VOICE_MODE</strong></td>
+<td>~46</td>
+<td>Speech-to-text streaming input</td>
+</tr>
+<tr class="odd">
+<td><strong>PROACTIVE</strong></td>
+<td>~37</td>
+<td>Agent suggests actions unprompted</td>
+</tr>
+<tr class="even">
+<td><strong>COORDINATOR_MODE</strong></td>
+<td>~32</td>
+<td>Multi-agent swarm orchestration</td>
+</tr>
+</tbody>
+</table>
+<p>KAIROS, at roughly 154 references in that snapshot, touches the agent loop, the UI, session management, and the SDK. Its deep integration suggests a major unreleased capability: agents that work in the background while the developer does something else.</p>
+</section>
+<section id="tier-2-runtime-flags-gradual-rollout" class="level3">
+<h3 class="anchored" data-anchor-id="tier-2-runtime-flags-gradual-rollout">Tier 2: Runtime Flags – Gradual Rollout</h3>
+<p>Runtime flags complement build-time flags by controlling behavior after the code has shipped. They are evaluated against user identity, organization membership, and rollout percentages:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode typescript code-with-copy"><code class="sourceCode typescript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">getFeatureValue_CACHED_MAY_BE_STALE</span>(<span class="st">'tengu_fast_mode'</span><span class="op">,</span> <span class="kw">false</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The function name is deliberately verbose. <code>CACHED_MAY_BE_STALE</code> warns callers that the returned value might be slightly outdated. Flag values are fetched from the feature service and cached locally with a staleness tolerance. This prioritizes latency (no network call on every flag check) over strict consistency (a rollout change might take a few minutes to propagate).</p>
+<p>Runtime flags enable capabilities that build-time flags cannot: gradual rollout (5% of users, then 25%, then 100%), A/B testing, per-organization targeting, and instant rollback without a new deployment. ### The Interaction Between Tiers</p>
+<p>A feature might live behind both tiers simultaneously. The build-time flag ensures the code is not shipped to users who should never see it. The runtime flag controls gradual rollout among users who have the code. This layered gating is how Anthropic can safely experiment with major features like voice input or coordinator mode without risking the stability of the core product.</p>
+<hr>
+</section>
+</section>
+<section id="cost-tracking-one-interface-four-pricing-models" class="level2">
+<h2 class="anchored" data-anchor-id="cost-tracking-one-interface-four-pricing-models">Cost Tracking – One Interface, Four Pricing Models</h2>
+<p><strong>Every LLM provider charges differently, but users need a single, consistent view of what they are spending. The cost model abstraction normalizes diverse pricing into one interface.</strong></p>
+<p>Each provider has its own pricing for input tokens, output tokens, and cached tokens. The cost tracking system must handle all of these transparently. Every API response includes <code>input_tokens</code> and <code>output_tokens</code> counts. The client tracks these per-request and aggregates them per-session, enabling the cost display in the terminal UI and the token budget enforcement system.</p>
+<p>The abstraction looks simple from the outside – a single cost number in the status bar – but behind it is a normalization layer that maps provider-specific usage data to a uniform cost model. Different providers may also report usage differently (some include thinking tokens separately, some bundle them with output), so the normalization is not just about pricing but about what counts as a “token” in the first place.</p>
+<hr>
+</section>
+<section id="the-configuration-hierarchy-five-levels-of-override" class="level2">
+<h2 class="anchored" data-anchor-id="the-configuration-hierarchy-five-levels-of-override">The Configuration Hierarchy – Five Levels of Override</h2>
+<p><strong>Claude Code’s configuration is a five-level priority chain that balances team conventions, personal preferences, and deployment requirements.</strong></p>
+<p>The model follows the same precedence pattern as CSS specificity cascades, DNS resolution, or Git config (repository, then global, then system). Each level can override the level below it:</p>
+<div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div id="fig-config-hierarchy" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-config-hierarchy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<div>
+<pre class="mermaid mermaid-js" data-label="fig-config-hierarchy">%%{init: {'theme': 'neutral', 'flowchart': {'useMaxWidth': false, 'htmlLabels': true, 'padding': 20, 'nodeSpacing': 30, 'rankSpacing': 40}, 'themeVariables': {'primaryColor': '#8B9DAF', 'primaryTextColor': '#ffffff', 'primaryBorderColor': '#6E7F91', 'secondaryColor': '#9CAF88', 'secondaryTextColor': '#ffffff', 'secondaryBorderColor': '#7A8D68', 'tertiaryColor': '#C2856E', 'tertiaryTextColor': '#ffffff', 'tertiaryBorderColor': '#A06A54', 'lineColor': '#B5A99A', 'textColor': '#4A4A4A', 'mainBkg': '#8B9DAF', 'nodeBorder': '#6E7F91', 'clusterBkg': 'rgba(139,157,175,0.12)', 'clusterBorder': '#B5A99A', 'edgeLabelBackground': 'transparent'}}}%%
+flowchart TD
+  Env["&lt;b&gt;1. Environment Variables (447 total)&lt;/b&gt;&lt;br&gt;&lt;i&gt;CI/CD, Docker, debugging&lt;/i&gt;"]
+  Proj["&lt;b&gt;2. Project Settings&lt;/b&gt;&lt;br&gt;&lt;i&gt;.claude/settings.json -- version-controlled, team-shared&lt;/i&gt;"]
+  Local["&lt;b&gt;3. Project Local Settings&lt;/b&gt;&lt;br&gt;&lt;i&gt;.claude/settings.local.json -- gitignored, personal&lt;/i&gt;"]
+  User["&lt;b&gt;4. User Settings&lt;/b&gt;&lt;br&gt;&lt;i&gt;~/.claude/settings.json -- global preferences&lt;/i&gt;"]
+  Def["&lt;b&gt;5. Built-in Defaults&lt;/b&gt;&lt;br&gt;&lt;i&gt;Hardcoded sensible fallbacks&lt;/i&gt;"]
+
+  Env --&gt; Proj --&gt; Local --&gt; User --&gt; Def
+
+  style Env fill:#8B9DAF,color:#fff,stroke:#6E7F91
+  style Proj fill:#9CAF88,color:#fff,stroke:#7A8D68
+  style Local fill:#C2856E,color:#fff,stroke:#A06A54
+  style User fill:#B39EB5,color:#fff,stroke:#8E7A93
+  style Def fill:#C4A882,color:#fff,stroke:#A08562
+</pre>
+</div>
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-config-hierarchy-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Configuration priority chain showing the five-level resolution order from environment variables (highest) to built-in defaults (lowest). The chain mirrors CSS specificity: environment variables act as !important overrides, project settings enforce team conventions, local settings provide personal escape hatches, and built-in defaults serve as the user-agent stylesheet. The first defined value at any level wins.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>How to read this diagram.</strong> Read top to bottom as a priority chain: the highest-priority source (Environment Variables, level 1) is at the top, and the lowest (Built-in Defaults, level 5) is at the bottom. Arrows indicate fallback order – the system checks each level in sequence and uses the first defined value it finds. Levels 1-2 are typically set by teams and CI systems, level 3 is a personal gitignored escape hatch, level 4 holds global user preferences, and level 5 provides hardcoded fallbacks when nothing else is configured.</p>
+<p>The gitignored <code>settings.local.json</code> is a small but important design detail. It acknowledges that developers need escape hatches – personal MCP servers, relaxed permissions during debugging, alternative API keys for testing – without polluting the team configuration.</p>
+<p><code>CLAUDE.md</code> files follow a separate discovery mechanism, walking up the directory tree from the current working directory. This supports monorepo architectures where instructions cascade from the repository root through workspace directories to individual packages. External includes from directories outside the project require explicit user approval, a security measure against malicious dependencies injecting instructions into the agent’s system prompt.</p>
+<hr>
+</section>
+<section id="retry-and-error-recovery-not-all-failures-are-equal" class="level2">
+<h2 class="anchored" data-anchor-id="retry-and-error-recovery-not-all-failures-are-equal">Retry and Error Recovery – Not All Failures Are Equal</h2>
+<p><strong>The retry system distinguishes between errors that might resolve on their own and errors that require a fundamentally different strategy.</strong></p>
+<p>This distinction is critical. A 529 (Overloaded) error is transient – wait and retry with exponential backoff. A 413 (Prompt Too Long) error will never succeed on retry – the request itself must change.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 36%">
+<col style="width: 33%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Error Type</th>
+<th>Strategy</th>
+<th>Analogy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>529 Overloaded</strong></td>
+<td>Exponential backoff with jitter</td>
+<td>Traffic jam: wait and retry</td>
+</tr>
+<tr class="even">
+<td><strong>Network errors</strong></td>
+<td>Quick retry (often resolves in seconds)</td>
+<td>Dropped call: redial</td>
+</tr>
+<tr class="odd">
+<td><strong>413 Prompt Too Long</strong></td>
+<td>Trigger reactive compaction, then retry</td>
+<td>Suitcase too full: repack</td>
+</tr>
+<tr class="even">
+<td><strong>401/403 Auth error</strong></td>
+<td>Attempt token refresh, else re-authenticate</td>
+<td>Expired badge: get a new one</td>
+</tr>
+<tr class="odd">
+<td><strong>400 Bad Request</strong></td>
+<td>Do not retry (bug in request construction)</td>
+<td>Wrong address: retrying won’t help</td>
+</tr>
+</tbody>
+</table>
+<p>The 413 recovery path is elegant. When the API reports the prompt is too long, the retry handler invokes <span class="kw-sage">reactive compaction</span> (covered in <a href="./04-context-compaction.html">Part III.2</a>), which summarizes older messages to reduce token count. The request is reconstructed with the compacted history and retried. This creates a self-healing loop where Claude Code automatically manages its own context window rather than failing and asking the user to trim manually.</p>
+<p>The streaming fallback is also notable. When a streaming response fails mid-way, the system can switch to a <code>fallbackModel</code> rather than retrying the same model. Crucially, this fallback is <span class="kw-sage">non-recursive</span>: if the fallback model also fails, the error propagates to the user. This prevents cascading retries that could consume API credits while producing nothing useful.</p>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>The infrastructure layer of Claude Code reveals principles that apply far beyond AI agents:</p>
+<ul>
+<li><p><strong>OAuth for CLI tools is a solved problem with two complementary flows.</strong> PKCE works when a browser is available (the localhost server trick). Device Code works everywhere else (decouple the authenticating device from the authorizing device). Together, they cover every developer environment from laptops to SSH sessions to CI containers.</p></li>
+<li><p><strong>Multi-provider support is the Adapter pattern at cloud scale.</strong> One canonical internal representation, translation at the boundaries. The same principle that drives character encoding normalization and database abstraction layers applies to LLM API providers. The key insight: normalize not just the API but the metrics, model IDs, and error codes too.</p></li>
+<li><p><strong>Two-tier feature flags combine safety with flexibility.</strong> Build-time flags eliminate unreleased code from the binary (safe). Runtime flags enable gradual rollout and instant rollback (flexible). Neither tier alone is sufficient. Together, they let a team ship weekly to millions of users without breaking production.</p></li>
+<li><p><strong>Cost-aware model routing is resource scheduling in disguise.</strong> Using Haiku for compaction, Sonnet for long planning sessions, and Opus for complex reasoning is the same resource allocation problem as scheduling CPU-bound tasks on fast cores and I/O-bound tasks on efficient cores.</p></li>
+<li><p><strong>Configuration hierarchies should respect both teams and individuals.</strong> The <span class="kw-sage">five-level priority chain</span> gives teams enforcement (version-controlled project settings) while giving individuals escape hatches (gitignored local settings). Environment variables serve as the ultimate override for automation.</p></li>
+</ul>
+<p>The invisible infrastructure is what makes the visible agent experience possible. Every token Claude Code generates has been authenticated, routed to the correct provider, shaped by active feature flags, and configured through a five-level priority chain. When it all works – which is nearly always – nobody thinks about it. That is the highest compliment an infrastructure layer can receive.</p>
+<hr>
+<p><em>Next: <a href="./10-model-context-protocol.html">Part VI.1: Model Context Protocol</a> – where Claude Code connects to external tools and services through a universal protocol, extending the agent’s capabilities beyond its built-in tool set.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./08-cli-commands-ui.html" class="pagination-link" aria-label="V.1 — CLI, Commands &amp; UI">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">V.1 — CLI, Commands &amp; UI</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./10-model-context-protocol.html" class="pagination-link" aria-label="VI.1 — Model Context Protocol">
+        <span class="nav-page-text">VI.1 — Model Context Protocol</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.quarto-figure img[src$=".svg"]:not(.nozoom)').forEach(function(img) {
+    fetch(img.src).then(r => r.text()).then(function(svgText) {
+      var div = document.createElement('div');
+      div.innerHTML = svgText;
+      var svg = div.querySelector('svg');
+      if (svg) {
+        var vb = svg.getAttribute('viewBox');
+        if (vb) {
+          var parts = vb.split(/\s+/);
+          var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+          var ratio = h / w;
+          var containerH = Math.max(250, Math.min(700, 900 * ratio));
+          svg.style.width = '100%';
+          svg.style.height = containerH + 'px';
+        } else {
+          svg.style.width = '100%';
+          svg.style.height = '400px';
+        }
+        svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+        svg.style.borderRadius = '6px';
+        svg.style.cursor = 'grab';
+        svg.style.background = 'var(--bs-body-bg, #fff)';
+        img.parentNode.replaceChild(svg, img);
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      }
+    });
+  });
+  // Mermaid post-processing: apply Palatino font + pan-zoom
+  function initMermaid() {
+    document.querySelectorAll('.cell-output-display svg').forEach(function(svg) {
+      if (svg.dataset.mInit) return;
+      svg.dataset.mInit = '1';
+      // Step 1: Apply Palatino to all text AFTER Mermaid layout
+      svg.querySelectorAll('.nodeLabel, .edgeLabel, .cluster-label span, text').forEach(function(el) {
+        el.style.fontFamily = '"Palatino Linotype", Palatino, Georgia, serif';
+      });
+      // Step 2: Ensure foreignObjects don't clip
+      svg.querySelectorAll('foreignObject').forEach(function(fo) {
+        fo.style.overflow = 'visible';
+      });
+      // Step 3: Size the container
+      var vb = svg.getAttribute('viewBox');
+      if (vb) {
+        var parts = vb.split(/[\s,]+/);
+        var w = parseFloat(parts[2]), h = parseFloat(parts[3]);
+        var ratio = h / w;
+        var containerH = Math.max(350, Math.min(800, 900 * ratio));
+        svg.style.width = '100%';
+        svg.style.height = containerH + 'px';
+      } else {
+        svg.style.width = '100%';
+        svg.style.height = '500px';
+      }
+      svg.style.border = '1px solid var(--bs-border-color, #dee2e6)';
+      svg.style.borderRadius = '6px';
+      svg.style.cursor = 'grab';
+      svg.style.background = 'var(--bs-body-bg, #fff)';
+      // Step 4: Enable pan-zoom
+      try {
+        svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, fit: true, center: true, minZoom: 0.5, maxZoom: 10});
+      } catch(e) {}
+    });
+  }
+  setTimeout(initMermaid, 800);
+  setTimeout(initMermaid, 2000);
+  setTimeout(initMermaid, 4000);
+});
+</script>
+
+
+
+
+</body></html>
