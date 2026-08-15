@@ -82,11 +82,11 @@
 
 可以把它译成：“认真试着攻一攻黎曼猜想。”Claude 最终没有证明黎曼猜想，却在尝试过程中碰到了另一个问题：不预先假定猜想成立时，究竟能保证多少非平凡零点落在临界线 $\operatorname{Re}(s)=\tfrac12$ 上。它把这个无条件下界从约 $41.6\%$ 提高到了约 $67.2\%$。\cite{ch03riemannweb,ch03riemannpaper}
 
-这句任务只有目标，没有路线。哪些文献有用，哪条不等式成立，哪段推导会被反例击穿，都只能在工作中逐步确认。模型先根据眼前的材料提出下一项动作，Claude Code 再去读取文件、运行程序或保存结果，并把新的观察送回模型。原本的一次回答，由此变成了一段持续数小时、随时可能改道的工作。\cite{ch03riemannweb,ch03e2e,ch03loop}
+这句任务只有目标，没有路线。哪些文献有用，哪条不等式成立，哪段推导会被反例击穿，都只能在工作中逐步确认。模型先根据眼前的材料提出下一项动作，Claude Code 再去读取文件、运行程序或保存结果，并把新的观察送回模型。原本的一次回答，由此变成了一段持续数小时、随时可能改道的工作。\cite{ch03riemannweb,ch03inside,ch03react}
 
 当然Claude 也不是从零开始推导。论文借用了 Bombieri 对 Weil 二次型的观察，也用到了 Baluyot、Goldston 等人近年来得到的无条件配对相关结果。它找到的新接法，是用线性代数同时追踪二次型的正、负方向，再从这些已有结果中推出更强的比例下界。\cite{ch03riemannweb,ch03riemannpaper}
 
-先放下数学细节，我们来看看 Claude Code 是怎么解决问题。它会过程大致分成三段：开始时准备环境和上下文；执行时让模型与工具反复往返；结束前整理证据，再交给外部复核。真正一遍遍运转的，是中间那一小圈。第三方架构文章常把模型外面的运行框架称作 Agent Harness。模型判断“下一步该做什么”，然后由Harness 准备材料、列出可用工具、检查权限，再把执行结果送进下一轮。模型很重要，但它只是这套系统中的一个节点。\cite{ch03visual,ch03e2e}
+先放下数学细节，我们来看看 Claude Code 是怎么解决问题。它会过程大致分成三段：开始时准备环境和上下文；执行时让模型与工具反复往返；结束前整理证据，再交给外部复核。真正一遍遍运转的，是中间那一小圈。第三方架构文章常把模型外面的运行框架称作 Agent Harness。模型判断“下一步该做什么”，然后由Harness 准备材料、列出可用工具、检查权限，再把执行结果送进下一轮。模型很重要，但它只是这套系统中的一个节点。\cite{ch03visual,ch03inside}
 
 \begin{figure}[htbp]
 \centering
@@ -131,7 +131,7 @@
 
 \FloatBarrier
 
-终端里虽然只有一句要求，真正送到模型面前的内容却长得多。会话启动后，Claude Code 会读取配置与项目指令，恢复需要沿用的信息，再登记内置工具、Skills 和 MCP 工具。材料准备好以后，它从中取出本轮需要的部分，组装成一次 API 调用的 Prompt。也就是说，这里的 Prompt 是每轮临时拼出的输入，不是一段永远不变的固定文字。\cite{ch03e2e,ch03prompt}
+终端里虽然只有一句要求，真正送到模型面前的内容却长得多。会话启动后，Claude Code 会读取配置与项目指令，恢复需要沿用的信息，再登记内置工具、Skills 和 MCP 工具。材料准备好以后，它从中取出本轮需要的部分，组装成一次 API 调用的 Prompt。也就是说，这里的 Prompt 是每轮临时拼出的输入，不是一段永远不变的固定文字。\cite{ch03inside}
 
 其中每一层回答的问题都不同。System Prompt 说明 Claude Code 应该怎样使用工具、怎样处理错误；\texttt{CLAUDE.md} 保存跨任务沿用的项目约定；用户消息写的是眼前要完成什么；工具 Schema 则列出工具的名称、参数和限制。放进一个数学研究工作区，长期规则可以写成“引用结论时注明来源”“数值实验不能冒充证明”“失败路线要留下第一个未证明步骤”。“继续尝试黎曼猜想”只属于这一次任务，不会混进长期项目知识。
 
@@ -172,7 +172,7 @@
 \label{fig:ch03-prompt}
 \end{figure}
 
-以这次研究为例，图中左边放的是引用规范、工具参数和权限设置。这些内容在任务开始时就已经确定，通常不会随着每轮实验改变，右边则一直在增加新的材料，包括刚提出的思路、脚本返回的结果，以及审阅 Agent 找到的问题。下一轮调用时，Prompt Caching 就可以复用开头没有变化的部分，省去一部分重复计算。
+以这次研究为例，图中左边放的是引用规范、工具参数和权限设置。这些内容在任务开始时就已经确定，通常不会随着每轮实验改变，右边则一直在增加新的材料，包括刚提出的思路、脚本返回的结果，以及审阅 Agent 找到的问题。下一轮调用时，Prompt Caching 就可以复用开头没有变化的部分，省去一部分重复计算。\cite{ch03inside,ch03promptcache}
 
 不过，研究留下的材料并不会因此减少。六百五十条失败路线、数百个脚本和几十个 Agent 的审阅意见，如果全部塞回 Prompt，很快就会挤满上下文。脚本的完整输出可以留在文件里，Prompt 只记下反例出现的位置和得到的结论。论文也不必反复全文载入，只带回眼下需要核对的段落。走不通的路线则留下失败的位置，模型读完这些记录，再决定下一步是重跑实验、核对引文，还是换一条路继续。
 
@@ -194,7 +194,7 @@ Agent   委派另一种估计方法
 
 上面的轨迹里，程序找到反例以后，原来的证明就不能再往下写了。Claude Code 先把反例和失败位置记进台账，下一轮再决定缩小命题，还是另开一条路线。模型会一次次的思考，调用工具，根据工具带回来的结果重新思考。
 
-这段往返就是 Agent Loop。每一轮开始时，Claude Code 都会整理当前任务和已有记录，再交给模型判断。模型可以直接回答，也可以调用工具；工具执行完以后，结果会回到下一轮。整个过程采用流式处理，文字可以边生成边显示，工具参数完整后也能立即开始执行。\cite{ch03loop}
+这段往返就是 Agent Loop。每一轮开始时，Claude Code 都会整理当前任务和已有记录，再交给模型判断。模型可以直接回答，也可以调用工具；工具执行完以后，结果会回到下一轮。整个过程采用流式处理，文字可以边生成边显示，工具参数完整后也能立即开始执行。\cite{ch03inside,ch03react}
 
 模型以 \texttt{tool\_use} 结束这一轮时，Claude Code 会转去执行工具；模型返回 \texttt{end\_turn}，才表示它认为任务可以收尾。调用也可能因为输出被截断、请求过长或服务暂时不可用而失败，此时系统会增加输出额度、压缩上下文或等待后重试。每种恢复手段都有次数和资源上限，以免补救过程自己陷入循环。
 
@@ -220,15 +220,15 @@ Agent   委派另一种估计方法
 
 图中的箭头虽然回到了起点，任务却不该回到原样。数值实验找到反例，候选引理就要撤回。如果文献检索发现结论早已存在的话，就需要研究者重新判断新意；审稿 Agent 若发现证明暗中使用了待证命题，这个缺口也要退回推导阶段。Tool Result 若没有改变后面的选择，循环只是在重复同一个错误。
 
-循环也可能越跑越偏。模型可能不断提出新猜法，却迟迟不给出可以检验的命题，也可能在证据未齐时急着宣布完成。另一类故障更隐蔽，它看似换了几种说法，实际仍在重复同一条失败路线。Claude Code 会用轮次上限、Stop Hook、重复调用检测和失败台账拦住这些情况。它们想不出证明，但能阻止系统无休止地发散、误停或原地打转。\cite{ch03loop,ch03hooks}
+循环也可能越跑越偏。模型可能不断提出新猜法，却迟迟不给出可以检验的命题，也可能在证据未齐时急着宣布完成。另一类故障更隐蔽，它看似换了几种说法，实际仍在重复同一条失败路线。Claude Code 会用轮次上限、Stop Hook、重复调用检测和失败台账拦住这些情况。它们想不出证明，但能阻止系统无休止地发散、误停或原地打转。\cite{ch03inside}
 
 \FloatBarrier
 
-“这个不等式应该成立”只是一个待检查的判断。程序在指定范围内没有找到反例，只能说明它通过了这次有限检查；要写成“已经证明”，仍然需要覆盖无限情形的严谨推导。工具的作用，就是让模型写下的判断碰到文件、程序和外部资料，再把检查结果送回循环。\cite{ch03tools}
+“这个不等式应该成立”只是一个待检查的判断。程序在指定范围内没有找到反例，只能说明它通过了这次有限检查；要写成“已经证明”，仍然需要覆盖无限情形的严谨推导。工具的作用，就是让模型写下的判断碰到文件、程序和外部资料，再把检查结果送回循环。\cite{ch03inside,ch03react,ch03toolformer}
 
 这些工具虽然用途不同，进入循环的方式却相同。模型按照工具名称和输入 Schema 提交参数，执行器完成校验、权限判断和 Hook 检查后，再调用对应的实现。成功结果、运行错误和用户拒绝都会被整理成 Tool Result，模型下一轮看到的正是这份记录。
 
-Read、Grep 一类只读且声明为并发安全的工具可以同时运行，Edit、Bash 等可能改变环境的工具则要排队执行。是否允许并发取决于工具预先声明的副作用，不由模型在调用时临时决定。\cite{ch03tools}
+Read、Grep 一类只读且声明为并发安全的工具可以同时运行，Edit、Bash 等可能改变环境的工具则要排队执行。是否允许并发取决于工具预先声明的副作用，不由模型在调用时临时决定。\cite{ch03inside}
 
 Tool Result 也不是越完整越好。一次宽泛搜索可能返回几千行内容，命令日志还会更长；系统会限制或截断过大的结果，提示模型缩小查询范围。下一轮可以改查具体文件、行号或关键词，先找到眼下需要的证据，再决定是否继续展开。
 
@@ -256,11 +256,11 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 
 \section{权限与上下文管理}
 
-工具一旦能够读写文件、联网或运行命令，模型的判断就会影响真实环境。读论文失败，通常只是少了一份材料；陌生脚本若被执行，或者研究文件被覆盖，后果就不再停留在对话里。Claude Code 因而在 Tool 请求和实际执行之间设置权限检查。输入通过校验后，系统再结合权限规则、风险判断和 PreToolUse Hook，决定直接允许、询问用户还是拒绝；执行结果还会经过 PostToolUse Hook 和格式化，最后才回到对话。\cite{ch03safety,ch03hooks}
+工具一旦能够读写文件、联网或运行命令，模型的判断就会影响真实环境。读论文失败，通常只是少了一份材料；陌生脚本若被执行，或者研究文件被覆盖，后果就不再停留在对话里。Claude Code 因而在 Tool 请求和实际执行之间设置权限检查。输入通过校验后，系统再结合权限规则、风险判断和 PreToolUse Hook，决定直接允许、询问用户还是拒绝；执行结果还会经过 PostToolUse Hook 和格式化，最后才回到对话。\cite{ch03inside}
 
 写在 Prompt 里的规则只能影响模型怎样选择动作。即使已经写明“只修改指定研究目录，不执行来源不明的程序”，模型仍可能提出越界请求；工作目录白名单、命令规则和 Hook 才能在执行前把它拦住。前者用于约束判断，后者负责守住实际边界。
 
-这道边界也不只靠一处检查。权限引擎判断本次调用是否获准，PreToolUse Hook 补上项目自己的限制，操作系统级沙箱则约束 Bash 等进程实际能够触及的目录和资源。一项请求即使通过前面的判断，到了执行环境仍然不能越过沙箱。\cite{ch03safety,ch03officialhooks}
+这道边界也不只靠一处检查。权限引擎判断本次调用是否获准，PreToolUse Hook 补上项目自己的限制，操作系统级沙箱则约束 Bash 等进程实际能够触及的目录和资源。一项请求即使通过前面的判断，到了执行环境仍然不能越过沙箱。\cite{ch03inside,ch03officialhooks}
 
 权限系统保护的是机器和工作区，不负责判断数学是否正确。命令没有越界，只能说明它获准执行；证明中的漏洞仍要靠反例、独立推导、形式化检查和人类审阅来发现。
 
@@ -311,11 +311,13 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 |\mathrm{system}|+|\mathrm{history}|+|\mathrm{tools}|+|\mathrm{reminders}|+|\mathrm{output\ reserve}|\leq W.
 \]
 
-式子里的系统说明和工具 Schema 大多保持不变，任务历史却会随着每轮实验继续增长。旧推导、完整命令输出和整篇论文不可能永远原样留在窗口里，可若简单地从最早的消息开始删除，又容易把已经否决的路线、关键反例和仍未补上的证明缺口一并删掉。\cite{ch03prompt,ch03compact}
+式子里的系统说明和工具 Schema 大多保持不变，任务历史却会随着每轮实验继续增长。旧推导、完整命令输出和整篇论文不可能永远原样留在窗口里，可若简单地从最早的消息开始删除，又容易把已经否决的路线、关键反例和仍未补上的证明缺口一并删掉。\cite{ch03inside}
 
 压缩之前，先应少往对话里塞无用内容。数值脚本不必回传每一行中间量，留下关键统计、失败参数和完整日志的位置即可；检索论文时也可以先用命题和关键词缩小范围，再读取真正相关的段落。Tool Result 越收敛，后面需要压缩的内容就越少。
 
-即使已经收窄 Tool Result，任务历史仍会继续增长。本文所据的源码快照把后续处理分为五层。Microcompact 只重排消息，以保护稳定前缀的缓存命中，\emph{不会}释放上下文空间；Snip 从归档旧消息开始真正腾出位置，之后的 Collapse 和 Auto Compact 会生成越来越完整的摘要。若请求已经因为过长被 API 拒绝，系统还会尝试一次受限的 Reactive 压缩。处理越深入，腾出的空间越多，同时也更容易丢失细节，并产生额外的模型调用成本。\cite{ch03compact}
+即使已经收窄 Tool Result，任务历史仍会继续增长。本文所据的源码快照把后续处理分为五层。Microcompact 只重排消息，以保护稳定前缀的缓存命中，\emph{不会}释放上下文空间；Snip 从归档旧消息开始真正腾出位置，之后的 Collapse 和 Auto Compact 会生成越来越完整的摘要。若请求已经因为过长被 API 拒绝，系统还会尝试一次受限的 Reactive 压缩。处理越深入，腾出的空间越多，同时也更容易丢失细节，并产生额外的模型调用成本。\cite{ch03inside}
+
+这和 LLMLingua 一类按 token 压缩 Prompt 的方法不是同一层。后者按信息量删减输入，Claude Code 的 Snip 与 Collapse 则在会话层归档消息或生成摘要。两者都想减少送入模型的内容，但保留单位和信息损失方式不同。\cite{ch03llmlingua}
 
 \begin{figure}[htbp]
 \centering
@@ -339,9 +341,9 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 
 摘要不可能与完整历史完全等价。数学研究若要在中途交接，原始目标、当前最强结论、已经排除的路线、关键反例、待证明引理和证据位置都要留下。失败过程不必逐字保存，但某条路线为何被放弃、研究方向又为何改变，不能在压缩时一起消失。
 
-因此，真正重要的状态不能只存在聊天记录里。近期推导留在当前对话，跨任务沿用的研究纪律写进 \texttt{CLAUDE.md}，路线台账、实验日志和证明源码则保存为外部文件。即使对话被压成摘要，模型仍能重新打开这些材料，查到路线失败的原因和尚未证明的引理。
+因此，真正重要的状态不能只存在聊天记录里。近期推导留在当前对话，跨任务沿用的研究纪律写进 \texttt{CLAUDE.md}，路线台账、实验日志和证明源码则保存为外部文件。即使对话被压成摘要，模型仍能重新打开这些材料，查到路线失败的原因和尚未证明的引理。\cite{ch03memgpt}
 
-对话进行到一半时，System Reminder 还可以补入刚刚发生的变化。某个子 Agent 退回候选证明，或新的实验结果推翻旧假设以后，Harness 会把这项状态重新送进 Prompt，避免模型继续沿用过期判断。Reminder 本身不会发现问题，它只是把系统已经观察到的事实及时带回当前轮次。\cite{ch03compact,ch03hooks}
+对话进行到一半时，System Reminder 还可以补入刚刚发生的变化。某个子 Agent 退回候选证明，或新的实验结果推翻旧假设以后，Harness 会把这项状态重新送进 Prompt，避免模型继续沿用过期判断。Reminder 本身不会发现问题，它只是把系统已经观察到的事实及时带回当前轮次。\cite{ch03inside}
 
 \FloatBarrier
 
@@ -367,7 +369,7 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 \label{tab:ch03-complexity}
 \end{table}
 
-表中只有最后一种情况真正适合拆出子 Agent。几十条数学路线彼此相对独立，若仍由主 Agent 依次尝试，每条支线的推导和失败记录都会挤进同一份上下文。拆开以后，子 Agent 在自己的上下文里完成推导、查错或检索，再把结论、证据和未解决处交回协调者。主上下文因此不用保存每条支线的完整转录，不过，交回的摘要也可能漏掉关键细节。
+表中只有最后一种情况真正适合拆出子 Agent。几十条数学路线彼此相对独立，若仍由主 Agent 依次尝试，每条支线的推导和失败记录都会挤进同一份上下文。拆开以后，子 Agent 在自己的上下文里完成推导、查错或检索，再把结论、证据和未解决处交回协调者。主上下文因此不用保存每条支线的完整转录，不过，交回的摘要也可能漏掉关键细节。\cite{ch03autogen}
 
 公开报告记录了这约六十个子 Agent 的工作。两个 Agent 形成了关键数学思路，十三个继续补充这些路线，三十个探索新方向但没有成功，另有十三个负责验证，最后两个协助起草论文。直接带来结果的支线很少，大部分工作留下的是失败记录和复核意见。各个 Agent 分别承担探索、补充和审查，工作分布比最终的成功路线更能说明这次并行是怎样运转的。\cite{ch03riemannweb}
 
@@ -428,27 +430,28 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 
 提出证明的同一个上下文不适合独自完成验收。公开记录显示，Claude 为不同薄弱点安排了彼此隔离的审稿 Agent，下载五十四篇 arXiv 论文核对新颖性，还让新的 Agent 在看不到原推导的情况下独立重证。十次独立检查完成后，继续增加同类检查已经很难带来新信息，结果便被交给人类解析数论专家。\cite{ch03riemannweb,ch03riemannpaper}
 
-Stop Hook 可以替这道验收补上一些机器能够判断的条件，例如数值脚本是否正常退出、Lean 项目是否通过、证明稿中是否仍有占位符，以及要求的附件是否齐全。只要产物有缺口，Hook 就把原因送回 Agent Loop，让模型继续处理。它不能判断新定理必然正确，也不能保证文献检索没有遗漏。公开材料没有声称这次研究使用了图中的自定义 Hook，这里只是借它说明 Claude Code 可以怎样设置结束条件。\cite{ch03loop,ch03hooks,ch03officialhooks}
+Stop Hook 可以替这道验收补上一些机器能够判断的条件，例如数值脚本是否正常退出、Lean 项目是否通过、证明稿中是否仍有占位符，以及要求的附件是否齐全。只要产物有缺口，Hook 就把原因送回 Agent Loop，让模型继续处理。它不能判断新定理必然正确，也不能保证文献检索没有遗漏。公开材料没有声称这次研究使用了图中的自定义 Hook，这里只是借它说明 Claude Code 可以怎样设置结束条件。\cite{ch03inside,ch03officialhooks}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[ccbox,fill=blue!12,minimum width=2.60cm] (end) at (-4.15,0.70)
+  \node[ccbox,fill=blue!12,minimum width=2.60cm] (end) at (-4.50,0.75)
     {模型请求结束\\\texttt{end\_turn}};
-  \node[ccbox,fill=yellow!22,minimum width=2.60cm] (hook) at (-1.20,0.70)
+  \node[ccbox,fill=yellow!22,minimum width=2.60cm] (hook) at (-1.35,0.75)
     {Stop Hook\\检查机器可读产物};
-  \node[ccbox,fill=green!13,minimum width=2.60cm] (pass) at (1.75,1.25)
+  \node[ccbox,fill=green!13,minimum width=2.60cm] (pass) at (1.85,1.45)
     {脚本、构建、附件齐全\\允许流程结束};
-  \node[ccbox,fill=red!10,minimum width=2.60cm] (fail) at (1.75,0.05)
+  \node[ccbox,fill=red!10,minimum width=2.60cm] (fail) at (1.85,-0.05)
     {产物仍有缺口\\注入失败原因};
-  \node[ccbox,fill=purple!12,minimum width=2.60cm] (loop) at (4.70,0.05)
+  \node[ccbox,fill=purple!12,minimum width=2.60cm] (loop) at (5.05,-0.05)
     {返回 Agent Loop\\重新观察或继续};
   \draw[ccflow] (end.east) -- (hook.west);
   \draw[ccflow] (hook.north east) -- node[ccnote,above left] {通过} (pass.west);
   \draw[ccflow] (hook.south east) -- node[ccnote,below left] {未通过} (fail.west);
   \draw[ccflow] (fail.east) -- (loop.west);
   \draw[ccdash,rounded corners=5pt]
-    (loop.south) -- ++(0,-0.50) -| node[ccnote,below,pos=0.30] {修正后再申请结束} (end.south);
+    (loop.south) -- ++(0,-0.72) -| (end.south);
+  \node[ccnote] at (0.30,-1.01) {修正后再申请结束};
 \end{tikzpicture}
 \caption{Stop Hook 能检查约定的产物，却不能代替数学审稿。}
 \label{fig:ch03-stop-hook}
@@ -456,7 +459,7 @@ Stop Hook 可以替这道验收补上一些机器能够判断的条件，例如�
 
 每种检查都有自己的范围。数值实验适合寻找反例，却覆盖不了无限情形；Lean 只核对被准确形式化的命题和推导，不判断研究是否新颖；数学家阅读并复核稿件，也不等于论文已经完成期刊同行评审。官方材料称，两位 Anthropic 数学家检查了论文，Brian Conrey 与 Daniel Goldston 也阅读稿件并提出意见。截至本章写作时，这项刚公开的结果仍应按研究论文引用，不能当作已经写进教科书的定理。\cite{ch03riemannweb,ch03riemannlean}
 
-在本文所据版本的端到端流程里，机器侧检查通过后，系统还会保存会话，整理需要延续的记忆，最后再向用户显示结果。脚本、构建和附件先验收，循环随后退出，总结只是最后一步。若先写总结再补检查，一段看似完整的说明很容易掩盖仍未完成的工作。\cite{ch03e2e}
+在本文所据版本的端到端流程里，机器侧检查通过后，系统还会保存会话，整理需要延续的记忆，最后再向用户显示结果。脚本、构建和附件先验收，循环随后退出，总结只是最后一步。若先写总结再补检查，一段看似完整的说明很容易掩盖仍未完成的工作。\cite{ch03inside}
 
 现在再看屏幕上的 $67.2\%$，已经可以沿着记录追到它是怎样得来的。一条失败的支线先转向二分之一下界，经多轮审查后继续推进，最后留下论文、程序、形式化材料和数学家的复核意见。首轮六百五十条没有结果的路线，以及第二轮大部分失败的分支，也各自留下了尝试过的方法和停下的位置。
 
@@ -502,7 +505,7 @@ Stop Hook 可以替这道验收补上一些机器能够判断的条件，例如�
 
 本文的案例材料来自 Anthropic 于 2026 年 8 月 10 日公开的说明、研究论文、子 Agent 记录和 Lean 仓库。$67.2\%$ 指的是“临界线上零点比例”的新无条件下界，不表示黎曼猜想已经完成了 $67.2\%$，更不表示猜想已经得到证明。公开材料只记录了两次 Claude Code 会话的总体规模和若干关键支线。正文中的工具轨迹经过简化，结构图也只用于解释机制，并非对完整会话的逐条还原。
 
-Claude Code 的技术部分主要参考 Zhuoran Yang 的 \textit{Inside Claude Code} 系列，以及 Avi Chawla 的第三方架构图解。相关源码分析基于 Claude Code v2.1.88 的 Source Map，因此工具数量、权限模式、压缩层级和内部名称都只属于这一版本快照，不能直接外推到其他版本。Hook 的能力边界另用 Anthropic 官方文档核对。研究案例使用的未发布 Claude 模型，也不能与这份源码快照或读者当前可用的模型版本视为同一对象。
+Claude Code 的实现细节主要参考 Zhuoran Yang 的 \textit{Inside Claude Code}，并在参考文献中合并为一个总条目；Agent Loop、工具调用、Prompt 缓存、上下文压缩和多智能体协作的通用机制，则分别用相关论文补充。该源码分析基于 Claude Code v2.1.88 的 Source Map，因此工具数量、权限模式、压缩层级和内部名称都只属于这一版本快照，不能直接外推到其他版本。Hook 的能力边界另用 Anthropic 官方文档核对。研究案例使用的未发布 Claude 模型，也不能与这份源码快照或读者当前可用的模型版本视为同一对象。
 
 \begin{thebibliography}{99}
 \bibitem{ch03riemannweb}
@@ -517,29 +520,29 @@ Anthropic. \textit{Transcripts of Claude sub-agents E2 and E2-pairs, typeset and
 \bibitem{ch03riemannlean}
 Anthropic. \textit{zeta-23-lean: Formal verification artifacts}. GitHub, 2026. \url{https://github.com/anthropics/zeta-23-lean}
 
-\bibitem{ch03e2e}
-Zhuoran Yang. \textit{End-to-End Workflow}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/01-end-to-end-workflow.html}
+\bibitem{ch03inside}
+Zhuoran Yang. \textit{Inside Claude Code}. Source-map analysis of Claude Code v2.1.88, including End-to-End Workflow, Agent Loop, Prompt Assembly, Context Compaction, Tool System, Safety, and Hooks, 2026. \url{https://y-agent.github.io/inside-claude-code/}
 
 \bibitem{ch03visual}
 Avi Chawla. \textit{Claude Code's Architecture, Explained Visually}. Daily Dose of Data Science, 2026. \url{https://blog.dailydoseofds.com/p/claude-codes-architecture-explained}
 
-\bibitem{ch03loop}
-Zhuoran Yang. \textit{Agent Loop \& Query Engine}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/02-agent-loop-query-engine.html}
+\bibitem{ch03react}
+Shunyu Yao et al. \textit{ReAct: Synergizing Reasoning and Acting in Language Models}. ICLR, 2023. \url{https://arxiv.org/abs/2210.03629}
 
-\bibitem{ch03prompt}
-Zhuoran Yang. \textit{Prompt Assembly Pipeline}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/03-prompt-assembly.html}
+\bibitem{ch03toolformer}
+Timo Schick et al. \textit{Toolformer: Language Models Can Teach Themselves to Use Tools}. NeurIPS, 2023. \url{https://proceedings.neurips.cc/paper/2023/hash/d842425e4bf79ba039352da0f658a906-Abstract-Conference.html}
 
-\bibitem{ch03compact}
-Zhuoran Yang. \textit{Context Compaction}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/04-context-compaction.html}
+\bibitem{ch03promptcache}
+In Gim et al. \textit{Prompt Cache: Modular Attention Reuse for Low-Latency Inference}. MLSys, 2024. \url{https://proceedings.mlsys.org/paper_files/paper/2024/hash/a66caa1703fe34705a4368c3014c1966-Abstract-Conference.html}
 
-\bibitem{ch03tools}
-Zhuoran Yang. \textit{Tool System \& Registry}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/05-tool-system.html}
+\bibitem{ch03llmlingua}
+Huiqiang Jiang et al. \textit{LLMLingua: Compressing Prompts for Accelerated Inference of Large Language Models}. EMNLP, 2023. \url{https://aclanthology.org/2023.emnlp-main.825/}
 
-\bibitem{ch03safety}
-Zhuoran Yang. \textit{Safety \& Sandboxing}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/06-safety-sandbox.html}
+\bibitem{ch03memgpt}
+Charles Packer et al. \textit{MemGPT: Towards LLMs as Operating Systems}. 2023. \url{https://arxiv.org/abs/2310.08560}
 
-\bibitem{ch03hooks}
-Zhuoran Yang. \textit{Hooks \& Lifecycle}. Inside Claude Code, v2.1.88 source-map analysis, 2026. \url{https://y-agent.github.io/inside-claude-code/11-hooks-lifecycle.html}
+\bibitem{ch03autogen}
+Qingyun Wu et al. \textit{AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation}. COLM, 2024. \url{https://openreview.net/forum?id=BAakY1hNKS}
 
 \bibitem{ch03officialhooks}
 Anthropic. \textit{Hooks reference}. Claude Code Docs, accessed 2026-08-13. \url{https://code.claude.com/docs/en/hooks}

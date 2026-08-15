@@ -115,6 +115,7 @@ class Block(nn.Module):
 
 \begin{figure}[htbp]
 \centering
+\vspace{\baselineskip}
 \begin{tikzpicture}[
   font=\scriptsize,
   >=Latex,
@@ -393,47 +394,50 @@ $\beta_t=0$ 时，仍然读到旧值；$\beta_t=1$ 时，这个 Key 方向会被
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.35,2.20) {纯加法写入};
-\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (0.20,0.65) {$S_{t-1}$};
-\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (2.10,1.55) {$k_t^{\mathsf T}v_t$};
+% Stack the two mechanisms instead of squeezing them into one horizontal row.
+% Each panel now reads from left to right and owns all of its arrow routes.
+\node[chlabel] at (0,3.55) {纯加法写入};
+\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (-4.60,2.35) {$S_{t-1}$};
+\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (-1.80,3.00) {$k_t^{\mathsf T}v_t$};
 \node[circle,draw=primary,thick,minimum size=0.48cm,inner sep=0pt]
-  (plus1) at (3.55,0.65) {$+$};
-\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (4.90,0.65) {$S_t$};
-% The old state and the new write enter the sum through different ports.
-% Extra spacing keeps both arrow shafts visible around the small plus node.
+  (plus1) at (1.00,2.35) {$+$};
+\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (3.00,2.35) {$S_t$};
 \draw[chflow] (s1.east) -- (plus1.west);
 \draw[chflow,rounded corners=3pt]
-  (write1.south) -- ++(0,-0.08) -| (plus1.north);
-\draw[chflow] (plus1) -- (new1);
-\node[chnote] at (2.35,-0.05) {直接叠加};
+  (write1.south) -- ++(0,-0.10) -| (plus1.north);
+\draw[chflow] (plus1.east) -- (new1.west);
+\node[chnote] at (-1.55,1.82) {直接叠加};
 
-\node[chlabel] at (8.10,3.00) {Delta Rule};
-\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (5.30,1.50) {$S_{t-1}$};
-\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (7.00,1.50) {Key $k_t$};
-\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (9.65,1.50) {目标 $v_t$};
-\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (7.00,0.40)
+\draw[draw=primary!28,dashed] (-5.45,1.35) -- (5.15,1.35);
+
+\node[chlabel] at (0,0.82) {Delta Rule};
+\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (-4.90,-0.50) {$S_{t-1}$};
+\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (-2.30,0.25) {Key $k_t$};
+\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (0.30,0.25) {目标 $v_t$};
+\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (-2.30,-0.50)
   {读出 $v_{\mathrm{old}}=k_tS_{t-1}$};
-\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (9.65,0.40)
+\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (0.30,-0.50)
   {误差 $v_t-v_{\mathrm{old}}$};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (6.00,-0.90)
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (-2.30,-1.75)
   {强度 $\beta_t$};
-\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (8.35,-0.90)
+\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (0.30,-1.75)
   {按 Key 方向写回\\$\beta_t(v_t-v_{\mathrm{old}})$};
 \node[circle,draw=primary,thick,minimum size=0.48cm,inner sep=0pt]
-  (plus2) at (10.95,-0.90) {$+$};
-\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (12.15,-0.90) {$S_t$};
-\draw[chflow] (s2.south east) -- (read.north west);
+  (plus2) at (3.00,-1.75) {$+$};
+\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (4.55,-1.75) {$S_t$};
+\draw[chflow] (s2.east) -- (read.west);
 \draw[chflow] (key2.south) -- (read.north);
 \draw[chflow] (read.east) -- (error.west);
 \draw[chflow] (value2.south) -- (error.north);
-\draw[chflow] (error.south west) -- (write2.north east);
+\draw[chflow] (error.south) -- (write2.north);
 \draw[chflow] (beta2.east) -- (write2.west);
 \draw[chflow] (write2.east) -- (plus2.west);
 \draw[chflow] (plus2.east) -- (new2.west);
-% The old-state bypass gets its own rail above every computation node.  It
-% returns from the right and enters the final sum through a separate port.
+% The retained old state uses a labelled lower lane, visually separate from
+% the correction path above it.
 \draw[chflow,rounded corners=3pt]
-  (s2.north) -- (5.30,2.50) -- (10.95,2.50) -- (plus2.north);
+  (s2.south) -- (-4.90,-2.70) -- (3.00,-2.70) -- (plus2.south);
+\node[chnote] at (-1.15,-2.45) {保留旧状态};
 \end{tikzpicture}
 \caption{纯加法写入与 Delta Rule。}
 \label{fig:ch02-delta}
