@@ -67,9 +67,9 @@
 千奈把视频退回介绍研究过程的那一段，又看了一遍“六百五十种想法”和“六十个子 Agent”。
 
 \begin{quote}
-\textbf{千奈：}六百五十多种想法，这么多内容，想想都很头大，AI 桑听着像一个超级超级厉害的大老板哇。
+\textbf{千奈：}六百五十多种想法，这么多内容，想想都很头大，AI 桑听着像一个超级超级厉害的大统领哇，听起来...就跟有一堆优秀伙伴的刘邦一样！
 
-\textbf{广：}呼呼...没有那么夸张哦千奈，其实claude code是一个线上开源的代码库，只要你能搞清楚它的工作原理，也可以变成和它一样的军师哦...
+\textbf{广：}呼呼...没有那么夸张哦千奈，其实claude code是一个线上开源的代码库，只要你能搞清楚它的工作原理，也可以像它一样带领你的萧何和樊哙...哦。
 \end{quote}
 
 \section{启动与 Prompt 组装}
@@ -86,51 +86,56 @@
 
 当然Claude 也不是从零开始推导。论文借用了 Bombieri 对 Weil 二次型的观察，也用到了 Baluyot、Goldston 等人近年来得到的无条件配对相关结果。它找到的新接法，是用线性代数同时追踪二次型的正、负方向，再从这些已有结果中推出更强的比例下界。\cite{ch03riemannweb,ch03riemannpaper}
 
-先放下数学细节，来看看 Claude Code 是怎么解决问题。它会过程大致分成三段：开始时准备环境和上下文；执行时让模型与工具反复往返；结束前整理证据，再交给外部复核。真正一遍遍运转的，是中间那一小圈。第三方架构文章常把模型外面的运行框架称作 Agent Harness。模型判断“下一步做什么”；Harness 准备材料、列出可用工具、检查权限，再把执行结果送进下一轮。模型很重要，但它只是这套系统中的一个节点。\cite{ch03visual,ch03e2e}
+先放下数学细节，我们来看看 Claude Code 是怎么解决问题。它会过程大致分成三段：开始时准备环境和上下文；执行时让模型与工具反复往返；结束前整理证据，再交给外部复核。真正一遍遍运转的，是中间那一小圈。第三方架构文章常把模型外面的运行框架称作 Agent Harness。模型判断“下一步该做什么”，然后由Harness 准备材料、列出可用工具、检查权限，再把执行结果送进下一轮。模型很重要，但它只是这套系统中的一个节点。\cite{ch03visual,ch03e2e}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[ccbox,fill=blue!12,minimum width=2.35cm] (request) at (-4.45,1.55)
+  \node[ccbox,fill=blue!12,minimum width=2.35cm] (request) at (-4.55,1.80)
     {用户请求\\尝试黎曼猜想};
-  \node[ccbox,fill=green!13,minimum width=2.35cm] (context) at (-1.48,1.55)
+  \node[ccbox,fill=green!13,minimum width=2.35cm] (context) at (-1.52,1.80)
     {组装上下文\\规则、工具、历史};
-  \node[ccbox,fill=yellow!22,minimum width=2.35cm] (model) at (1.48,1.55)
+  \node[ccbox,fill=yellow!22,minimum width=2.35cm] (model) at (1.52,1.80)
     {模型判断\\下一项动作};
-  \node[ccbox,fill=orange!18,minimum width=2.35cm] (gate) at (4.45,1.55)
+  \node[ccbox,fill=orange!18,minimum width=2.35cm] (gate) at (4.55,1.80)
     {权限闸门\\允许 / 询问 / 拒绝};
-  \node[ccbox,fill=red!10,minimum width=2.35cm] (tool) at (4.45,0)
+  \node[ccbox,fill=red!10,minimum width=2.35cm] (tool) at (4.55,-0.25)
     {工具执行\\读论文 / 跑实验 / 写文件};
-  \node[ccbox,fill=purple!12,minimum width=2.35cm] (observe) at (1.48,0)
+  \node[ccbox,fill=purple!12,minimum width=2.35cm] (observe) at (1.52,-0.25)
     {新观察\\加入下一轮历史};
-  \node[ccbox,fill=cyan!13,minimum width=2.35cm] (verify) at (-1.48,0)
+  \node[ccbox,fill=cyan!13,minimum width=2.35cm] (verify) at (-1.52,-0.25)
     {检查完成条件\\通过，或回送缺口};
-  \node[ccbox,fill=codebg,minimum width=2.35cm] (result) at (-4.45,0)
+  \node[ccbox,fill=codebg,minimum width=2.35cm] (result) at (-4.55,-0.25)
     {交回结果\\新结论与证据包};
   \draw[ccflow] (request) -- (context);
   \draw[ccflow] (context) -- (model);
   \draw[ccflow] (model) -- node[ccnote,above] {tool\_use} (gate);
   \draw[ccflow] (gate) -- (tool);
   \draw[ccflow] (tool) -- (observe);
-  \draw[ccdash] (observe.north) -- node[ccnote,right] {tool\_result\\下一轮} (model.south);
-  \draw[ccflow] (model.south west) -- node[ccnote,above left] {end\_turn} (verify.north east);
+  % The loop return and the completion branch leave the model through
+  % different ports, so their arrow shafts remain visually separate.
+  \draw[ccdash] (observe.north) --
+    node[ccnote,right,xshift=2pt] {tool\_result\\下一轮} (model.south);
+  \draw[ccflow,rounded corners=4pt]
+    (model.south west) -- ++(-0.32,-0.38) --
+    node[ccnote,above,pos=0.48] {end\_turn} (-1.52,0.70) -- (verify.north);
   \draw[ccflow] (verify) -- node[ccnote,above] {通过} (result);
 \end{tikzpicture}
 \caption{一次 Claude Code 任务的讲解路径。工具结果回到下一轮；只有 \texttt{end\_turn} 才进入完成检查。}
 \label{fig:ch03-overview}
 \end{figure}
 
-图里的循环，正是 Claude Code 与普通聊天的差别。没有 Harness，模型也可以提出“也许从 Weil 的二次型入手”，却不能自己打开前一轮的笔记，写下数值检查，再根据失败参数修改推导。工具、权限和反馈通道接起来以后，想法才会碰到真实材料，也才可能被材料推翻。
+图里的循环，正是 Claude Code 与普通一次性聊天不一样的地方。没有 Harness，模型也可以提出“也许从 Weil 的二次型入手”，却不能自己打开前一轮的笔记，写下数值检查，再根据失败参数修改推导。工具、权限和反馈通道接起来以后，想法才会被AI 酱用真实的，也才可能被材料推翻。
 
-Anthropic 公布的数字也能看出这套循环怎样工作。第一次会话试过约六百五十条思路，没有一条形成成果；第二次会话又把问题拆给约六十个子 Agent。它们一共运行约两千四百条 Shell 命令，写下数百个 Python 脚本，还对已知零点做了数千次数值检查。动作很多，最后留下的结论却很少。失败记录和复核意见一次次回到循环里，后面的选择也跟着改变。\cite{ch03riemannweb}
+第一次会话虽然试了约六百五十条思路，但是其实大部分都像无头苍蝇一样，没有得到什么可用结果。第二次会话换了个路子，把推导、文献检索、程序验证和找漏洞拆给约六十个子 Agent，一共运行了约两千四百条 Shell 命令，写下数百个 Python 脚本，还对已知零点做了数千次数值检查。在执行的过程中，还会有一个审阅agent实时监控，如果发现了反例，会立刻退回修改推导工作，能够经受复算和审阅的部分才继续往下走。\cite{ch03riemannweb}
 
 \FloatBarrier
 
 终端里虽然只有一句要求，真正送到模型面前的内容却长得多。会话启动后，Claude Code 会读取配置与项目指令，恢复需要沿用的信息，再登记内置工具、Skills 和 MCP 工具。材料准备好以后，它从中取出本轮需要的部分，组装成一次 API 调用的 Prompt。也就是说，这里的 Prompt 是每轮临时拼出的输入，不是一段永远不变的固定文字。\cite{ch03e2e,ch03prompt}
 
-其中每一层回答的问题都不同。System Prompt 说明 Claude Code 应该怎样使用工具、怎样处理错误；\texttt{CLAUDE.md} 保存跨任务沿用的项目约定；用户消息写的是眼前要完成什么；工具 Schema 则列出工具的名称、参数和限制。放进一个数学研究工作区，长期规则可以写成“引用结论时注明来源”“数值实验不能冒充证明”“失败路线要留下第一个未证明步骤”。“继续尝试黎曼猜想”只属于这一次任务，不该混进长期项目知识。
+其中每一层回答的问题都不同。System Prompt 说明 Claude Code 应该怎样使用工具、怎样处理错误；\texttt{CLAUDE.md} 保存跨任务沿用的项目约定；用户消息写的是眼前要完成什么；工具 Schema 则列出工具的名称、参数和限制。放进一个数学研究工作区，长期规则可以写成“引用结论时注明来源”“数值实验不能冒充证明”“失败路线要留下第一个未证明步骤”。“继续尝试黎曼猜想”只属于这一次任务，不会混进长期项目知识。
 
-工具也不会因为一句“可以做研究”就自动出现。每项工具都要先注册，它的完整 Schema 也要进入模型能看见的能力清单。若只有本地读取能力，模型最多整理现有笔记；获得 Shell 后，它才能运行 Python 检查候选公式；得到联网检索权限后，它才能核对某项结论是否早已出现；接入 Lean 后，才可能把适合形式化的证明义务交给证明助手。可用工具变了，同一句研究要求也会走向不同的行动空间。
+模型不能临时想出一种工具来用。会话开始时，Claude Code 会把本轮可用的工具，以及每项工具的参数和限制，一并放进 Prompt。清单里若只有 Read，它只能翻现有笔记。有了 Shell，模型可以运行 Python 检查公式；再开放联网，它还能查某项结论是否已有先例。而这次还特别接入了 Lean，这样一部分适合形式化的证明步骤也可以交给证明助手核验了。同一句研究要求，工具清单不同，实际能做的事也不同。
 
 \begin{figure}[htbp]
 \centering
@@ -151,27 +156,31 @@ Anthropic 公布的数字也能看出这套循环怎样工作。第一次会话�
   \node[draw=accent!65,dashed,rounded corners=3pt,fit=(ask)(history),inner sep=4pt,
         label={[ccnote]above:每轮变化的尾部}] (dynamic) {};
 
-  \node[ccbox,fill=codebg,minimum width=4.00cm] (prompt) at (0,-0.72)
+  \node[ccbox,fill=codebg,minimum width=4.00cm] (prompt) at (0,-1.18)
     {本轮 Prompt};
-  \node[ccbox,fill=cyan!12,minimum width=2.75cm] (call) at (0,-1.67)
+  \node[ccbox,fill=cyan!12,minimum width=2.75cm] (call) at (0,-2.18)
     {模型调用};
-  \draw[ccflow] (stable.south) -- (prompt.north west);
-  \draw[ccflow] (dynamic.south) -- (prompt.north east);
+  % Stable and changing material enter through separate ports.  This avoids a
+  % short shared stem whose arrowhead would be pressed against the Prompt box.
+  \draw[ccflow,rounded corners=4pt]
+    (stable.south) -- ++(0,-0.34) -| (prompt.north west);
+  \draw[ccflow,rounded corners=4pt]
+    (dynamic.south) -- ++(0,-0.34) -| (prompt.north east);
   \draw[ccflow] (prompt) -- (call);
 \end{tikzpicture}
 \caption{Prompt 的稳定前缀与动态尾部。缓存可以减少稳定部分的重复处理，却不会替任务轨迹腾出上下文。}
 \label{fig:ch03-prompt}
 \end{figure}
 
-稳定内容放在前面，还有一个很实际的理由：Prompt Caching 会按前缀复用计算。系统行为和工具说明通常不会随轮次改变，放在前面更容易命中缓存；实验输出与研究记录一直在变，便留在后面。缓存只能减少重复处理的成本。它不会扩大上下文窗口，更不会让一条已被反例推翻的路线重新成立。
+以这次研究为例，图中左边放的是引用规范、工具参数和权限设置。这些内容在任务开始时就已经确定，通常不会随着每轮实验改变，右边则一直在增加新的材料，包括刚提出的思路、脚本返回的结果，以及审阅 Agent 找到的问题。下一轮调用时，Prompt Caching 就可以复用开头没有变化的部分，省去一部分重复计算。
 
-缓存省下了重复计算，却没有替历史腾出位置，所以送进模型的观察仍要尽量收窄。模型不必每一轮都吞下全部脚本输出和整篇论文；此刻更要紧的是当前命题、已经排除的路线、刚发现的反例，以及仍未证明的那一步。Prompt 只负责把这些材料摆到眼前。某个假设是否已被新结果推翻，某条引文能否支持当前结论，还得在后面的循环中继续核对。
+不过，研究留下的材料并不会因此减少。六百五十条失败路线、数百个脚本和几十个 Agent 的审阅意见，如果全部塞回 Prompt，很快就会挤满上下文。脚本的完整输出可以留在文件里，Prompt 只记下反例出现的位置和得到的结论。论文也不必反复全文载入，只带回眼下需要核对的段落。走不通的路线则留下失败的位置，模型读完这些记录，再决定下一步是重跑实验、核对引文，还是换一条路继续。
 
 \FloatBarrier
 
 \section{Agent Loop 与工具执行}
 
-模型读完上下文后，可以继续生成文字，也可以提出一项 Tool 调用。下面这段轨迹根据公开过程整理，用来说明动作如何衔接，并非对原始命令的逐行复刻：
+上一节末尾，模型已经拿到了当前命题、失败记录和可用工具。它可以继续写下推导，也可以发出一项 Tool 调用，让 Claude Code 去读文件、运行程序或者更新路线台账。工具执行完毕，结果会回到下一轮 Prompt，成为模型继续判断的新材料。
 
 \begin{lstlisting}[caption={一条候选研究路线的教学化工具轨迹}]
 Read    研究计划与失败路线表
@@ -183,15 +192,15 @@ Agent   委派另一种估计方法
         -> 返回待复核的局部引理
 \end{lstlisting}
 
-程序找到反例以后，问题已经变了。运行检查之前，候选不等式还是一段看起来顺畅的推导；控制对象把它击穿以后，下一轮就不该继续润色原来的证明。系统要先记下第一个失败步骤，再决定缩小命题，还是另开一条路线。模型上一轮写得多么自信，并不能改变研究对象此刻的状态。
+上面的轨迹里，程序找到反例以后，原来的证明就不能再往下写了。Claude Code 先把反例和失败位置记进台账，下一轮再决定缩小命题，还是另开一条路线。模型会一次次的思考，调用工具，根据工具带回来的结果重新思考。
 
-这段往返就是 Agent Loop。它的主干并不复杂：组装输入，调用模型，读取响应，执行工具，再把结果接回历史。本文参考的 v2.1.88 源码分析使用异步生成器组织这条主干。文本和 Tool 请求随着 API 响应逐项到达，终端可以一边接收一边显示；工具参数完整以后，执行器便能开始工作。循环会保留当前状态，等新的观察回来，再从这里继续。\cite{ch03loop}
+这段往返就是 Agent Loop。每一轮开始时，Claude Code 都会整理当前任务和已有记录，再交给模型判断。模型可以直接回答，也可以调用工具；工具执行完以后，结果会回到下一轮。整个过程采用流式处理，文字可以边生成边显示，工具参数完整后也能立即开始执行。\cite{ch03loop}
 
-一轮模型调用未必会产生新结论。若停止原因为 \texttt{tool\_use}，流程就转去执行工具；若是 \texttt{end\_turn}，则进入结束检查。输出被截断、请求过长或服务暂时不可用时，系统会尝试恢复，例如提高输出额度、压缩上下文、等待后重试或切换备用模型。这些补救都有次数与资源上限，否则恢复机制本身也可能陷入循环。
+模型以 \texttt{tool\_use} 结束这一轮时，Claude Code 会转去执行工具；模型返回 \texttt{end\_turn}，才表示它认为任务可以收尾。调用也可能因为输出被截断、请求过长或服务暂时不可用而失败，此时系统会增加输出额度、压缩上下文或等待后重试。每种恢复手段都有次数和资源上限，以免补救过程自己陷入循环。
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[node distance=0.52cm and 0.68cm]
+\begin{tikzpicture}[node distance=0.74cm and 0.90cm]
   \node[ccbox,fill=blue!12,minimum width=2.55cm] (judge) {判断\\下一项缺失的证据};
   \node[ccbox,fill=yellow!22,minimum width=2.55cm,right=of judge] (call) {提出动作\\tool\_use};
   \node[ccbox,fill=red!10,minimum width=2.55cm,below=of call] (execute) {执行工具\\访问真实环境};
@@ -201,25 +210,27 @@ Agent   委派另一种估计方法
   \draw[ccflow] (call) -- (execute);
   \draw[ccflow] (execute) -- (observe);
   \draw[ccflow] (observe) -- (update);
-  \draw[ccflow,rounded corners=5pt] (update.north) |- node[ccnote,above] {下一轮} (judge.west);
+  \draw[ccflow,rounded corners=5pt]
+    (update.north) -- ++(0,0.64) -| (judge.west);
+  \node[ccnote,anchor=south west] at ([yshift=0.66cm]update.north) {下一轮};
 \end{tikzpicture}
   \caption{Agent Loop 让“判断--动作--观察--更新”反复往返，把行动结果带回下一次判断。}
 \label{fig:ch03-agent-loop}
 \end{figure}
 
-Agent Loop 的价值不在于重复，而在于新的观察会改变下一步。数值实验找到反例，候选引理就要撤回；文献检索发现结论早已存在，就得重新说明新意；审稿 Agent 指出证明暗中使用了待证命题，缺口便要退回推导阶段。若循环不接受这些反馈，它只会更有耐心地重写同一个错误。
+图中的箭头虽然回到了起点，任务却不该回到原样。数值实验找到反例，候选引理就要撤回。如果文献检索发现结论早已存在的话，就需要研究者重新判断新意；审稿 Agent 若发现证明暗中使用了待证命题，这个缺口也要退回推导阶段。Tool Result 若没有改变后面的选择，循环只是在重复同一个错误。
 
-真正运行起来，Loop 还会遇到几种麻烦：不停提出新猜法，却迟迟凑不出可检验的命题；证据尚未齐全，就过早宣布“证明完成”；或者在几条等价的失败路线之间来回打转。轮次与资源上限用来收住第一种发散，外部检查拦住第二种误停，重复调用检测和失败台账则打断第三种振荡。这些守卫不会替模型想出答案，只会在它偏离、误停或原地踏步时改变执行路径。\cite{ch03loop,ch03hooks}
+循环也可能越跑越偏。模型可能不断提出新猜法，却迟迟不给出可以检验的命题，也可能在证据未齐时急着宣布完成。另一类故障更隐蔽，它看似换了几种说法，实际仍在重复同一条失败路线。Claude Code 会用轮次上限、Stop Hook、重复调用检测和失败台账拦住这些情况。它们想不出证明，但能阻止系统无休止地发散、误停或原地打转。\cite{ch03loop,ch03hooks}
 
 \FloatBarrier
 
-“这个不等式应该成立”，只能算模型提出的一项判断。程序在指定范围内没有找到反例，说明它暂时通过了有限检查；要写成“已经证明”，还需要覆盖无限情形的严谨推导。工具把这几层判断分开：它让文字碰到文件、程序和外部资料，再把成功或失败原样送回来。\cite{ch03tools}
+“这个不等式应该成立”只是一个待检查的判断。程序在指定范围内没有找到反例，只能说明它通过了这次有限检查；要写成“已经证明”，仍然需要覆盖无限情形的严谨推导。工具的作用，就是让模型写下的判断碰到文件、程序和外部资料，再把检查结果送回循环。\cite{ch03tools}
 
-不同工具遵循同一套调用约定。工具名称、用途和输入 Schema 告诉模型该怎样提出动作；是否只读、能否并发、如何中断等元数据，则供 Harness 调度。执行器按名称找到具体实现，校验参数，再等待权限和 Hook 检查。无论调用成功、失败，还是被用户拒绝，系统最后都会把它整理成 Tool Result。
+这些工具虽然用途不同，进入循环的方式却相同。模型按照工具名称和输入 Schema 提交参数，执行器完成校验、权限判断和 Hook 检查后，再调用对应的实现。成功结果、运行错误和用户拒绝都会被整理成 Tool Result，模型下一轮看到的正是这份记录。
 
-Read、Grep 一类只读且声明为并发安全的工具可以重叠执行；Edit、Bash 等可能改变环境的工具，前后则要设置串行屏障。工具能否并发，取决于它对副作用的声明，不由模型临时决定。\cite{ch03tools}
+Read、Grep 一类只读且声明为并发安全的工具可以同时运行，Edit、Bash 等可能改变环境的工具则要排队执行。是否允许并发取决于工具预先声明的副作用，不由模型在调用时临时决定。\cite{ch03tools}
 
-工具返回的内容也不能原样全塞回对话。宽泛搜索和很长的命令输出会先被限流，必要时还会截断，并附上“结果过大，需要缩小查询”的提示。模型下一轮便要缩小范围，指定更明确的行号或过滤条件。材料太多时先收窄问题，本身就是 Agent Loop 的一次修正。
+Tool Result 也不是越完整越好。一次宽泛搜索可能返回几千行内容，命令日志还会更长；系统会限制或截断过大的结果，提示模型缩小查询范围。下一轮可以改查具体文件、行号或关键词，先找到眼下需要的证据，再决定是否继续展开。
 
 \begin{table}[htbp]
 \centering
@@ -239,99 +250,104 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 \label{tab:ch03-tools}
 \end{table}
 
-每种工具提供的证据都有限。Python 适合快速找错，却不能把有限范围内的检查外推成无限情形的证明；文献搜索能降低重复发现旧结果的风险，却不能保证“没搜到”就等于从未有人做过；Lean 可以核对已经形式化的命题和推导，也不会替作者判断整篇论文是否新颖。工具接进循环以后，证据确实更多了，但每份证据能说明到哪里，也要一并留下。
+表里的每种工具都只能回答一部分问题。Python 可以快速寻找反例，却不能把有限范围的检查外推成无限情形的证明；文献搜索能够找到相近工作，但“没有搜到”不等于此前无人做过；Lean 可以核对已经形式化的命题和推导，也不负责判断论文是否新颖。记录 Tool Result 时，除了写下它发现了什么，也要写清这份结果还不能证明什么。
 
 \FloatBarrier
 
 \section{权限与上下文管理}
 
-工具让模型接触真实环境，也把风险带了进来。读取论文失败，通常只是少一项材料；运行陌生脚本、联网下载内容或覆盖研究文件，却可能直接影响工作区和机器。Claude Code 因此把权限检查放在模型意图与实际副作用之间。参考页面分析的实现会先校验输入，再结合权限规则、风险判断和 PreToolUse Hook，决定允许、询问还是拒绝。工具真正执行以后，结果还要经过 PostToolUse Hook 与格式化，才会回到对话。\cite{ch03safety,ch03hooks}
+工具一旦能够读写文件、联网或运行命令，模型的判断就会影响真实环境。读论文失败，通常只是少了一份材料；陌生脚本若被执行，或者研究文件被覆盖，后果就不再停留在对话里。Claude Code 因而在 Tool 请求和实际执行之间设置权限检查。输入通过校验后，系统再结合权限规则、风险判断和 PreToolUse Hook，决定直接允许、询问用户还是拒绝；执行结果还会经过 PostToolUse Hook 和格式化，最后才回到对话。\cite{ch03safety,ch03hooks}
 
-“提醒模型不要做”和“系统保证它做不了”，是两回事。把“只修改指定研究目录，不执行来源不明的程序”写进 Prompt，只是一条行为指令；工作目录白名单、命令规则和 Hook 才能直接阻断越界操作。Prompt 影响模型怎样选择动作，权限系统决定动作能否真正发生，二者不能互相代替。
+写在 Prompt 里的规则只能影响模型怎样选择动作。即使已经写明“只修改指定研究目录，不执行来源不明的程序”，模型仍可能提出越界请求；工作目录白名单、命令规则和 Hook 才能在执行前把它拦住。前者用于约束判断，后者负责守住实际边界。
 
-权限、Hook 和沙箱管的也不是同一件事。权限引擎回答“这次调用是否获准”；PreToolUse Hook 可以追加项目自己的规则；面对 Bash 等本地能力，操作系统级沙箱还会限定进程最多能触及哪里。三层约束前后相接，是因为任何一层都有可能漏看风险。\cite{ch03safety,ch03officialhooks}
+这道边界也不只靠一处检查。权限引擎判断本次调用是否获准，PreToolUse Hook 补上项目自己的限制，操作系统级沙箱则约束 Bash 等进程实际能够触及的目录和资源。一项请求即使通过前面的判断，到了执行环境仍然不能越过沙箱。\cite{ch03safety,ch03officialhooks}
 
-这些边界保护的是执行环境。权限闸门可以阻止进程越界读写，却不能阻止一份数学证明写错。数学正确性仍要交给反例、独立推导、形式化检查和人类审阅，那是另一条验证链。
+权限系统保护的是机器和工作区，不负责判断数学是否正确。命令没有越界，只能说明它获准执行；证明中的漏洞仍要靠反例、独立推导、形式化检查和人类审阅来发现。
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[ccbox,fill=blue!12,minimum width=1.75cm] (input) at (-5.20,0.75) {Tool 请求};
-  \node[ccbox,fill=yellow!20,minimum width=1.75cm] (schema) at (-3.12,0.75) {参数校验};
-  \node[ccbox,fill=orange!16,minimum width=1.75cm] (permission) at (-1.04,0.75) {权限判断};
-  \node[ccbox,fill=purple!12,minimum width=1.75cm] (pre) at (1.04,0.75) {PreToolUse};
-  \node[ccbox,fill=cyan!12,minimum width=1.75cm] (boundary) at (3.12,0.75) {沙箱 / 边界};
-  \node[ccbox,fill=red!10,minimum width=1.75cm] (run) at (5.20,0.75) {工具执行};
-  \node[ccbox,fill=codebg,minimum width=2.70cm] (deny) at (0,-0.65)
+  \node[ccbox,fill=blue!12,minimum width=1.75cm] (input) at (-5.50,0.85) {Tool 请求};
+  \node[ccbox,fill=yellow!20,minimum width=1.75cm] (schema) at (-3.30,0.85) {参数校验};
+  \node[ccbox,fill=orange!16,minimum width=1.75cm] (permission) at (-1.10,0.85) {权限判断};
+  \node[ccbox,fill=purple!12,minimum width=1.75cm] (pre) at (1.10,0.85) {PreToolUse};
+  \node[ccbox,fill=cyan!12,minimum width=1.75cm] (boundary) at (3.30,0.85) {沙箱 / 边界};
+  \node[ccbox,fill=red!10,minimum width=1.75cm] (run) at (5.50,0.85) {工具执行};
+  \node[ccbox,fill=codebg,minimum width=2.70cm] (deny) at (-1.10,-0.75)
     {拒绝 / 阻断\\工具不执行};
-  \node[ccbox,fill=green!13,minimum width=2.80cm] (post) at (4.50,-0.65)
+  \node[ccbox,fill=green!13,minimum width=2.80cm] (post) at (3.30,-0.75)
     {PostToolUse\\记录与附加反馈};
-  \node[ccbox,fill=cyan!13,minimum width=3.00cm] (result) at (2.35,-2.02)
+  \node[ccbox,fill=cyan!13,minimum width=3.00cm] (result) at (1.10,-2.25)
     {Tool Result\\送回下一轮};
   \draw[ccflow] (input) -- (schema);
   \draw[ccflow] (schema) -- (permission);
   \draw[ccflow] (permission) -- node[ccnote,above] {允许} (pre);
   \draw[ccflow] (pre) -- (boundary);
   \draw[ccflow] (boundary) -- (run);
-  \draw[ccflow] (run.south) -- (post.north);
-  \draw[ccflow] (post.south) -- (result.north east);
-  \draw[ccdash] (permission.south) -- node[ccnote,left] {拒绝} (deny.north west);
-  \draw[ccdash] (pre.south) -- node[ccnote,right] {阻断} (deny.north east);
-  \draw[ccdash] (deny.south) -- (result.north west);
+  \draw[ccflow,rounded corners=4pt]
+    (run.south) -- ++(0,-0.35) -| (post.north east);
+  \draw[ccdash] (permission.south) --
+    node[ccnote,left,xshift=-2pt] {拒绝} (deny.north west);
+  \draw[ccdash] (pre.south) --
+    node[ccnote,right,xshift=2pt] {阻断} (deny.north east);
+  \draw[ccdash,rounded corners=4pt]
+    (deny.south) -- ++(0,-0.38) -| (result.north west);
+  \draw[ccflow,rounded corners=4pt]
+    (post.south) -- ++(0,-0.38) -| (result.north east);
 \end{tikzpicture}
 \caption{工具请求经过校验、权限、Hook 与执行边界后才产生副作用。拒绝也会送回模型。}
 \label{fig:ch03-tool-gate}
 \end{figure}
 
-权限询问也不只是流程中临时弹出的暂停画面。用户选择允许或拒绝，本身就构成 Agent Loop 的一项新观察。某次联网、写文件或执行命令被拒绝后，模型必须回到当前状态：改用本地材料，缩小动作范围，或者如实说明还缺哪项证据。人的决定由此进入推理链，不必等到最后才对结果作出裁决。
+用户在权限窗口里点下“允许”或“拒绝”，这项选择也会回到 Agent Loop。联网被拒绝以后，模型可以改查本地材料；写文件的范围没有获准，就缩小修改目标；确实缺少必要权限时，则应说明哪项证据暂时无法取得。人不必等到任务结束才介入，执行过程中的每一次授权都可能改变后面的路线。
 
 \FloatBarrier
 
-权限解决的是动作能否发生。任务一旦拉长，另一道边界也会出现：有限的上下文装不下不断增长的研究记录。
+权限解决了“这项动作能不能执行”，却没有解决长任务里的另一件事。研究记录越积越多，有限的上下文迟早会装不下。
 
-这项研究前后经历了两次 Claude Code 会话，总共生成约三千一百万个输出 token。第二次会话又包含约六十个子 Agent、两千四百条 Shell 命令、数百个 Python 脚本和大量论文材料。系统说明、工具 Schema、项目规则和研究轨迹都要占用上下文，同时还得给下一次输出留出空间。这个约束可以粗略写成：\cite{ch03riemannweb}
+这项研究前后经历了两次 Claude Code 会话，总共生成约三千一百万个输出 token。第二次会话还调用了约六十个子 Agent，运行两千四百条 Shell 命令，写下数百个 Python 脚本，并读取大量论文材料。系统说明、工具 Schema、项目规则和研究轨迹都要占用上下文，下一次模型输出也必须预留空间。可以把这项限制粗略写成下面的不等式。\cite{ch03riemannweb}
 
 \[
 |\mathrm{system}|+|\mathrm{history}|+|\mathrm{tools}|+|\mathrm{reminders}|+|\mathrm{output\ reserve}|\leq W.
 \]
 
-系统说明和工具 Schema 多半是固定开销，真正容易膨胀的是任务历史。窗口再大，也不可能把每份旧推导、完整命令输出和整篇参考论文原样带进下一轮。若只是从最早的消息开始删除，又可能把已经否决的路线、关键反例和仍未补上的证明缺口一起丢掉。\cite{ch03prompt,ch03compact}
+式子里的系统说明和工具 Schema 大多保持不变，任务历史却会随着每轮实验继续增长。旧推导、完整命令输出和整篇论文不可能永远原样留在窗口里，可若简单地从最早的消息开始删除，又容易把已经否决的路线、关键反例和仍未补上的证明缺口一并删掉。\cite{ch03prompt,ch03compact}
 
-最省事的办法，是先从源头减少无用内容。数值脚本不必回传每一行中间量，只要留下关键统计、失败参数和完整日志的位置；文献检索也应先用命题与关键词缩小范围，再读取真正相关的段落。少生成一段无用的 Tool Result，后面的压缩机制就少处理一份负担。
+压缩之前，先应少往对话里塞无用内容。数值脚本不必回传每一行中间量，留下关键统计、失败参数和完整日志的位置即可；检索论文时也可以先用命题和关键词缩小范围，再读取真正相关的段落。Tool Result 越收敛，后面需要压缩的内容就越少。
 
-任务历史仍在增长时，Claude Code 才会逐级处理。本文所据的源码快照把这套机制分成五层。Microcompact 只调整消息位置，用来保护稳定前缀的缓存命中，\emph{并不}释放上下文空间；从第二层开始，系统才归档较旧的内容。压力继续上升后，它会逐段生成摘要；接近窗口上限时，再交给压缩子 Agent 生成结构化交接。如果请求仍因过长被 API 拒绝，最后还有一次更激进、次数也受限制的应急压缩。越往后，能够腾出的空间越多，信息损失和额外成本也越高。\cite{ch03compact}
+即使已经收窄 Tool Result，任务历史仍会继续增长。本文所据的源码快照把后续处理分为五层。Microcompact 只重排消息，以保护稳定前缀的缓存命中，\emph{不会}释放上下文空间；Snip 从归档旧消息开始真正腾出位置，之后的 Collapse 和 Auto Compact 会生成越来越完整的摘要。若请求已经因为过长被 API 拒绝，系统还会尝试一次受限的 Reactive 压缩。处理越深入，腾出的空间越多，同时也更容易丢失细节，并产生额外的模型调用成本。\cite{ch03compact}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[ccbox,fill=green!14,minimum width=2.05cm] (t1) at (-4.65,0.65) {Microcompact\\只重排，不缩短};
-  \node[ccbox,fill=cyan!14,minimum width=2.05cm] (t2) at (-2.32,0.65) {Snip\\归档旧消息};
-  \node[ccbox,fill=yellow!22,minimum width=2.05cm] (t3) at (0,0.65) {Collapse\\分段摘要};
-  \node[ccbox,fill=orange!18,minimum width=2.05cm] (t4) at (2.32,0.65) {Auto Compact\\完整摘要};
-  \node[ccbox,fill=red!11,minimum width=2.05cm] (t5) at (4.65,0.65) {Reactive\\溢出兜底};
+  \node[ccbox,fill=green!14,minimum width=2.00cm] (t1) at (-4.90,0.65) {Microcompact\\只重排，不缩短};
+  \node[ccbox,fill=cyan!14,minimum width=2.00cm] (t2) at (-2.45,0.65) {Snip\\归档旧消息};
+  \node[ccbox,fill=yellow!22,minimum width=2.00cm] (t3) at (0,0.65) {Collapse\\分段摘要};
+  \node[ccbox,fill=orange!18,minimum width=2.00cm] (t4) at (2.45,0.65) {Auto Compact\\完整摘要};
+  \node[ccbox,fill=red!11,minimum width=2.00cm] (t5) at (4.90,0.65) {Reactive\\溢出兜底};
   \draw[ccflow] (t1) -- (t2);
   \draw[ccflow] (t2) -- (t3);
   \draw[ccflow] (t3) -- (t4);
   \draw[ccflow] (t4) -- (t5);
   \draw[decorate,decoration={brace,amplitude=5pt},draw=primary]
-    (-3.30,-0.15) -- (5.65,-0.15)
+    (-3.45,-0.15) -- (5.90,-0.15)
     node[midway,below=6pt,ccnote] {从 Snip 开始释放空间；越往后信息损失越大};
 \end{tikzpicture}
 \caption{上下文管理按代价逐级推进。第一层只保护缓存，第二层以后才真正回收空间。}
 \label{fig:ch03-compaction}
 \end{figure}
 
-压缩不可能把旧消息变成一份完全等价的短文本。数学研究要在中途交接，至少应留下原始目标、当前最强结论、已经排除的路线、关键反例、待证明引理、引用来源，以及证据文件的位置。每次失败尝试的完整对话未必要保留，但凡是改变过研究方向的理由，都不能随摘要一起消失。
+摘要不可能与完整历史完全等价。数学研究若要在中途交接，原始目标、当前最强结论、已经排除的路线、关键反例、待证明引理和证据位置都要留下。失败过程不必逐字保存，但某条路线为何被放弃、研究方向又为何改变，不能在压缩时一起消失。
 
-真正重要的状态不能只留在聊天记录里。近期推导可以放在当前对话；会话摘要负责交接；跨任务沿用的研究纪律写进 \texttt{CLAUDE.md}；路线台账、实验日志和证明源码则保存在外部文件中。这样即使聊天记录被压短，“这条路线为什么失败”和“哪项引理仍未证明”也不必只靠模型记忆。
+因此，真正重要的状态不能只存在聊天记录里。近期推导留在当前对话，跨任务沿用的研究纪律写进 \texttt{CLAUDE.md}，路线台账、实验日志和证明源码则保存为外部文件。即使对话被压成摘要，模型仍能重新打开这些材料，查到路线失败的原因和尚未证明的引理。
 
-对话进行到一半，System Reminder 还可以补入刚刚变化的状态。比如，某个子 Agent 退回了一份候选证明，或者新的实验结果推翻了旧假设，Harness 便可以把“这条路线已经失效”重新摆到模型眼前。Reminder 不会自行发现变化，它只负责把系统已经观察到的新事实及时送回来。\cite{ch03compact,ch03hooks}
+对话进行到一半时，System Reminder 还可以补入刚刚发生的变化。某个子 Agent 退回候选证明，或新的实验结果推翻旧假设以后，Harness 会把这项状态重新送进 Prompt，避免模型继续沿用过期判断。Reminder 本身不会发现问题，它只是把系统已经观察到的事实及时带回当前轮次。\cite{ch03compact,ch03hooks}
 
 \FloatBarrier
 
 \section{多智能体编排}
 
-现在再回到千奈最初的问题。Claude Code 面对复杂任务时，并不会先在模型里写出完整解法，再按计划逐项执行。它先把大目标缩成下一项能够检验的动作，再让实验结果、论文材料和审稿意见持续修改计划。不过，“复杂”并不只指一件事：
+到这里，一个 Agent 已经能够边行动边改计划，也能把过长的记录移到对话之外。接下来才需要回答千奈最初的问题。六十个子 Agent 为什么会比一个 Agent 更合适？先要分清任务究竟难在哪里，因为并不是所有复杂性都需要并行处理。
 
 \begin{table}[htbp]
 \centering
@@ -347,22 +363,22 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
 独立分支 & 推导、反驳、查重和形式化可以拆开 & 为边界清楚的任务创建子 Agent \\
 \bottomrule
 \end{tabular}
-\caption{不同复杂性需要不同处理方式；并行只解决其中一部分。}
+\caption{只有能够独立展开的分支，才适合交给多个 Agent 并行处理。}
 \label{tab:ch03-complexity}
 \end{table}
 
-表中最后一行，才真正需要子 Agent。一次模型调用只能沿着一条轨迹向前走。几十种数学路线若彼此相对独立，却全部由主 Agent 逐条尝试，大量失败细节就会挤进同一份上下文。拆分以后，每个子 Agent 得到一份边界明确的任务，在自己的上下文里运行 Agent Loop，最后只把结论、证据和未解决处交回协调者。主上下文不用吞下每条支线的完整转录，代价是摘要可能漏掉关键细节。
+表中只有最后一种情况真正适合拆出子 Agent。几十条数学路线彼此相对独立，若仍由主 Agent 依次尝试，每条支线的推导和失败记录都会挤进同一份上下文。拆开以后，子 Agent 在自己的上下文里完成推导、查错或检索，再把结论、证据和未解决处交回协调者。主上下文因此不用保存每条支线的完整转录，不过，交回的摘要也可能漏掉关键细节。
 
-公开报告记录了这约六十个子 Agent 的去向：两个形成关键数学思路，十三个为这些路线补充材料，三十个尝试新方向但没有成功，十三个负责验证，最后两个协助起草论文。成功的路线只占很小一部分。多智能体系统产生的大量工作，本来就是失败记录和复核意见；只看最后两个成功者，很容易把并行误解成“同时多猜几个答案”。\cite{ch03riemannweb}
+公开报告记录了这约六十个子 Agent 的工作。两个 Agent 形成了关键数学思路，十三个继续补充这些路线，三十个探索新方向但没有成功，另有十三个负责验证，最后两个协助起草论文。直接带来结果的支线很少，大部分工作留下的是失败记录和复核意见。各个 Agent 分别承担探索、补充和审查，工作分布比最终的成功路线更能说明这次并行是怎样运转的。\cite{ch03riemannweb}
 
-转折来自编号为 E2 的支线。它原本负责研究某个“负指标”的上界，希望借此限制不在临界线上的零点。算下去以后，E2 发现这条上界路线是空的，得不到任何限制。原任务到这里已经失败了。可是在整理失败原因时，它注意到：同一套记账若改为统计“正方向”，似乎能够无条件保证至少一半的零点位于临界线上。问题随之发生了侧移——不再直接追问“能否证明黎曼猜想”，而是先问“能否证明一个更强的比例下界”。\cite{ch03riemannpaper,ch03riemanntranscript}
+编号为 E2 的支线最能说明这种分工怎样产生结果。它原本想为某个“负指标”求上界，以此限制不在临界线上的零点，但推导下去才发现，这个上界没有提供任何有效限制，原任务至此已经失败。E2 在整理失败原因时换了一个观察方向，用同一套记账方法统计“正方向”，由此看到了一个新的可能性。它也许能够无条件保证至少一半的零点位于临界线上。问题于是从“直接证明黎曼猜想”转为“先证明一个更强的比例下界”。\cite{ch03riemannpaper,ch03riemanntranscript}
 
-协调者没有直接接收这个结论。三个彼此隔离的审稿 Agent 分别检查局部化、素数一侧的估计和线性代数结构，另一个审稿者专门追查近似误差。还有 Agent 负责联网核对已有文献，并让一名看不到此前文件的 Agent 从命题本身出发，独立重做关键证明。半数下界通过这些检查后，用户又明确追问能否继续推进到三分之二。协调者于是派出两条新路线，其中一名 Agent 使用更细的秩--迹不等式，把结果推到了三分之二以上。人类没有提供那条不等式，但参与了目标选择，也决定了是否值得继续搜索。\cite{ch03riemannpaper,ch03riemanntranscript}
+协调者没有因为这条路线看起来可行就直接采纳。三个彼此隔离的审稿 Agent 分别检查局部化、素数一侧的估计和线性代数结构，另一个审稿者专门追查近似误差；还有 Agent 联网核对已有文献，并让一名看不到此前文件的 Agent 从命题本身出发，独立重做关键证明。半数下界经受住这些检查以后，用户继续追问能否推进到三分之二。协调者又派出两条路线，其中一名 Agent 使用更细的秩--迹不等式，把结果推到了三分之二以上。人类没有给出这条不等式，却决定了下一步要追什么，以及这次搜索是否值得继续。\cite{ch03riemannpaper,ch03riemanntranscript}
 
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[ccbox,fill=blue!12,minimum width=3.00cm] (lead) at (0,2.25)
+  \node[ccbox,fill=blue!12,minimum width=3.00cm] (lead) at (0,2.85)
     {协调者\\拆题、续派与汇总};
   \node[ccbox,fill=yellow!20,minimum width=2.35cm] (explore) at (-4.35,0.85)
     {探索 Agent\\提出不同路线};
@@ -372,37 +388,47 @@ Subagent & 把独立路线交给另一上下文 & 推导、反驳或文献审查
     {文献 Agent\\核对已有结果};
   \node[ccbox,fill=green!13,minimum width=2.35cm] (verify) at (4.35,0.85)
     {验证 Agent\\复算、重证、形式化};
-  \node[ccbox,fill=purple!12,minimum width=3.80cm] (synth) at (0,-0.65)
+  \node[ccbox,fill=purple!12,minimum width=3.80cm] (synth) at (0,-1.20)
     {比较证据\\淘汰、修补或继续委派};
-  \node[ccbox,fill=codebg,minimum width=3.80cm] (human) at (0,-1.85)
+  \node[ccbox,fill=codebg,minimum width=3.80cm] (human) at (0,-2.55)
     {交给数学家复核};
-  \draw[ccflow] (lead.south) -- (explore.north);
-  \draw[ccflow] (lead.south) -- (attack.north);
-  \draw[ccflow] (lead.south) -- (literature.north);
-  \draw[ccflow] (lead.south) -- (verify.north);
-  \draw[ccflow] (explore.south) -- (synth.north);
-  \draw[ccflow] (attack.south) -- (synth.north);
-  \draw[ccflow] (literature.south) -- (synth.north);
-  \draw[ccflow] (verify.south) -- (synth.north);
+  % One rail distributes work; another collects reports.  The shared rails
+  % make the four roles read as parallel branches rather than crossing rays.
+  \coordinate (dispatch) at (0,1.85);
+  \draw[thick,draw=primary,line cap=round] (lead.south) -- (dispatch);
+  \draw[thick,draw=primary,line cap=round] (-4.35,1.85) -- (4.35,1.85);
+  \fill[primary] (dispatch) circle (1.1pt);
+  \draw[ccflow] (-4.35,1.85) -- (explore.north);
+  \draw[ccflow] (-1.45,1.85) -- (attack.north);
+  \draw[ccflow] (1.45,1.85) -- (literature.north);
+  \draw[ccflow] (4.35,1.85) -- (verify.north);
+  \coordinate (collect) at (0,-0.15);
+  \draw[thick,draw=primary,line cap=round] (explore.south) -- (-4.35,-0.15);
+  \draw[thick,draw=primary,line cap=round] (attack.south) -- (-1.45,-0.15);
+  \draw[thick,draw=primary,line cap=round] (literature.south) -- (1.45,-0.15);
+  \draw[thick,draw=primary,line cap=round] (verify.south) -- (4.35,-0.15);
+  \draw[thick,draw=primary,line cap=round] (-4.35,-0.15) -- (4.35,-0.15);
+  \fill[primary] (collect) circle (1.1pt);
+  \draw[ccflow] (collect) -- (synth.north);
   \draw[ccflow] (synth) -- (human);
 \end{tikzpicture}
-\caption{多 Agent 的价值不只在“多猜几条路”，还在于把提出、反驳、查重与验证分开。}
+\caption{多个 Agent 分别探索路线、寻找漏洞、核对文献并复查结果。}
 \label{fig:ch03-multi-agent-review}
 \end{figure}
 
-公开材料把这些执行者统称为 Claude subagents，却没有说明每条支线对应今天产品里的哪一种配置。按照 Claude Code 文档，Subagent 有自己的上下文，完成任务后把结果交回调用者；Agent Teams 则让多个独立会话共享任务列表，并能彼此发送消息。Worktree 解决的又是文件隔离问题。它们处在不同层次，不能因为都带有“多 Agent”，就当成同一种机制。\cite{ch03officialsubagents,ch03officialteams}
+公开材料把这些执行者统称为 Claude subagents，没有逐条说明它们对应今天 Claude Code 里的哪一种配置。当前文档中的 Subagent 拥有独立上下文，完成任务后把结果交回调用者；Agent Teams 由多个独立会话共享任务列表，成员之间还能直接发送消息。Worktree 处理的则是文件隔离，它不等于又一种对话关系。三者都可能出现在多 Agent 工作中，但解决的问题不同。\cite{ch03officialsubagents,ch03officialteams}
 
-这也说明，子 Agent 增加的是探索宽度，不是正确率。要让并行探索真正有用，还得让不同角色沿着各自的证据路径复算、找错，再把留下来的结果送回同一套验证流程。
+子 Agent 能同时展开更多支线，却不会让任何一条支线自动变得正确。并行之后仍要有人复算、找错和核对来源，最后把留下来的结果送进同一套验证流程。
 
 \FloatBarrier
 
 \section{完成与验证}
 
-模型写出“证明完成”，只说明它准备结束这一轮。\texttt{end\_turn} 是一次退出申请，不是验收报告。面对这个意外得到的比例下界，仍然要继续追问：命题是否准确，推导是否完整，控制对象会不会导出荒谬结论，数值程序能否复现，引用是否支持所用前提，独立审阅者又能否从头重建关键步骤。
+模型写出“证明完成”，只说明它准备结束这一轮。\texttt{end\_turn} 更像一次交卷，系统仍要检查命题、推导、数值程序和引用是否经得住复核，并确认独立审阅者能否从头重建关键步骤。
 
-不能只让提出证明的同一个上下文自问自答，再用一句“我已经检查过”带过去。公开记录显示，Claude 针对不同薄弱点安排了彼此隔离的审稿 Agent，下载五十四篇 arXiv 论文核对新颖性，还让新的 Agent 在看不到原推导的情况下独立重证。完成十次独立检查后，系统判断继续增加同类检查已经很难得到新信息，下一步应当交给人类解析数论专家。\cite{ch03riemannweb,ch03riemannpaper}
+提出证明的同一个上下文不适合独自完成验收。公开记录显示，Claude 为不同薄弱点安排了彼此隔离的审稿 Agent，下载五十四篇 arXiv 论文核对新颖性，还让新的 Agent 在看不到原推导的情况下独立重证。十次独立检查完成后，继续增加同类检查已经很难带来新信息，结果便被交给人类解析数论专家。\cite{ch03riemannweb,ch03riemannpaper}
 
-Claude Code 的 Stop Hook 可以在验证链上再加一道机器可读的门。例如，它能检查数值脚本是否正常退出、Lean 项目是否通过、证明稿里是否还留着占位符，以及要求的附件是否齐全。若产物缺失，Hook 可以把具体缺口送回 Agent Loop。它判断不了一个新定理是否必然正确，也不能保证文献检索没有漏网。公开材料并未声称这次研究使用了下面这项自定义 Hook；图中展示的是 Claude Code 可以采用的验收方式，不是对历史会话的逐项复刻。\cite{ch03loop,ch03hooks,ch03officialhooks}
+Stop Hook 可以替这道验收补上一些机器能够判断的条件，例如数值脚本是否正常退出、Lean 项目是否通过、证明稿中是否仍有占位符，以及要求的附件是否齐全。只要产物有缺口，Hook 就把原因送回 Agent Loop，让模型继续处理。它不能判断新定理必然正确，也不能保证文献检索没有遗漏。公开材料没有声称这次研究使用了图中的自定义 Hook，这里只是借它说明 Claude Code 可以怎样设置结束条件。\cite{ch03loop,ch03hooks,ch03officialhooks}
 
 \begin{figure}[htbp]
 \centering
@@ -428,11 +454,11 @@ Claude Code 的 Stop Hook 可以在验证链上再加一道机器可读的门。
 \label{fig:ch03-stop-hook}
 \end{figure}
 
-不同验证手段回答的问题并不相同。数值实验擅长寻找反例，却覆盖不了无限情形；Lean 只能核对已经被准确形式化的命题和推导，不负责判断研究是否新颖；数学家的详细复核，也不等于期刊同行评审已经完成。官方材料称，两位 Anthropic 数学家检查了论文，Brian Conrey 与 Daniel Goldston 也阅读稿件并提出意见。截至本章写作时，这项刚公开的结果仍应作为研究论文引用，不能当作已经写进教科书的结论。\cite{ch03riemannweb,ch03riemannlean}
+每种检查都有自己的范围。数值实验适合寻找反例，却覆盖不了无限情形；Lean 只核对被准确形式化的命题和推导，不判断研究是否新颖；数学家阅读并复核稿件，也不等于论文已经完成期刊同行评审。官方材料称，两位 Anthropic 数学家检查了论文，Brian Conrey 与 Daniel Goldston 也阅读稿件并提出意见。截至本章写作时，这项刚公开的结果仍应按研究论文引用，不能当作已经写进教科书的定理。\cite{ch03riemannweb,ch03riemannlean}
 
-在本文所据版本的端到端流程里，机器侧检查通过以后，系统还会保存会话，整理需要延续的记忆，最后才把结果显示给用户。脚本、构建和附件先通过检查，循环再退出，总结放在最后。顺序若反过来，一段流畅的文字就很容易替尚未完成的证明作证。\cite{ch03e2e}
+在本文所据版本的端到端流程里，机器侧检查通过后，系统还会保存会话，整理需要延续的记忆，最后再向用户显示结果。脚本、构建和附件先验收，循环随后退出，总结只是最后一步。若先写总结再补检查，一段看似完整的说明很容易掩盖仍未完成的工作。\cite{ch03e2e}
 
-再看屏幕上的 $67.2\%$，它已经不只是一条新闻标题。读者可以沿着记录往回追：一条原本失败的支线先给出二分之一，经过多轮审查后继续推进，最后留下论文、程序、形式化材料和数学家的复核意见。首轮的六百五十条失败路线，以及第二轮大部分没有结果的分支，也没有被改写成成功故事。它们至少说明了哪些办法已经试过，又分别卡在了哪里。
+现在再看屏幕上的 $67.2\%$，已经可以沿着记录追到它是怎样得来的。一条失败的支线先转向二分之一下界，经多轮审查后继续推进，最后留下论文、程序、形式化材料和数学家的复核意见。首轮六百五十条没有结果的路线，以及第二轮大部分失败的分支，也各自留下了尝试过的方法和停下的位置。
 
 \begin{quote}
 \textbf{千奈：}所以，它证明黎曼猜想了？
@@ -450,11 +476,11 @@ Claude Code 的 Stop Hook 可以在验证链上再加一道机器可读的门。
 \textbf{广：}留下来。下一条路就不用假装没走过。
 \end{quote}
 
-广把黑板上最后一支箭头，从“交给数学家复核”接回最初那句近乎无从下手的要求。
+广把黑板上“交给数学家复核”的箭头接回开头。最初那句近乎无从下手的要求，经过一轮轮行动，留下了一个比原任务更窄、却能够被检查的新结果。
 
-模型并没有在开头一次想完整个问题。Prompt 先把当前任务和规则摆到眼前，Agent Loop 再让每个想法接受程序与材料的检验。对话装不下的失败记录被写进外部文件，能够独立展开的支线则交给子 Agent。权限管住动作能做到哪里，验证链管住结论能说到哪里。
+模型没有在开头一次想完整个问题。它先从 Prompt 里取得当前任务和已有记录，再通过 Agent Loop 读论文、跑程序，并根据返回的结果改路。过长的历史被写进外部文件，能够独立展开的支线交给子 Agent；权限限制它可以执行哪些动作，最后的验证则限制结论能够说到哪一步。
 
-所以，最后交到人手里的不该只有一句答案，还要有它经受过的检查、能够成立的理由，以及仍未回答的问题。
+最终交到人手里的，除了结论，还有论文、程序、引用和失败记录。人可以沿着这些材料继续复核，也能看清这项结果仍未回答什么。
 
 \begin{quote}
 \textbf{千奈：}最开始的任务，还是没有完成。

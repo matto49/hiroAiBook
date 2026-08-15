@@ -74,7 +74,7 @@
 
 \section{GPT-2}
 
-对话框中的 AI 佑芽，看起来像是一口气相应了一整句话，但是模型内部却没有“一口气”这回事。它每次只往前走一小步：读取已经出现的文字，给接下来可能出现的文字片段打分，选出权重最高的那个接到末尾，然后再重复执行下一步。一句完整的回答，就是这样一点点续出来的。
+对话框中的 AI 佑芽，看起来像是一口气相应了一整句话，但是模型内部却没有“一口气”这回事。它每次只往前走一小步：读取已经出现的文字，给接下来可能出现的文字片段打分，选出权重最高的那个接到末尾，然后再重复执行下一步。一句完整的回答，是每次生成一点点续出来的。
 
  这种只根据前文一步步续写的方式，叫作自回归生成。GPT-2 是 OpenAI 在 2019 年发布的语言模型，也是 GPT 系列的第二代。它采用纯解码器 Transformer：输入只有已经出现的文字，模型不能偷看后文，只能沿着前文继续预测。GPT-2 虽然是7年前的老模型，但它的结构已经具备本章后面还会反复看到的基本轮廓，公开实现也相对简洁，所以适合作为这次的起点。\cite{waterloo-worklog,gpt2}
 
@@ -126,15 +126,15 @@ class Block(nn.Module):
   note/.style={font=\scriptsize\bfseries,text=primary}
 ]
 % GPT-2 backbone
-\node[note] (lefttitle) at (0,3.15) {GPT-2 主干};
-\node[main,fill=codebg] (input) at (0,2.55) {token 表示 + 位置表示};
-\node[main,fill=yellow!25] (ln1) at (0,1.70) {LayerNorm};
+\node[note] (lefttitle) at (0,3.55) {GPT-2 主干};
+\node[main,fill=codebg] (input) at (0,2.95) {token 表示 + 位置表示};
+\node[main,fill=yellow!25] (ln1) at (0,1.90) {LayerNorm};
 \node[main,fill=orange!25] (mha) at (0,0.85) {多头因果自注意力};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (add1) at (0,0.10) {$+$};
-\node[main,fill=yellow!25] (ln2) at (0,-0.65) {LayerNorm};
-\node[main,fill=blue!20] (mlp) at (0,-1.50) {MLP};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (add2) at (0,-2.25) {$+$};
-\node[main,fill=green!20] (vocab) at (0,-3.05) {LayerNorm $\rightarrow$ 词表投影};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (add1) at (0,-0.05) {$+$};
+\node[main,fill=yellow!25] (ln2) at (0,-0.95) {LayerNorm};
+\node[main,fill=blue!20] (mlp) at (0,-2.00) {MLP};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (add2) at (0,-2.90) {$+$};
+\node[main,fill=green!20] (vocab) at (0,-3.80) {LayerNorm $\rightarrow$ 词表投影};
 \node[draw=primary!45,dashed,rounded corners=3pt,
   fit=(ln1)(add2),inner sep=5pt] (repeatblock) {};
 
@@ -145,35 +145,45 @@ class Block(nn.Module):
 \draw[flow] (ln2) -- (mlp);
 \draw[flow] (mlp) -- (add2);
 \draw[flow] (add2) -- (vocab);
-% Two residual branches use separate lanes outside the main boxes.
-\draw[flow,rounded corners=4pt] (input.west) -- ++(-0.55,0) |- (add1.west);
-\draw[flow,rounded corners=4pt] (add1.west) -- ++(-1.70,0) |- (add2.west);
+% The two residual branches use separate lanes and separate ports on add1.
+% This avoids placing an incoming arrowhead on top of the outgoing branch.
+\draw[flow,rounded corners=4pt]
+  (input.west) -- ++(-0.55,0) |- (add1.160);
+\draw[flow,rounded corners=4pt]
+  (add1.200) -- ++(-1.80,0) |- (add2.west);
 \node[note,anchor=south east] at
   ([xshift=-0.08cm,yshift=0.08cm]repeatblock.south east) {$\times 12$};
 
 % One attention module, separated from the tall backbone.
-\node[note] (righttitle) at (5.05,3.15) {一次多头注意力};
-\node[box,fill=codebg,minimum width=2.10cm] (attnin) at (5.05,2.55)
+\node[note] (righttitle) at (5.05,3.55) {一次多头注意力};
+\node[box,fill=codebg,minimum width=2.10cm] (attnin) at (5.05,2.95)
   {输入表示 $x$};
-\node[head,fill=codebg] (q) at (3.45,1.70) {$Q$ 投影};
-\node[head,fill=codebg] (k) at (5.05,1.70) {$K$ 投影};
-\node[head,fill=codebg] (v) at (6.65,1.70) {$V$ 投影};
+\node[head,fill=codebg] (q) at (3.45,1.75) {$Q$ 投影};
+\node[head,fill=codebg] (k) at (5.05,1.75) {$K$ 投影};
+\node[head,fill=codebg] (v) at (6.65,1.75) {$V$ 投影};
 \node[box,fill=orange!18,minimum width=4.80cm]
-  (heads) at (5.05,0.78) {拆分为多个 head：$Q_h, K_h, V_h$};
+  (heads) at (5.05,0.50) {拆分为多个 head：$Q_h, K_h, V_h$};
 \node[box,fill=red!10,minimum width=4.80cm,minimum height=0.86cm]
-  (attn) at (5.05,-0.28)
+  (attn) at (5.05,-0.80)
   {各 head 并行计算\\缩放点积 $\rightarrow$ 因果掩码 $\rightarrow$ Softmax $\rightarrow$ 对 $V_h$ 加权};
 \node[box,fill=codebg,minimum width=3.70cm]
-  (concat) at (5.05,-1.42) {拼接所有 head};
+  (concat) at (5.05,-2.10) {拼接所有 head};
 \node[box,fill=green!18,minimum width=3.70cm]
-  (oproj) at (5.05,-2.42) {输出投影 $W_O$};
+  (oproj) at (5.05,-3.20) {输出投影 $W_O$};
 
-\draw[flow] (attnin) -- (q);
-\draw[flow] (attnin) -- (k);
-\draw[flow] (attnin) -- (v);
-\draw[flow] (q) -- (heads);
-\draw[flow] (k) -- (heads);
-\draw[flow] (v) -- (heads);
+% Use one distribution rail, then let Q/K/V enter the head-splitting box at
+% three distinct ports.  The separate output arrows remain easy to trace.
+\coordinate (projfork) at (7.05,2.40);
+\draw[thick,draw=primary,line cap=round,rounded corners=4pt]
+  (attnin.east) -- (7.05,2.95) -- (projfork);
+\draw[thick,draw=primary,line cap=round] (3.45,2.40) -- (projfork);
+\fill[primary] (projfork) circle (1.1pt);
+\draw[flow] (3.45,2.40) -- (q.north);
+\draw[flow] (5.05,2.40) -- (k.north);
+\draw[flow] (6.65,2.40) -- (v.north);
+\draw[flow] (q.south) -- (q.south |- heads.north);
+\draw[flow] (k.south) -- (k.south |- heads.north);
+\draw[flow] (v.south) -- (v.south |- heads.north);
 \draw[flow] (heads) -- (attn);
 \draw[flow] (attn) -- (concat);
 \draw[flow] (concat) -- (oproj);
@@ -277,47 +287,63 @@ return self.o_proj(merge_heads(out)), (S, z)
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.75,2.25) {KV Cache};
-\node[chbox,fill=codebg,minimum width=1.20cm] (xt) at (0,1.15) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv) at (1.75,1.15) {$Q_t,K_t,V_t$};
-\node[chbox,fill=orange!14,minimum width=3.15cm] (kc) at (4.75,1.65)
+\node[chlabel,anchor=west] at (0.00,2.85) {KV Cache};
+\node[chbox,fill=codebg,minimum width=1.20cm] (xt) at (0,1.35) {$x_t$};
+\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv) at (1.75,1.35) {$Q_t,K_t,V_t$};
+\node[chbox,fill=orange!14,minimum width=2.75cm] (kc) at (4.55,2.05)
   {$K_{1:t-1}\;\Vert\;K_t$};
-\node[chbox,fill=orange!14,minimum width=3.15cm] (vc) at (4.75,0.65)
+\node[chbox,fill=orange!14,minimum width=2.75cm] (vc) at (4.55,0.65)
   {$V_{1:t-1}\;\Vert\;V_t$};
-\node[chbox,fill=red!10,minimum width=1.55cm] (soft) at (7.25,1.15)
-  {Softmax\\注意力};
-\node[chbox,fill=green!15,minimum width=1.20cm] (okv) at (9.25,1.15) {$o_t$};
+\node[chbox,fill=blue!12,minimum width=1.45cm] (score) at (7.00,2.05)
+  {计算分数\\$Q_tK^{\mathsf T}$};
+\node[chbox,fill=red!10,minimum width=1.35cm] (soft) at (8.95,2.05)
+  {Softmax};
+\node[chbox,fill=green!15,minimum width=2.10cm] (weighted) at (8.95,0.65)
+  {按权重读取 $V$};
+\node[chbox,fill=codebg,minimum width=1.20cm] (okv) at (11.10,0.65) {$o_t$};
 \draw[chflow] (xt) -- (qkv);
-\draw[chflow] (qkv) -- (kc);
-\draw[chflow] (qkv) -- (vc);
-\draw[chflow] (kc) -- (soft);
-\draw[chflow] (vc) -- (soft);
-\draw[chflow] (qkv.north) to[out=75,in=155]
-  node[chnote,above,sloped] {Query $Q_t$} (soft.north);
-\draw[chflow] (soft) -- (okv);
-\node[chnote] at (4.75,-0.05) {缓存形状随序列长度 $t$ 增长};
+\coordinate (cachefork) at (2.70,1.35);
+\draw[thick,draw=primary,line cap=round] (qkv.east) -- (cachefork);
+\draw[thick,draw=primary,line cap=round] (2.70,0.65) -- (2.70,2.05);
+\fill[primary] (cachefork) circle (1.1pt);
+\draw[chflow] (2.70,2.05) -- (kc.west);
+\draw[chflow] (2.70,0.65) -- (vc.west);
+\draw[chflow] (kc) -- (score);
+% Query and cached keys determine the attention weights.
+\draw[chflow,rounded corners=4pt]
+  (qkv.north) -- (1.75,2.75) -| (score.north);
+\node[chnote] at (5.55,2.94) {Query $Q_t$};
+\draw[chflow] (score) -- (soft);
+% Softmax produces weights; only then are the cached values mixed.
+\draw[chflow] (soft.south) -- (weighted.north);
+\draw[chflow] (vc) -- (weighted);
+\draw[chflow] (weighted) -- (okv);
+\node[chnote] at (4.55,-0.10) {K、V 缓存随序列长度 $t$ 增长};
 
-\node[chlabel] at (2.75,-1.10) {线性注意力};
-\node[chbox,fill=codebg,minimum width=1.20cm] (xt2) at (0,-2.05) {$x_t$};
-\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv2) at (1.75,-2.05) {$q_t,k_t,v_t$};
-\node[chbox,fill=blue!14,minimum width=2.20cm] (state) at (4.35,-1.60)
+\node[chlabel] at (2.70,-1.12) {线性注意力};
+\node[chbox,fill=codebg,minimum width=1.20cm] (xt2) at (0,-2.25) {$x_t$};
+\node[chbox,fill=yellow!20,minimum width=1.35cm] (qkv2) at (1.75,-2.25) {$q_t,k_t,v_t$};
+\node[chbox,fill=blue!14,minimum width=2.65cm] (state) at (5.30,-1.68)
   {$S_t=S_{t-1}+\phi(k_t)^{\mathsf T}v_t$};
-\node[chbox,fill=blue!14,minimum width=2.20cm] (zstate) at (4.35,-2.50)
+\node[chbox,fill=blue!14,minimum width=2.65cm] (zstate) at (5.30,-2.86)
   {$z_t=z_{t-1}+\phi(k_t)$};
-\node[chbox,fill=green!15,minimum width=2.40cm] (readstate) at (7.30,-2.05)
+\node[chbox,fill=green!15,minimum width=2.40cm] (readstate) at (8.75,-2.25)
   {归一化读取\\$\displaystyle\frac{\phi(q_t)S_t}{\phi(q_t)z_t}$};
-\node[chbox,fill=codebg,minimum width=1.20cm] (ols) at (9.65,-2.05) {$o_t$};
+\node[chbox,fill=codebg,minimum width=1.20cm] (ols) at (11.10,-2.25) {$o_t$};
 \draw[chflow] (xt2) -- (qkv2);
-\draw[chflow] (qkv2) -- (state);
-\draw[chflow] (qkv2) -- (zstate);
+% k and v write the matrix state; only k updates the normalizer.
+\draw[chflow] (qkv2.18) -- (state.west);
+\node[chnote] at (3.35,-1.62) {$k_t,v_t$ 写入};
+\draw[chflow] (qkv2.-18) -- (zstate.west);
+\node[chnote] at (3.35,-2.92) {$k_t$ 更新};
 \draw[chflow] (state) -- (readstate);
 \draw[chflow] (zstate) -- (readstate);
+% q does not update either state; it is used only for the current read.
 \draw[chflow,draw=accent,rounded corners=4pt]
-  (qkv2.south) -- ++(0,-1.30) -|
-  node[chnote,below,pos=0.52,fill=white,inner sep=1pt] {Query $q_t$ 直接读取}
-  (readstate.south);
+  (qkv2.south) -- (1.75,-3.85) -| (readstate.south);
+\node[chnote] at (7.20,-3.58) {$q_t$ 只负责读取};
 \draw[chflow] (readstate) -- (ols);
-\node[chnote] at (4.35,-3.12) {状态尺寸固定};
+\node[chnote] at (5.30,-3.42) {状态尺寸固定};
 \end{tikzpicture}
 \caption{KV Cache 与线性注意力的读写路径。}
 \label{fig:ch02-cache-vs-state}
@@ -367,40 +393,47 @@ $\beta_t=0$ 时，仍然读到旧值；$\beta_t=1$ 时，这个 Key 方向会被
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (2.15,2.05) {纯加法写入};
-\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (0.20,0.75) {$S_{t-1}$};
-\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (1.85,1.35) {$k_t^{\mathsf T}v_t$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (plus1) at (3.20,0.75) {$+$};
-\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (4.40,0.75) {$S_t$};
-\draw[chflow] (s1) -- (plus1);
-\draw[chflow] (write1) -- (plus1);
+\node[chlabel] at (2.35,2.20) {纯加法写入};
+\node[chbox,fill=codebg,minimum width=1.45cm] (s1) at (0.20,0.65) {$S_{t-1}$};
+\node[chbox,fill=orange!18,minimum width=1.75cm] (write1) at (2.10,1.55) {$k_t^{\mathsf T}v_t$};
+\node[circle,draw=primary,thick,minimum size=0.48cm,inner sep=0pt]
+  (plus1) at (3.55,0.65) {$+$};
+\node[chbox,fill=blue!16,minimum width=1.45cm] (new1) at (4.90,0.65) {$S_t$};
+% The old state and the new write enter the sum through different ports.
+% Extra spacing keeps both arrow shafts visible around the small plus node.
+\draw[chflow] (s1.east) -- (plus1.west);
+\draw[chflow,rounded corners=3pt]
+  (write1.south) -- ++(0,-0.08) -| (plus1.north);
 \draw[chflow] (plus1) -- (new1);
-\node[chnote] at (2.20,0.05) {直接叠加};
+\node[chnote] at (2.35,-0.05) {直接叠加};
 
-\node[chlabel] at (8.15,2.25) {Delta Rule};
-\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (5.30,1.45) {$S_{t-1}$};
-\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (7.10,1.45) {Key $k_t$};
-\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (9.35,1.45) {目标 $v_t$};
-\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (7.10,0.55)
+\node[chlabel] at (8.10,3.00) {Delta Rule};
+\node[chbox,fill=codebg,minimum width=1.20cm] (s2) at (5.30,1.50) {$S_{t-1}$};
+\node[chbox,fill=yellow!22,minimum width=1.30cm] (key2) at (7.00,1.50) {Key $k_t$};
+\node[chbox,fill=red!12,minimum width=1.20cm] (value2) at (9.65,1.50) {目标 $v_t$};
+\node[chbox,fill=yellow!22,minimum width=2.10cm] (read) at (7.00,0.40)
   {读出 $v_{\mathrm{old}}=k_tS_{t-1}$};
-\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (9.35,0.55)
+\node[chbox,fill=red!12,minimum width=1.85cm] (error) at (9.65,0.40)
   {误差 $v_t-v_{\mathrm{old}}$};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (6.80,-0.35)
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (beta2) at (6.00,-0.90)
   {强度 $\beta_t$};
-\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (8.65,-0.35)
+\node[chbox,fill=green!12,minimum width=2.15cm] (write2) at (8.35,-0.90)
   {按 Key 方向写回\\$\beta_t(v_t-v_{\mathrm{old}})$};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (plus2) at (10.25,-0.35) {$+$};
-\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (11.15,-0.35) {$S_t$};
-\draw[chflow] (s2) -- (read);
-\draw[chflow] (key2) -- (read);
-\draw[chflow] (read) -- (error);
-\draw[chflow] (value2) -- (error);
-\draw[chflow] (error) -- (write2);
-\draw[chflow] (beta2) -- (write2);
-\draw[chflow] (write2) -- (plus2);
-\draw[chflow] (plus2) -- (new2);
-\draw[chflow,rounded corners=3pt] (s2.south) -- ++(0,-2.25) -|
-  (plus2.south);
+\node[circle,draw=primary,thick,minimum size=0.48cm,inner sep=0pt]
+  (plus2) at (10.95,-0.90) {$+$};
+\node[chbox,fill=green!16,minimum width=1.10cm] (new2) at (12.15,-0.90) {$S_t$};
+\draw[chflow] (s2.south east) -- (read.north west);
+\draw[chflow] (key2.south) -- (read.north);
+\draw[chflow] (read.east) -- (error.west);
+\draw[chflow] (value2.south) -- (error.north);
+\draw[chflow] (error.south west) -- (write2.north east);
+\draw[chflow] (beta2.east) -- (write2.west);
+\draw[chflow] (write2.east) -- (plus2.west);
+\draw[chflow] (plus2.east) -- (new2.west);
+% The old-state bypass gets its own rail above every computation node.  It
+% returns from the right and enters the final sum through a separate port.
+\draw[chflow,rounded corners=3pt]
+  (s2.north) -- (5.30,2.50) -- (10.95,2.50) -- (plus2.north);
 \end{tikzpicture}
 \caption{纯加法写入与 Delta Rule。}
 \label{fig:ch02-delta}
@@ -483,8 +516,13 @@ for q_i, k_i, w_i, u0_i in zip(Q, K, W, U):
 \node[chbox,fill=green!16,minimum width=1.55cm] (token) at (0.70,-1.95) {新 token};
 \node[chbox,fill=yellow!20,minimum width=2.05cm] (update) at (3.45,-1.55) {更新状态};
 \node[chbox,fill=codebg,minimum width=1.55cm] (out) at (6.25,-1.55) {输出 / 新状态};
-\draw[chflow] (cache) -- (update);
-\draw[chflow] (token) -- (update);
+\coordinate (decodejoin) at (2.05,-1.55);
+\draw[thick,draw=primary,line cap=round,rounded corners=3pt]
+  (cache.east) -| (decodejoin);
+\draw[thick,draw=primary,line cap=round,rounded corners=3pt]
+  (token.east) -| (decodejoin);
+\fill[primary] (decodejoin) circle (1.1pt);
+\draw[chflow] (decodejoin) -- (update.west);
 \draw[chflow] (update) -- (out);
 \end{tikzpicture}
 \caption{chunkwise prefill 与单步 decode。}
@@ -583,7 +621,8 @@ S = alpha * S_old + k.transpose(-1, -2) @ u
 \draw[chflow] (rule) -- (on);
 \draw[chflow] (on) -- (op);
 \draw[chflow] (op) -- (gmul);
-\draw[chflow] (gprep) -- (gmul);
+\draw[chflow,rounded corners=3pt]
+  (gprep.south) -- ++(0,-0.35) -| (gmul.north);
 \draw[chflow] (gmul) -- (hout);
 \end{tikzpicture}
 \caption{Gated DeltaNet 的 block 与内部投影。}
@@ -667,7 +706,7 @@ Kimi Linear 没有要求固定状态独自承担全部记忆，而是把 KDA 与
   (lc) at (6.50,1.85) {KDA\\$\downarrow$\\MoE};
 \node[chbox,fill=orange!16,minimum width=2.15cm,minimum height=1.12cm]
   (ld) at (9.10,1.85) {MLA\\$\downarrow$\\MoE};
-\draw[chflow] (la) -- (lb);22
+\draw[chflow] (la) -- (lb);
 \draw[chflow] (lb) -- (lc);
 \draw[chflow] (lc) -- (ld);
 \node[chnote,anchor=west] at (10.35,1.85) {继续下一周期};
@@ -679,20 +718,21 @@ Kimi Linear 没有要求固定状态独自承担全部记忆，而是把 KDA 与
 \node[chbox,fill=yellow!18,minimum width=1.30cm] (kgate) at (8.90,-0.35)
   {输出门 $g_t$};
 \draw[chflow] (kin) -- (kproj);
-\draw[chflow,rounded corners=3pt] (kproj.north) -- ++(0,0.35) -| (kgate.north);
+\draw[chflow] (kproj.east) -- (kgate.west);
 
 \node[chbox,fill=blue!14,minimum width=4.50cm,minimum height=0.78cm]
   (kdacore) at (3.90,-1.55)
   {$Q,K,V$ 预处理\\逐通道衰减 $+$ Delta 更新};
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (kdanorm) at (6.80,-1.55) {Norm};
-\node[chbox,fill=green!15,minimum width=1.15cm] (kdao) at (8.20,-1.55) {$O$ proj};
-\node[circle,draw=primary,thick,inner sep=1.3pt] (kgmul) at (9.55,-1.55) {$\times$};
-\node[chbox,fill=codebg,minimum width=1.05cm] (kout) at (10.65,-1.55) {输出};
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (kdanorm) at (7.05,-1.55) {Norm};
+\node[chbox,fill=green!15,minimum width=1.15cm] (kdao) at (8.65,-1.55) {$O$ proj};
+\node[circle,draw=primary,thick,inner sep=1.3pt] (kgmul) at (10.00,-1.55) {$\times$};
+\node[chbox,fill=codebg,minimum width=1.05cm] (kout) at (11.15,-1.55) {输出};
 \draw[chflow] (kproj) -- (kdacore);
 \draw[chflow] (kdacore) -- (kdanorm);
 \draw[chflow] (kdanorm) -- (kdao);
 \draw[chflow] (kdao) -- (kgmul);
-\draw[chflow] (kgate) -- (kgmul);
+\draw[chflow,rounded corners=3pt]
+  (kgate.east) -- ++(0.28,0) |- (kgmul.north);
 \draw[chflow] (kgmul) -- (kout);
 \end{tikzpicture}
 \caption{Kimi Linear 的层级周期与 KDA 内部。}
@@ -714,30 +754,30 @@ Gated MLA 的 Query 投影还经过 LoRA 压缩，并在输出进入残差流前
 \begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Latex]
-\node[chlabel] at (5.10,2.35) {Kimi K3：93 层主干};
-\node[chbox,fill=codebg,minimum width=0.80cm] (inputk3) at (-0.15,0.85) {输入};
+\node[chlabel] at (5.50,2.35) {Kimi K3：93 层主干};
+\node[chbox,fill=codebg,minimum width=0.80cm] (inputk3) at (-0.30,0.85) {输入};
 \node[chbox,font=\scriptsize,fill=blue!12,text width=1.25cm,
   minimum width=1.55cm,minimum height=2.05cm]
   (layer1) at (1.25,0.85) {第 1 层\\KDA\\稠密 FFN};
 \node[chbox,font=\scriptsize,fill=blue!8,text width=2.45cm,
   minimum width=2.75cm,minimum height=2.05cm]
-  (layers24) at (3.65,0.85)
+  (layers24) at (3.95,0.85)
   {第 2--4 层\\KDA $\times2$\\Gated MLA $\times1$\\\mbox{Stable LatentMoE}\\共 3 层};
 \node[chbox,font=\scriptsize,fill=blue!8,text width=2.80cm,
   minimum width=3.10cm,minimum height=2.05cm]
-  (cycles) at (6.90,0.85)
+  (cycles) at (7.35,0.85)
   {第 5--92 层\\四层周期 $\times22$\\KDA $\times66$\\Gated MLA $\times22$\\\mbox{Stable LatentMoE}\\共 88 层};
 \node[chbox,font=\scriptsize,fill=orange!16,text width=2.10cm,
   minimum width=2.40cm,minimum height=2.05cm]
-  (layer93) at (9.85,0.85) {第 93 层\\Gated MLA\\Stable\\LatentMoE};
+  (layer93) at (10.55,0.85) {第 93 层\\Gated MLA\\Stable\\LatentMoE};
 \draw[chflow] (inputk3) -- (layer1);
 \draw[chflow] (layer1) -- (layers24);
 \draw[chflow] (layers24) -- (cycles);
 \draw[chflow] (cycles) -- (layer93);
 
-\node[chbox,fill=yellow!18,minimum width=1.10cm] (finaln) at (9.85,-0.65) {Norm};
-\node[chbox,fill=green!15,minimum width=1.10cm] (linear) at (9.85,-1.45) {Linear};
-\node[chbox,fill=codebg,minimum width=1.10cm] (outputk3) at (9.85,-2.25) {输出};
+\node[chbox,fill=yellow!18,minimum width=1.10cm] (finaln) at (10.55,-0.65) {Norm};
+\node[chbox,fill=green!15,minimum width=1.10cm] (linear) at (10.55,-1.45) {Linear};
+\node[chbox,fill=codebg,minimum width=1.10cm] (outputk3) at (10.55,-2.25) {输出};
 \draw[chflow] (layer93) -- (finaln);
 \draw[chflow] (finaln) -- (linear);
 \draw[chflow] (linear) -- (outputk3);
@@ -869,41 +909,45 @@ return h
 
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[font=\scriptsize,>=Latex]
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
 \node[chlabel] at (1.70,2.15) {普通残差};
-\node[chbox,fill=codebg,minimum width=0.90cm] (rin) at (-0.30,0.45) {$h_l$};
-\node[chbox,fill=blue!12,minimum width=2.25cm] (rblock) at (1.35,0.45)
+\node[chbox,fill=codebg,minimum width=0.90cm] (rin) at (-0.55,0.45) {$h_l$};
+\node[chbox,fill=blue!12,minimum width=2.25cm] (rblock) at (1.30,0.45)
   {Transformer block};
-\node[circle,draw=primary,thick,inner sep=1.4pt] (rplus) at (2.95,0.45) {$+$};
-\node[chbox,fill=green!14,minimum width=0.95cm] (rout) at (3.75,0.45) {$h_{l+1}$};
-\draw[chflow] (rin) -- (rblock);
-\draw[chflow] (rblock) -- (rplus);
-\draw[chflow] (rplus) -- (rout);
-\draw[chflow,rounded corners=4pt] (rin.north) -- ++(0,0.72) -|
+\node[circle,draw=primary,thick,inner sep=1.4pt] (rplus) at (3.05,0.45) {$+$};
+\node[chbox,fill=green!14,minimum width=0.95cm] (rout) at (3.95,0.45) {$h_{l+1}$};
+\draw[chflow] (rin.east) -- (rblock.west);
+\draw[chflow] (rblock.east) -- (rplus.west);
+\draw[chflow] (rplus.east) -- (rout.west);
+\draw[chflow,rounded corners=4pt] (rin.north) -- ++(0,0.82) -|
   node[chnote,above,pos=0.58] {残差旁路} (rplus.north);
 \node[chnote] at (1.75,-0.52) {$h_{l+1}=h_l+f_l(h_l)$；逐层重复};
 
-\node[chlabel] at (8.05,2.15) {Block AttnRes};
-\node[chnote] at (5.20,1.82) {保存的块表示};
+\node[chlabel] at (8.30,2.15) {Block AttnRes};
+\node[chnote] at (5.25,1.82) {保存的块表示};
 \foreach \y/\id/\name in {1.25/b1/$B_0$,0.45/b2/$B_1$,-0.35/b3/$B_7$} {
-  \node[chbox,fill=green!12,minimum width=1.25cm] (\id) at (5.20,\y) {\name};
+  \node[chbox,fill=green!12,minimum width=1.25cm] (\id) at (5.25,\y) {\name};
 }
-\node at (5.20,0.02) {$\vdots$};
-\node[chbox,fill=blue!12,minimum width=1.35cm] (stack) at (6.90,0.45) {stack $V$};
-\node[chbox,fill=yellow!18,minimum width=1.35cm] (keys) at (8.65,1.15) {$K=\mathrm{Norm}(V)$};
-\node[chbox,fill=orange!15,minimum width=1.35cm] (query) at (8.65,-0.25) {伪查询 $q_l$};
-\node[chbox,fill=red!10,minimum width=1.55cm] (scores) at (10.45,0.45) {$\mathrm{softmax}(q_lK)$};
-\node[chbox,fill=green!18,minimum width=1.55cm] (mix) at (10.45,-0.75) {$\sum_i\alpha_iV_i$};
-\draw[chflow] (b1) -- (stack);
-\draw[chflow] (b2) -- (stack);
-\draw[chflow] (b3) -- (stack);
-\draw[chflow] (stack) -- (keys);
-\draw[chflow] (keys) -- (scores);
-\draw[chflow] (query) -- (scores);
-\draw[chflow] (scores) -- (mix);
+\node at (5.25,0.02) {$\vdots$};
+\node[chbox,fill=blue!12,minimum width=1.35cm] (stack) at (7.35,0.45) {stack $V$};
+\node[chbox,fill=yellow!18,minimum width=1.35cm] (keys) at (9.00,1.15) {$K=\mathrm{Norm}(V)$};
+\node[chbox,fill=orange!15,minimum width=1.35cm] (query) at (9.00,-0.25) {伪查询 $q_l$};
+\node[chbox,fill=red!10,minimum width=1.55cm] (scores) at (10.95,0.45) {$\mathrm{softmax}(q_lK)$};
+\node[chbox,fill=green!18,minimum width=1.55cm] (mix) at (10.95,-0.95) {$\sum_i\alpha_iV_i$};
+\coordinate (blockjoin) at (6.10,0.45);
+\draw[thick,draw=primary,line cap=round] (b1.east) -- (6.10,1.25);
+\draw[thick,draw=primary,line cap=round] (b2.east) -- (6.10,0.45);
+\draw[thick,draw=primary,line cap=round] (b3.east) -- (6.10,-0.35);
+\draw[thick,draw=primary,line cap=round] (6.10,-0.35) -- (6.10,1.25);
+\fill[primary] (blockjoin) circle (1.1pt);
+\draw[chflow] (blockjoin) -- (stack.west);
+\draw[chflow] (stack.east) -- (keys.west);
+\draw[chflow] (keys.east) -- (scores.north west);
+\draw[chflow] (query.east) -- (scores.south west);
+\draw[chflow] (scores.south) -- (mix.north);
 \draw[chflow,draw=accent,rounded corners=3pt] (stack.south) |-
   node[chnote,below,pos=0.62] {Value 路径} (mix.west);
-\node[chnote] at (7.75,-1.60) {每 12 层保存一次，共 8 个深度块};
+\node[chnote] at (7.95,-1.78) {每 12 层保存一次，共 8 个深度块};
 \end{tikzpicture}
 \caption{普通残差与 Block AttnRes。}
 \label{fig:ch02-attnres}
