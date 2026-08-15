@@ -6,6 +6,7 @@
 *.lof
 *.lot
 *.synctex.gz
+*.synctex(busy)
 *.bbl
 *.blg
 *.fdb_latexmk
@@ -22,6 +23,7 @@
 
 # 临时渲染与检查产物
 tmp/
+.codex-preview/
 
 # 编辑器/IDE
 .vscode/

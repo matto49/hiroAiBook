@@ -25,6 +25,7 @@
 \usepackage{placeins}
 \usepackage{caption}
 \usepackage{microtype}
+\usepackage{multicol}
 \usepackage{tikz}
 \usepackage{listings}
 \usetikzlibrary{arrows.meta,positioning,calc,fit,decorations.pathreplacing}
@@ -261,6 +262,22 @@
   \par\noindent\textbf{（#1）}\hspace{0.25em}#2\par%
 }
 
+% ch04 及后续文章共用的序章分隔带。
+\newcommand{\prologuedivider}{%
+  \par\addvspace{1.2em}%
+  \noindent\colorbox{codebg}{%
+    \parbox{\dimexpr\linewidth-2\fboxsep\relax}{%
+      \centering
+      \begin{tikzpicture}[baseline=-0.6ex]
+        \draw[primary!45,line width=0.45pt] (-4.2,0) -- (-0.34,0);
+        \draw[primary!45,line width=0.45pt] (0.34,0) -- (4.2,0);
+        \fill[accent!80] (0,0.09) -- (0.09,0) -- (0,-0.09) -- (-0.09,0) -- cycle;
+      \end{tikzpicture}%
+    }%
+  }%
+  \par\addvspace{1.1em}%
+}
+
 % 重定义thebibliography：book类默认用\chapter*，改为\section*避免与手动标题重复
 \makeatletter
 \renewenvironment{thebibliography}[1]{%
@@ -325,7 +342,11 @@
 \input{chapters/ch03}
 \input{chapters/ch04}
 \input{chapters/ch05}
-\input{chapters/ch07}
+\input{chapters/ch06-shor}
+\input{chapters/ch07-finale}
+
+% --- 结语（创作者寄语） ---
+\input{chapters/backmatter}
 
 \fi
 
