@@ -4,9 +4,27 @@
 
 % ==================== 宏包 ====================
 \usepackage[UTF8,fontset=none]{ctex}
-\setCJKmainfont[AutoFakeSlant=0.18]{Songti SC}
-\setCJKsansfont{Heiti SC}
-\setCJKmonofont{Heiti SC}
+\IfFontExistsTF{Songti SC}{%
+  \setCJKmainfont[AutoFakeBold=2,AutoFakeSlant=0.18]{Songti SC}%
+}{%
+  \IfFontExistsTF{SimSun}{%
+    \setCJKmainfont[AutoFakeBold=2,AutoFakeSlant=0.18]{SimSun}%
+  }{%
+    \setCJKmainfont[AutoFakeBold=2,AutoFakeSlant=0.18]{FandolSong}%
+  }%
+}
+\IfFontExistsTF{Heiti SC}{%
+  \setCJKsansfont[AutoFakeBold=2]{Heiti SC}%
+  \setCJKmonofont{Heiti SC}%
+}{%
+  \IfFontExistsTF{SimHei}{%
+    \setCJKsansfont[AutoFakeBold=2]{SimHei}%
+    \setCJKmonofont{SimHei}%
+  }{%
+    \setCJKsansfont[AutoFakeBold=2]{FandolHei}%
+    \setCJKmonofont{FandolHei}%
+  }%
+}
 % JIS B5 同人志成品尺寸：182 mm × 257 mm。
 % `b5paper` 在标准 book 类中是 ISO B5（176 mm × 250 mm），
 % 因此这里使用 geometry 的 `b5j` 明确指定 JIS B5。
@@ -21,6 +39,7 @@
 \usepackage{titlesec}
 \usepackage{titletoc}
 \usepackage{fancyhdr}
+\usepackage{emptypage}
 \usepackage{enumitem}
 \usepackage{placeins}
 \usepackage{caption}
