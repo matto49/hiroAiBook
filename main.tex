@@ -25,10 +25,28 @@
     \setCJKmonofont{FandolHei}%
   }%
 }
-% JIS B5 同人志成品尺寸：182 mm × 257 mm。
-% `b5paper` 在标准 book 类中是 ISO B5（176 mm × 250 mm），
-% 因此这里使用 geometry 的 `b5j` 明确指定 JIS B5。
-\usepackage[b5j,inner=18mm,outer=15mm,top=17mm,bottom=20mm]{geometry}
+% 印刷交付尺寸：184 mm × 264 mm，其中四边各含 2 mm 出血。
+% 裁切后的净尺寸为 180 mm × 260 mm；正文页边距相对净尺寸计算。
+\usepackage[
+  paperwidth=184mm,
+  paperheight=264mm,
+  layoutwidth=180mm,
+  layoutheight=260mm,
+  layouthoffset=2mm,
+  layoutvoffset=2mm,
+  inner=18mm,
+  outer=15mm,
+  top=17mm,
+  bottom=20mm
+]{geometry}
+% 在每一页写入印刷页面框：BleedBox 覆盖完整交付画布，
+% TrimBox 从四边各内缩 2 mm。
+\AddToHook{shipout/background}{%
+  \special{pdf:put @thispage <<
+    /BleedBox [0 0 521.5748 748.3465]
+    /TrimBox [5.6693 5.6693 515.9055 742.6772]
+  >>}%
+}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{booktabs}
@@ -346,7 +364,7 @@
 {\thispagestyle{empty}%
 \begin{tikzpicture}[remember picture,overlay]
   \node[inner sep=0pt] at (current page.center)
-    {\includegraphics[width=\paperwidth,height=\paperheight,keepaspectratio]{figures/hiroAIbook.png}};
+    {\includegraphics[height=\paperheight]{figures/hiroAIbook.png}};
 \end{tikzpicture}}
 \clearpage
 
@@ -368,15 +386,12 @@
 % --- 结语（创作者寄语） ---
 \input{chapters/backmatter}
 
-% --- 封底（从含 3 mm 出血的成品中裁切到 JIS B5） ---
+% --- 封底（原图铺满 184 mm × 264 mm 交付画布） ---
 \clearpage
 {\thispagestyle{empty}%
 \begin{tikzpicture}[remember picture,overlay]
   \node[inner sep=0pt] at (current page.center)
     {\includegraphics[
-      trim=3mm 3mm 3mm 3mm,
-      clip,
-      width=\paperwidth,
       height=\paperheight
     ]{figures/back-cover/hiro-back-cover-minimal-v1-300dpi.png}};
 \end{tikzpicture}}
