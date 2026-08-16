@@ -1,4 +1,4 @@
-% ==================== 章节6：周期尽头的质因数 ====================
+% ==================== 章节7：周期尽头的质因数 ====================
 
 \hirochapter{周期尽头的质因数：和补习组一起学习 Shor 算法}
 
@@ -6,33 +6,31 @@
 \phantomsection
 \addcontentsline{toc}{section}{序章：十五，三乘五，演示结束？}
 
-初星学园开放日的前一天，仓本千奈抱着一卷相纸走进空教室。纸卷比她的手臂还粗，展开后几乎占满整张课桌。正中央画着一台巨大的黑色机器，旁边发出淡淡的蓝色光芒，看起来深不可测。
+初星学园开放日的前一天，仓本千奈抱着一卷海报纸走进空教室。纸卷比她的手臂还粗，展开后几乎占满整张课桌。海报中央印着一座层层收窄的金属圆筒，电缆与管线从顶端垂下来，蓝色指示灯在外壳上连成一圈。
 
-花海佑芽围着画纸转了半圈。
+花海佑芽围着海报转了半圈。
 
-「好厉害！这是什么特殊机器！」
+「好厉害！这是什么机器？」
 
-「这是父亲大人买下的量子计算机哇，这次开放日我们要做的事情就是给大家展示量子计算机的威力哇。」
-
-花海佑芽的眼睛一下子亮了起来。
+「父亲大人替我找来的量子计算机照片。开放日用它做展板，一定很气派吧！」
 
 「看起来好霸气！我也想试试！」
 
 「正是如此！既然是能改变世界的机器，外形当然也要足够气派才行呢！」
 
-「可是，这台量子计算机要在液氮下才能工作。作为改变世界的机器并不是很方便呢。」
+「照片里最显眼的，其实是稀释制冷机。」
 
 筱泽广趴在窗边的桌上，只抬起了眼睛。她面前放着开放日的演示说明书，标题是“用 Shor 算法分解整数 15”。
 
 千奈的笑容僵了一下。
 
-「液氮？是什么东西哇。」
+「制冷机？」千奈低头看了看照片，「那量子计算机在哪里呢？」
 
-「就是让温度降到很低很低很低的道具，任何东西接触都会变成冰块。」
+「量子芯片在里面。以超导量子比特为例，需要用氦同位素混合物工作的稀释制冷机，把芯片冷却到毫开尔文量级。不是把整台机器泡进液氮。」\cite{ch07ibmtech}
 
-「那量子计算机怎么让人操作哇，变成冰块就不能操作了哇。」
+「那明天要把它搬来吗？」佑芽问。
 
-「普通的量子计算机，也不会让人在上面操作。」
+「不。会先把展台压坏。」
 
 「那小广，我们明天到底要演示什么？」佑芽把说明书翻到最后一页，又从最后一页翻回第一页，「要把十五分成质数，对吧？三乘五。完成！」
 
@@ -54,9 +52,7 @@
 
 「所以，很有趣。」
 
-\prologuedivider
-
-\section{Shor 算法}
+\section{把分解换成找周期}
 
 广在白板上写下：
 
@@ -66,13 +62,11 @@
 
 「质数，是大于一、并且正因数只有一和它自身的整数。质因数分解，就是把一个合数写成质数乘积。比如十五分解成三乘五。」
 
-佑芽立刻举起手。
-
-「那十二就是二乘二乘三！」
+「那十二就是二乘二乘三！」佑芽立刻回答。
 
 「正解。」
 
-「我也明白了！」千奈举起手，「一百就是十乘十哇！」
+「我也明白了！」千奈举起手，「一百就是十乘十！」
 
 「十不是质数。」
 
@@ -82,30 +76,28 @@
 
 \begin{align*}
 3 \times 5 &\longrightarrow 15 && \text{很容易},\\
-15 &\longrightarrow 3 \times 5 && \text{小数容易，大数可能很难}.
+15 &\longrightarrow 3 \times 5 && \text{小规模容易，大整数可能很难}.
 \end{align*}
 
-「把两个大质数乘起来，算起来很快。可是只给出乘积，再想把那两个质数找回来，随着数字位数增加，就会变得困难。现代 RSA 等公钥密码体系利用的，正是这类单向上的不对称。」
+「把两个大质数乘起来很快。可是只给出乘积，再想把那两个质数找回来，随着位数增加就会变得困难。RSA 的安全性，建立在经典计算机难以快速分解足够大的整数这一点上。」\cite{ch07shor}
 
-「R...SA？」千奈发出了疑问的声音。
+「R……SA？」
 
-「就是银行卡密码，媒体账号登陆，等等地方都会用到的技术。如果 RSA 等公钥密码体系被破解，所有的密码就会被泄露。大家的财产也就不安全了。」
+「一种公钥密码方案。它可以参与通信加密和数字签名，但网络安全不是只靠这一件东西，更不能说 RSA 一旦受威胁，所有账户口令就会自动泄露。」
 
-「仓本家会破产哇？」
+「那仓本家暂时不会破产？」
 
-「真的有可能哦。」
+「不能从这件事直接推出破产。」
 
-「呜哇哇哇哇！」
+千奈松了口气，随后又觉得这句话似乎没有提供多少安慰。
 
-千奈陷入了混乱。
+「像是把面粉和水揉成面团很容易，想把面团恢复成原来的每一粒面粉就很困难！」佑芽说。
 
-「像是把面粉和水揉成面团很容易，想把面团恢复成原来的每一粒面粉就很困难！」
-
-「比喻不错。」
+「方向不错。」
 
 「那 Shor 算法就是把面团重新拆开？」
 
-「它不直接拆。」广摇了摇头，「它把问题换成另一个问题。」
+「它不直接拆。」广摇了摇头，「它换成另一个问题。」
 
 她写下两个字：
 
@@ -113,34 +105,44 @@
 \textbf{找周期。}
 \end{center}
 
-广拿起粉笔，在黑板上写下：
+广拿起粉笔，把整条路线压进一张图里：
 
-\begin{center}
-\setlength{\fboxsep}{8pt}%
-\colorbox{codebg}{%
-\begin{minipage}{0.88\linewidth}
-输入待分解的合数 $N$
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  >=Latex,
+  node distance=0.48cm,
+  shorstep/.style={draw=primary,thick,rounded corners=2pt,
+    align=center,minimum width=9.6cm,minimum height=0.72cm},
+  shorflow/.style={->,thick,draw=primary},
+  shorretry/.style={->,thick,dashed,draw=accent,rounded corners=5pt}
+]
+\node[shorstep,fill=codebg] (input) {输入待分解的合数 $N$};
+\node[shorstep,fill=green!14,below=of input] (choose)
+  {经典预处理：随机选择 $1<a<N$，计算 $\gcd(a,N)$};
+\node[shorstep,fill=orange!18,below=of choose] (order)
+  {量子子程序：寻找 $a^x\bmod N$ 的周期（阶）$r$};
+\node[shorstep,fill=blue!12,below=of order] (post)
+  {经典后处理：验证 $r$，计算 $\gcd(a^{r/2}\!\pm1,N)$};
+\node[shorstep,fill=yellow!20,below=of post] (result)
+  {得到非平凡因数；若验证失败，则重新测量或更换 $a$};
 
-\begin{center}$\downarrow$\end{center}
+\draw[shorflow] (input) -- (choose);
+\draw[shorflow] (choose) --
+  node[right,font=\tiny,text=primary] {$\gcd(a,N)=1$} (order);
+\draw[shorflow] (order) -- (post);
+\draw[shorflow] (post) -- (result);
+\draw[shorretry] (result.west) -- ++(-0.72,0) |-
+  node[pos=0.25,left,font=\tiny,text=accent] {重试} (choose.west);
+\node[font=\tiny,text=primary,anchor=west] at ([xshift=0.14cm]choose.east)
+  {$\gcd(a,N)>1$ 时直接得到因数};
+\end{tikzpicture}
+\caption{Shor 算法的经典--量子--经典流程。量子计算只承担找阶，前后仍需经典计算与验证。}
+\label{fig:ch07-shor-flow}
+\end{figure}
 
-随机选择 $a$，并先算 $\gcd(a,N)$
-
-\begin{center}$\downarrow$\end{center}
-
-用量子计算寻找 $a^x \bmod N$ 的周期 $r$
-
-\begin{center}$\downarrow$\end{center}
-
-用经典计算计算 $\gcd(a^{r/2}-1,N)$\\
-\hspace*{6.5em}和 $\gcd(a^{r/2}+1,N)$
-
-\begin{center}$\downarrow$\end{center}
-
-得到非平凡因数；若本轮失败，就换 $a$ 或重新测量
-\end{minipage}}
-\end{center}
-
-「这里的 $\gcd$ 是最大公约数，也就是能同时整除两个整数的最大正整数。」
+「这里的 $\gcd$ 是最大公约数。」广说，「也就是能同时整除两个整数的最大正整数。」
 
 「为什么一开始就要算它？」
 
@@ -150,7 +152,7 @@
 \end{equation}
 那我们已经撞上了 $N$ 的一个因数，根本不用启动量子电路。」
 
-「抽签第一下就中大奖！」
+「抽签第一下就中大奖！」佑芽说。
 
 「嗯。只是不能指望总有这种运气。如果 $\gcd(a,N)=1$，才进入真正的找周期。」
 
@@ -186,6 +188,30 @@ N=15, \qquad a=2.
 \end{tabular}
 \end{center}
 
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  >=Latex,
+  state/.style={circle,draw=primary,thick,fill=codebg,
+    minimum size=0.82cm,inner sep=1pt},
+  cycleflow/.style={->,very thick,draw=accent,bend left=18}
+]
+\node[state] (one) at (0,1.55) {$1$};
+\node[state] (two) at (2.15,0) {$2$};
+\node[state] (four) at (0,-1.55) {$4$};
+\node[state] (eight) at (-2.15,0) {$8$};
+\draw[cycleflow] (one) to node[above right,font=\scriptsize] {$\times2$} (two);
+\draw[cycleflow] (two) to node[below right,font=\scriptsize] {$\times2$} (four);
+\draw[cycleflow] (four) to node[below left,font=\scriptsize] {$\times2$} (eight);
+\draw[cycleflow] (eight) to node[above left,font=\scriptsize] {$\times2$} (one);
+\node[align=center,font=\scriptsize\bfseries,text=primary] at (0,0)
+  {$\bmod 15$\\周期 $r=4$};
+\end{tikzpicture}
+\caption{$2^x\bmod15$ 的余数环。每乘一次 $2$ 前进一步，四步后回到 $1$。}
+\label{fig:ch07-mod15-cycle}
+\end{figure}
+
 「一、二、四、八，然后又回到一！」佑芽用笔圈住两组相同的余数，「每四步一圈。就像绕操场！」
 
 「对。这个最小的正周期四，就是二模十五的阶。一般地，当 $a$ 与 $N$ 互质时，我们寻找最小的正整数 $r$，使得
@@ -198,19 +224,11 @@ a^r \equiv 1 \pmod N.
 \begin{equation}
 2^4=16\equiv 1 \pmod {15},
 \end{equation}
-所以 $r=4$！」
+所以 $r=4$！」佑芽说。
 
 「完全正确。」
 
-千奈指着表格，神情十分郑重。
-
-「我也发现了一件事。数字绕完一圈，却没有前进一步。就像我练习了一整天，第二天的成绩还是全校倒数一样！」
-
-「千奈，周期不是这个意思啦！」
-
-「不过，很容易记住。」
-
-千奈一下子又高兴起来。
+\section{周期怎样交出因数}
 
 广把 $r=4$ 写到白板中央。
 
@@ -248,22 +266,24 @@ a^{r/2}=2^2=4.
 
 「Shor 算法的确很绕。」广看着满满一白板的公式，语气听上去十分满足，「所以，适合认真学习。」
 
+\section{量子计算机怎样找周期}
+
 佑芽抱起手臂。
 
 「可是刚才的周期，也是我们一项一项算出来的。数字很大的话，照样要跑很多圈吧？」
 
-「好问题。经典计算如果只是逐项试，周期可能很长。量子计算的优势，正是在这里提取周期结构。」
+「经典计算如果只是逐项试，周期可能很长。量子计算的优势，正是在这里提取周期结构。」
 
 广在白板上画出上下两排线。
 
 「可以把量子部分想成两个寄存器。」
 
 \begin{itemize}[leftmargin=2em]
-  \item \textbf{计数寄存器：}保存许多个指数 $x$ 的叠加态。
-  \item \textbf{工作寄存器：}保存与每个 $x$ 对应的 $a^x \bmod N$。
+  \item \textbf{计数寄存器}有 $m$ 个量子比特，可以表示 $Q=2^m$ 个指数 $x$；
+  \item \textbf{工作寄存器}至少要能编码 $0$ 到 $N-1$ 的余数，所需量子比特数通常与 $\lceil\log_2N\rceil$ 同阶。
 \end{itemize}
 
-「两个寄存器保存的态的数量相等。」
+「两个寄存器分工不同，大小也不必相等。先把工作寄存器初始化为 $\lvert1\rangle$。」
 
 「第一步，对计数寄存器施加 Hadamard 门，把它准备成许多 $x$ 的均匀叠加。设寄存器能表示 $0$ 到 $Q-1$，理想化地写就是：」
 
@@ -271,16 +291,23 @@ a^{r/2}=2^2=4.
 \frac{1}{\sqrt{Q}}\sum_{x=0}^{Q-1}\lvert x\rangle.
 \end{equation}
 
-「所谓叠加，是不是说它一次同时跑了从零到 $Q-1$ 的所有圈？」
+「所谓叠加，是不是说它一次同时跑了从零到 $Q-1$ 的所有圈？」佑芽问。
 
 「可以暂时这样想，但不能把它理解成‘最后能一次读出所有答案’。量子态一经测量，只会给出一个经典结果。算法要做的，是在测量之前让不同分支发生干涉，把我们需要的结构集中到少数结果上。」
 
-第二步，对工作寄存器进行\textbf{受控模幂运算}：
+第二步，让两个寄存器共同经过\textbf{受控模幂运算}：
 
 \begin{equation}
 \lvert x\rangle\lvert 1\rangle
 \longmapsto
 \lvert x\rangle\lvert a^x \bmod N\rangle.
+\end{equation}
+
+于是，两个寄存器的联合状态变成
+
+\begin{equation}
+\frac{1}{\sqrt{Q}}\sum_{x=0}^{Q-1}
+\lvert x\rangle\lvert a^x\bmod N\rangle.
 \end{equation}
 
 对于 $N=15,a=2$，工作寄存器里的数值呈现
@@ -293,19 +320,19 @@ a^{r/2}=2^2=4.
 
 「第三步，在计数寄存器上施加\textbf{逆量子傅里叶变换}，也就是 inverse QFT。」
 
-「听起来像必杀技！」
+「听起来像必杀技！」佑芽说。
 
-「作用也确实像。它让与周期不匹配的振幅互相抵消，让与周期频率匹配的振幅互相加强。Shor 算法不是让量子计算机挨个试除质数，也不是直接把所有因数一起读出来。它是把隐藏在余数序列里的周期，转换成测量结果中的峰。」
+「从效果看，确实有一点像。」广说，「受控模幂、相位估计和逆 QFT 合在一起，让不匹配的振幅相互抵消，让与周期相符的振幅相互加强。量子计算机没有挨个试除质数，也不会把所有因数一次读出来；它把余数序列中的周期结构，变成测量分布里的峰。」\cite{ch07ibmtutorial}
 
-千奈赶紧在画纸上补了几座尖尖的山峰。
+千奈赶紧在海报上补了几座尖尖的山峰。
 
-「如果 $Q$ 取二的幂，并且精度足够，测量计数寄存器测到 1 就计 1，最终测到 1 的次数会等于某个整数 $y$，使得
+「如果 $Q$ 取二的幂，并且精度足够，测量计数寄存器会得到一个 $m$ 位比特串。把这个比特串当作二进制整数 $y$，就有较大概率满足
 \begin{equation}
 \frac{y}{Q}\approx\frac{s}{r},
 \end{equation}
-其中 $s$ 是从零到 $r-1$ 的某个整数。之后用经典的\textbf{连分数展开}，就能从 $y/Q$ 的有理数近似里猜出分母 $r$。」
+其中 $s$ 是从零到 $r-1$ 的某个整数。之后用经典的\textbf{连分数展开}，从 $y/Q$ 的有理数近似中恢复 $s/r$，它的分母就是周期 $r$ 的候选值。」
 
-「为什么是‘猜’？」
+「为什么是‘猜’？」千奈问。
 
 「因为一次测量未必给出足够的信息。比如测到 $s=0$，只得到零；或者 $s$ 与 $r$ 有公因数，约分后只能看到 $r$ 的一个因数。我们要把候选 $r$ 代回
 \begin{equation}
@@ -318,19 +345,49 @@ a^r\equiv1\pmod N
 \begin{center}
 \small
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{c c L{3.0cm} c}
+\begin{tabular}{c c L{3.0cm} L{3.8cm}}
 \toprule
-可能的 $y$ & $y/Q$ & 与 $s/r$ 的关系 & 能否直接看出 $r=4$ \\
+可能的 $y$ & $y/Q$ & 连分数结果 & 候选分母 \\
 \midrule
-0   & $0$   & $0/4$             & 否 \\
-64  & $1/4$ & $1/4$             & 是 \\
-128 & $1/2$ & $2/4$ 约分为 $1/2$ & 未必 \\
-192 & $3/4$ & $3/4$             & 是 \\
+0   & $0$   & $0/1$               & $1$，没有帮助 \\
+64  & $1/4$ & $1/4$               & $4$ \\
+128 & $1/2$ & $2/4$ 约分为 $1/2$ & $2$，只看到真周期的约数 \\
+192 & $3/4$ & $3/4$               & $4$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-「所以一次没有测到四，不代表算法错了。概率算法允许失败。重复、验证，是算法本身的一部分。」
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=2.15cm,y=2.0cm,font=\scriptsize,>=Latex]
+\draw[->,thick,draw=primary] (-0.45,0) -- (3.75,0)
+  node[right] {测量整数 $y$};
+\draw[->,thick,draw=primary] (-0.25,-0.02) -- (-0.25,1.28);
+\node[rotate=90,text=primary] at (-0.50,0.63) {测量概率 $P(y)$};
+\foreach \x/\value/\phase in {
+  0/0/0,
+  1/64/{1/4},
+  2/128/{1/2},
+  3/192/{3/4}}
+{
+  \draw[very thick,draw=accent] (\x,0) -- (\x,1.02);
+  \fill[accent] (\x,1.02) circle (1.5pt);
+  \ifnum\x=0
+    \node[below=3pt,xshift=2pt] at (\x,0) {$\value$};
+  \else
+    \node[below=3pt] at (\x,0) {$\value$};
+  \fi
+  \node[above=2pt,text=primary] at (\x,1.02) {$y/Q=\phase$};
+}
+\draw[dashed,draw=black!30] (0,0.51) -- (3,0.51);
+\end{tikzpicture}
+\caption{$Q=256$、$r=4$ 时的理想测量峰。一次测量只返回一个 $y$；重复运行后，峰会集中在 $0,64,128,192$ 附近。}
+\label{fig:ch07-phase-peaks}
+\end{figure}
+
+\FloatBarrier
+
+「所以一次没有测到四，不代表算法错了。」广说，「概率算法允许失败。重复、验证，是算法本身的一部分。」
 
 「和跳高一样！」佑芽拍了一下手，「第一次没过杆，调整以后再跳！」
 
@@ -340,7 +397,7 @@ a^r\equiv1\pmod N
 
 「不会。」
 
-「这就是 Shor 算法？」
+「这就是 Shor 算法？」千奈问。
 
 「是框架。实现时最费资源的通常是可逆的受控模乘、模幂电路，以及把它们放进可靠的量子纠错体系。纸上的 $\lvert x\rangle\lvert1\rangle\mapsto\lvert x\rangle\lvert a^x\bmod N\rangle$ 只有一行，真正编译成量子门，会麻烦得多。」
 
@@ -348,7 +405,9 @@ a^r\equiv1\pmod N
 
 「对。然后会跑很久。」
 
-广似乎仅仅想象了一下跑步就累了。她把额头轻轻靠在白板边缘。
+广说完，似乎仅仅想象了一下跑步就累了。她把额头轻轻靠在白板边缘。
+
+\section{失败也在算法之内}
 
 千奈举起手。
 
@@ -375,7 +434,7 @@ a^r\equiv1\pmod N
 
 「不过广同学喜欢失败的理由，似乎和算法不太一样呢……」
 
-\section{在 Shor 算法之后}
+\section{今天还不能拆掉 RSA}
 
 为了防止佑芽第二天在台上宣布“量子计算机能瞬间破解所有密码”，广在演示稿末尾画了一个很大的方框。
 
@@ -386,11 +445,11 @@ a^r\equiv1\pmod N
 Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计算机已经能轻易分解现实中的超大整数。}}
 \end{center}
 
-「更准确地说，Shor 算法的运行时间随输入位数，也就是 $\log N$，按多项式增长。相较于目前已知的经典通用整数分解算法，这是根本性的复杂度优势。但它仍然需要大量量子门、足够多的逻辑量子比特，以及长期稳定的量子纠错。」
+「更准确地说，Shor 算法的运行时间随输入位数，也就是 $\log N$，按多项式增长。相较于目前已知的经典通用整数分解算法，这是根本性的复杂度优势。但它仍然需要大量量子门、足够多的纠错量子比特，以及可靠的容错运行。」\cite{ch07shor,ch07ibmtutorial}
 
-「那现在能分解十五吗？」
+「那现在能分解十五吗？」佑芽问。
 
-「能做小规模、经过编译或简化的演示。十五也确实是历史上最著名的实验示例之一。但是十五本来就能心算，这种实验的意义是验证控制、相位估计和量子电路，而不是证明今天已经能攻击现代 RSA 密钥。」
+「能做小规模、经过编译或简化的演示。十五也确实是历史上最著名的实验示例之一。但是十五本来就能心算，这种实验的意义是验证控制、相位估计和量子电路，而不是证明今天已经能攻击现代 RSA 密钥。」\cite{ch07ibmtutorial}
 
 「而且它也不是‘所有密码的克星’。」广继续写道，「Shor 算法直接威胁的是依赖整数分解或离散对数困难性的公钥体系。对称加密、哈希、口令保存等问题，不能简单说成被同一种方式全部破解。」
 
@@ -402,7 +461,7 @@ Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计
 
 「我明天就这样讲！」
 
-「千奈，这一句本来是我的台词吧？」
+「千奈，这一句本来是我的台词吧？」佑芽问。
 
 「那花海同学负责最有气势地宣布答案！」
 
@@ -412,11 +471,13 @@ Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计
 
 「佑芽。音量……不属于量子加速的一部分。」
 
+\section{开放日}
+
 第二天，三人的展台前很快围起了一圈观众。
 
-千奈负责图画。她把模幂序列画成一条环形跑道：一、二、四、八四名选手不断绕圈；又把逆量子傅里叶变换画成聚光灯，让分散的波纹在四座山峰上相互加强。尽管那台量子计算机仍然带着扶手，但不妨碍小孩子们看得目不转睛。
+千奈负责图画。她把模幂序列画成一条环形跑道：一、二、四、八四名选手不断绕圈；又把逆量子傅里叶变换画成聚光灯，让分散的波纹在四座山峰上相互加强。尽管气派的量子计算机并没有被搬到会场来，但不妨碍小孩子们看得目不转睛。
 
-佑芽负责示范。她沿着地上贴出的数字格奔跑，每到第四格就把写着“余数一”的牌子举过头顶。
+佑芽负责示范。她沿着地上贴出的数字格奔跑，每到第四格就举起写着“余数一”的牌子，然后用全场都能听见的声音宣布：
 
 「找到周期四！接下来用最大公约数，把三和五从十五里面拉出来！」
 
@@ -436,11 +497,11 @@ Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计
 
 「嗯。」
 
-广接过水杯，看向画纸上的量子计算机。千奈最后还是给它保留了扶手，旁边还加了一张柔软的椅子。
+广接过水杯，看向海报上的量子计算机。千奈在稀释制冷机旁边添了一张柔软的椅子，还用箭头标着“讲解员休息处”。
 
-「数学很简单。把它讲到让人明白，比数学本身难。」
+「白板上的计算很简单。把它讲到让人明白，比算出答案难。」
 
-「那广开心吗？」
+「那广开心吗？」佑芽问。
 
 「很开心。」
 
@@ -450,7 +511,7 @@ Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计
 
 「还有下次吗！？」
 
-千奈与佑芽的声音重叠在一起。空教室般的展台上，回声慢了一拍，仿佛某个终于被测量出来的周期。
+千奈与佑芽的声音重叠在一起，撞上展板后慢了一拍，又传回三人耳边，仿佛某个终于被测量出来的周期。
 
 \section{数学小结}
 
@@ -470,12 +531,23 @@ Shor 算法展示的是\textbf{理论上的高效}，不等于今天的量子计
 
 量子加速发生在第 2 步的\textbf{周期/阶寻找}；其余主要是经典数论计算。
 
-\section{参考资料}
+\begin{thebibliography}{9}
 
-\subsection*{Shor 算法与量子计算}
+\bibitem{ch07ibmlearning}
+IBM Quantum Learning. \emph{Shor's algorithm}.
+\url{https://quantum.cloud.ibm.com/learning/en/courses/fundamentals-of-quantum-algorithms/phase-estimation-and-factoring/shor-algorithm}.
 
-\begin{itemize}[leftmargin=2em]
-  \item \href{https://quantum.cloud.ibm.com/learning/en/courses/fundamentals-of-quantum-algorithms/phase-estimation-and-factoring/shor-algorithm}{IBM Quantum Learning: Shor's algorithm}
-  \item \href{https://quantum.cloud.ibm.com/docs/en/tutorials/shors-algorithm}{IBM Quantum Documentation: Shor's algorithm tutorial}
-  \item Peter W. Shor, \href{https://arxiv.org/abs/quant-ph/9508027}{Polynomial-Time Algorithms for Prime Factorization and Discrete Logarithms on a Quantum Computer}
-\end{itemize}
+\bibitem{ch07ibmtutorial}
+IBM Quantum Documentation. \emph{Shor's algorithm tutorial}.
+\url{https://quantum.cloud.ibm.com/docs/en/tutorials/shors-algorithm}.
+
+\bibitem{ch07ibmtech}
+IBM Quantum Learning. \emph{IBM Quantum technology}.
+\url{https://quantum.cloud.ibm.com/learning/en/courses/quantum-business-foundations/quantum-technology}.
+
+\bibitem{ch07shor}
+P. W. Shor. Polynomial-time algorithms for prime factorization and discrete logarithms on a quantum computer.
+\emph{SIAM Review}, 41(2):303--332, 1999.
+\url{https://arxiv.org/abs/quant-ph/9508027}.
+
+\end{thebibliography}

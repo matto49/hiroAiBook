@@ -1,4 +1,4 @@
-# HIRO AI Book
+# 筱澤広AI小课堂
 
 一本使用 LaTeX 制作的小册子。
 

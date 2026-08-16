@@ -1,0 +1,4 @@
+interface:
+  display_name: "LaTeX 示意图审校"
+  short_description: "先核对图示逻辑，再优化 TikZ 箭头、间距与 PDF 渲染"
+  default_prompt: "使用 $review-latex-diagrams 检查并修正这张 LaTeX 示意图的逻辑、箭头和间距。"
