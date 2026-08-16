@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="188mm" height="263mm" viewBox="0 0 188 263">
+  <title>筱澤広 AI 小课堂 极简背面设计 v1</title>
+  <desc>JIS B5 成品尺寸，四周包含 3 mm 出血。</desc>
+
+  <!-- 出血背景 -->
+  <rect width="188" height="263" fill="#fbfaf8"/>
+
+  <!-- 左上：标题 -->
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, sans-serif"
+     fill="#3f2925">
+    <rect x="14" y="17" width="8" height="0.7" rx="0.35" fill="#ff7869"/>
+    <rect x="23.6" y="17" width="4.4" height="0.7" rx="0.35" fill="#67b6c1"/>
+    <text x="14" y="27" font-size="5.1" font-weight="650" letter-spacing="0.15">筱澤広 AI 小课堂</text>
+  </g>
+
+  <!-- 正中：原始 Logo，不重绘、不改色 -->
+  <image x="60.4" y="101.68" width="67.2" height="59.64"
+         xlink:href="hiro-sweets-logo-cutout.png"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- 左下：人员、时间与规格合并为一个信息块 -->
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans CJK SC, sans-serif"
+     font-size="3.15">
+    <g fill="#3f2925" font-weight="600">
+      <text x="14" y="226">企划／主催</text>
+      <text x="14" y="233">美术／副编</text>
+      <text x="14" y="240">投稿</text>
+    </g>
+    <g fill="#8d969f" font-family="Avenir Next, Helvetica Neue, sans-serif" font-weight="400">
+      <text x="39" y="226">matto</text>
+      <text x="39" y="233">sorodo</text>
+      <text x="39" y="240">cinno</text>
+    </g>
+    <g fill="#8d969f" font-size="2.8">
+      <text x="14" y="248">2026 年 8 月</text>
+      <text x="47" y="248" font-family="Avenir Next, Helvetica Neue, sans-serif" letter-spacing="0.18">JIS B5</text>
+    </g>
+  </g>
+</svg>
